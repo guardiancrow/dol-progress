@@ -36,6 +36,23 @@ DBの具体的な列定義は `database-design.md`、GVDB公開データの取�
 - SQLiteデータベースはユーザーPC上に保存する。
 - GVDBマスターの更新は、ユーザーが手動で取得したファイルを明示的にインポートする。
 
+### 3.3 WebView2 Runtimeと起動前検査
+
+Windowsでの実行にはMicrosoft Edge WebView2 Runtimeが必要である。起動時に既存Tauriの
+`tauri::webview_version()`で利用可能versionを取得し、成功した場合だけportable filesystem
+preflight、Tauri Builder、WebView生成、setup/DB初期化へ進む。Loaderが正常に返すchannel付き
+versionも許可し、アプリ独自のchannel拒否やminimum version判定は行わない。
+
+検出error、空・空白のみ・制御文字を含む返値は利用不能として扱い、data/configの作成・probeや
+DB初期化を行わない。WebViewに依存しない日本語native dialogでMicrosoft公式のWebView2
+Evergreen Runtime導入と再起動を案内し、OKでexit code 1として終了する。案内URLはRustの
+`runtime_preflight`に一度定義する。browser自動起動、Runtime自動download/install/update、
+registry/file探索による独自検出は行わない。versionや検出errorをDB/config・通常ログへ保存しない。
+
+この検査は起動前のprerequisite確認であり、WebView生成成功の保証ではない。検査後の環境変化や
+environment生成失敗に対する既存Tauriのfallback処理は維持する。WebView2 UDFは現行LocalAppData
+defaultのままとし、アプリ所有のdata/configとは区別する。
+
 ## 4. ドメイン用語
 
 ### 4.1 プロフィール
@@ -349,7 +366,7 @@ GUI上で対象datasetのローカルファイルを選択し、内容の解析�
 
 ユーザーは設定画面から、従来と同じローカル固定NTFS上の外部空directoryへDB全体を安全に移行できる。実行ファイルdirectory、その子directory、親directoryをCustom rootとして選択できない。移行は整合したsnapshotを使用し、旧DBを削除しない。Custom rootが使えない場合はRecoveryとし、inactiveな標準DBを開いたりdata directoryを自動作成したりしない。詳細は`data-root.md`を正本とする。
 
-このportable保存方式の対象はアプリ所有のDB/configである。WebView2のuser-data/cacheは現行TauriのLocalAppData defaultを維持する。Runtimeの事前検出と配布packageの変更は別Phaseで扱う。
+このportable保存方式の対象はアプリ所有のDB/configである。WebView2のuser-data/cacheは現行TauriのLocalAppData defaultを維持する。Runtime事前検査は3.3に従い、配布packageの変更は別Phaseで扱う。
 
 ## 6. 状態遷移
 

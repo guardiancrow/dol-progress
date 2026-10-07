@@ -2,7 +2,7 @@
 
 ## 対象範囲
 
-Phase 23D-B1はportableの標準保存場所、外部Custom root、bootstrap、filesystem startup failureを扱う。active databaseは常に1つだけであり、Frontendは保存場所を決定しない。WebView2 Runtime preflight、release packaging、version変更は後続Phaseとする。クラウド同期・ネットワーク共有の正式サポートを追加しない。
+Phase 23D-B1はportableの標準保存場所、外部Custom root、bootstrap、filesystem startup failureを扱う。active databaseは常に1つだけであり、Frontendは保存場所を決定しない。Phase 23D-B2ではこれらの処理の前にWindowsのWebView2 Runtime preflightを追加する。release packaging、version変更は後続Phaseとする。クラウド同期・ネットワーク共有の正式サポートを追加しない。
 
 ## 保存場所とbootstrap
 
@@ -26,6 +26,10 @@ primaryとlast-goodの両方がなく標準DBもない場合だけ、clean first
 `state`は`pending`または`committed`である。pendingには進行中transitionのrollback sourceだけを`previous`として保存する。last-goodは最後に正常にcommittedされたlocatorであり、pendingのpreviousとは別の情報である。primaryが不正、未対応、または欠落してlast-goodが読める場合は、通常画面を開始せずRecovery画面を表示する。
 
 ## 起動とactive DB
+
+WindowsではPortablePaths解決・filesystem preflightより先に`tauri::webview_version()`を検査する。
+Runtime利用不能・検出失敗ではnative導入案内を表示して終了し、data/config作成・probe、bootstrap読込、
+DB初期化、Tauri Builder/WebView生成へ進まない。検出規則と案内は`requirements.md`の3.3を正とする。
 
 Tauri Builder.run前にconfig directoryの準備・検査を行い、`DataRootResolver`だけがbootstrapを解釈してStartupPlanを作る。Defaultが選ばれた場合だけ必要なdata directoryを準備・検査する。Customや設定異常からinactive Defaultへ切り替えない。PortablePathsと解決済みplanをsetupへ渡し、bootstrapを再解釈する別resolverを作らない。
 

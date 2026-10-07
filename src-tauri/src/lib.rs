@@ -7,19 +7,25 @@ mod discovery_progress;
 mod external_links;
 mod import;
 mod migrations;
+mod native_error;
 mod portable_paths;
 mod progress_link;
 mod quest_facets;
+mod runtime_preflight;
 
 use data_root::{StartupFailure, StartupPresentation, StartupState};
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let paths = portable_paths::PortablePaths::current()
-        .unwrap_or_else(|detail| portable_paths::exit_with_filesystem_error(&detail));
-    let plan = data_root::prepare_startup(paths.clone())
-        .unwrap_or_else(|detail| portable_paths::exit_with_filesystem_error(&detail));
+    let (paths, plan) = runtime_preflight::before_portable_startup(|| {
+        let paths = portable_paths::PortablePaths::current()
+            .unwrap_or_else(|detail| portable_paths::exit_with_filesystem_error(&detail));
+        let plan = data_root::prepare_startup(paths.clone())
+            .unwrap_or_else(|detail| portable_paths::exit_with_filesystem_error(&detail));
+        (paths, plan)
+    })
+    .unwrap_or_else(|failure| native_error::exit_with_native_error(&failure.message()));
     tauri::Builder::default()
         .manage(paths)
         .manage(backup_restore::RestoreSelectionState::default())
