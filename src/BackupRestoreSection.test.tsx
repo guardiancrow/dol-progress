@@ -4,6 +4,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Mock } from "vitest";
 
 import { BackupRestoreError, type BackupRestoreServicePort, type RestoreCandidate } from "./backupRestore";
 import { BackupRestoreSection } from "./components/backupRestore/BackupRestoreSection";
@@ -111,9 +112,9 @@ function open(service: MockService) {
 }
 
 interface MockService extends BackupRestoreServicePort {
-  createBackup: ReturnType<typeof vi.fn>;
-  selectRestoreBackup: ReturnType<typeof vi.fn>;
-  restore: ReturnType<typeof vi.fn>;
+  createBackup: Mock<BackupRestoreServicePort["createBackup"]>;
+  selectRestoreBackup: Mock<BackupRestoreServicePort["selectRestoreBackup"]>;
+  restore: Mock<BackupRestoreServicePort["restore"]>;
   candidate: RestoreCandidate;
 }
 
