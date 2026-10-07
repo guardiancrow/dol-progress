@@ -7,30 +7,39 @@ mod discovery_progress;
 mod external_links;
 mod import;
 mod migrations;
+mod portable_paths;
 mod progress_link;
 mod quest_facets;
 
-use data_root::{StartupPresentation, StartupState};
+use data_root::{StartupFailure, StartupPresentation, StartupState};
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let paths = portable_paths::PortablePaths::current()
+        .unwrap_or_else(|detail| portable_paths::exit_with_filesystem_error(&detail));
+    let plan = data_root::prepare_startup(paths.clone())
+        .unwrap_or_else(|detail| portable_paths::exit_with_filesystem_error(&detail));
     tauri::Builder::default()
+        .manage(paths)
         .manage(backup_restore::RestoreSelectionState::default())
         .manage(data_root::DataRootSelectionState::default())
         .plugin(tauri_plugin_dialog::init())
-        .setup(|app| {
-            match tauri::async_runtime::block_on(data_root::initialize(&app.handle())) {
+        .setup(move |app| {
+            match tauri::async_runtime::block_on(data_root::initialize(plan)) {
                 Ok((database, info)) => {
                     app.manage(database);
                     app.manage(StartupState(std::sync::Mutex::new(
                         StartupPresentation::Normal(info),
                     )));
                 }
-                Err(recovery) => {
+                Err(StartupFailure::Recovery(recovery)) => {
                     app.manage(StartupState(std::sync::Mutex::new(
                         StartupPresentation::Recovery(recovery),
                     )));
+                }
+                Err(StartupFailure::Filesystem(detail)) => {
+                    portable_paths::exit_with_filesystem_error(&detail);
                 }
             }
             Ok(())

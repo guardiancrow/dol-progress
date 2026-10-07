@@ -22,6 +22,7 @@ pub(crate) struct ActiveDatabase {
 }
 
 impl ActiveDatabase {
+    #[cfg(test)]
     pub(crate) async fn open(database_path: PathBuf) -> Result<Self, String> {
         let pool = open_pool(&database_path).await?;
         Ok(Self {

@@ -676,8 +676,8 @@ v1では自動更新トリガーを作成しない。
 
 active database pathとSQLx poolはRustの`ActiveDatabase`が一元管理する。各RepositoryはTypeScriptの`DatabaseClient` adapterを通じてRust commandへqueryを渡す。Importer、Progress Link、Backup、Restore、migration、facet backfillも同じactive databaseを使用する。
 
-Default modeではactive databaseはTauri AppConfig directory直下の`dol-progress.db`である。pathの決定、pool lifecycle、maintenanceの詳細は`data-root.md`を正本とする。
+Default modeではactive databaseは`<exe-dir>/data/dol-progress.db`である。Rustの`PortablePaths`が実行ファイルpathから標準data rootとconfig rootを分離して解決する。CWD、旧AppConfig、Frontendをpath決定に使用しない。pathの決定、pool lifecycle、maintenanceの詳細は`data-root.md`を正本とする。
 
-Phase 13B-2ではbootstrap locatorがCustom rootを指す場合がある。bootstrapはSQLite schemaではなくAppConfigの小さなlocatorであり、application tableへ保存場所や履歴を追加しない。active pathは`DataRootResolver`だけが決定し、すべてのDB操作は`ActiveDatabase`のpoolを通す。
+bootstrap locatorが外部Custom rootを指す場合がある。bootstrapはSQLite schemaではなく`<exe-dir>/config`の小さなv1 locatorであり、application tableへ保存場所や履歴を追加しない。Default locatorには絶対pathを保存しない。active pathは`DataRootResolver`だけが決定し、すべてのDB操作は`ActiveDatabase`のpoolを通す。Phase 23D-B1のDB location変更はfilesystem上の変更で、migration 001〜003、checksum、backupのschema互換規則を変更しない。
 - ユーザーデータを保持したまま適用できる手順を優先する。
 - 破壊的変更が避けられない場合は、先に仕様書へ移行方針を記載する。

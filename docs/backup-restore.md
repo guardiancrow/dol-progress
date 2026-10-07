@@ -69,6 +69,12 @@ migration履歴を復元処理独自に書き換えてはならない。
 backupはData Rootのbootstrap設定を含まない。Default／Customのどちらでも現在activeなDBへ復元し、
 保存場所を切り替えたり、inactiveな旧DBを置換したりしない。
 
+Portable Defaultは`<exe-dir>/data/dol-progress.db`、Customは選択した外部absolute rootのDBである。
+bootstrapは`<exe-dir>/config`に分離するが、backup fileへ追加しない。Custom使用時はinactiveな
+Default DBをopen・migrationせず、標準data directoryも起動ごとに作成しない。
+旧private版のデータは旧版でbackupし、portable版で明示restoreする手順を後続Phaseで扱う。
+public runtimeは旧AppData DB/bootstrapを探索・自動コピーしない。
+
 ## 4. 復元手順
 
 復元は現在データが置き換わることと再起動を明示し、ユーザーが確認した場合だけ実行する。

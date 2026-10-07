@@ -343,7 +343,13 @@ GUI上で対象datasetのローカルファイルを選択し、内容の解析�
 
 ## 5.12 データ保存場所
 
-アプリケーションは標準保存場所（AppConfig directory）を既存利用者と互換に維持する。ユーザーは設定画面から、ローカル固定NTFS上の空directoryへDB全体を安全に移行できる。移行時は現在DBの整合したsnapshotを作成し、旧DBを削除しない。保存場所が利用できない場合は別のDBを自動作成せず、Recovery画面で再試行、検証済み既存rootの再指定、またはpending移行のrollbackを行う。詳細は`data-root.md`を正本とする。
+標準保存場所は実行ファイルdirectoryを基点とする`data/dol-progress.db`、bootstrapは同じ基点の`config/data-root.json`と`config/data-root.last-good.json`とする。Rustの`PortablePaths`で一度解決し、Current Working Directoryに依存させない。旧AppDataのDB/bootstrapは探索・自動移行せず、AppDataへの自動fallbackも行わない。
+
+初回の標準DB初期化成功後はcommitted Default locatorを保存する。両bootstrapがない既存portable DBは検証後に採用し、設定が残っているのにDBが欠落した場合は空DBを作らずRecoveryとする。configと、Default使用時のdataの書込み不能・directory名のfile衝突は、WebView生成前のnative errorと終了で扱う。
+
+ユーザーは設定画面から、従来と同じローカル固定NTFS上の外部空directoryへDB全体を安全に移行できる。実行ファイルdirectory、その子directory、親directoryをCustom rootとして選択できない。移行は整合したsnapshotを使用し、旧DBを削除しない。Custom rootが使えない場合はRecoveryとし、inactiveな標準DBを開いたりdata directoryを自動作成したりしない。詳細は`data-root.md`を正本とする。
+
+このportable保存方式の対象はアプリ所有のDB/configである。WebView2のuser-data/cacheは現行TauriのLocalAppData defaultを維持する。Runtimeの事前検出と配布packageの変更は別Phaseで扱う。
 
 ## 6. 状態遷移
 
