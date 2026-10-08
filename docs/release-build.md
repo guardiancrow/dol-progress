@@ -1,8 +1,8 @@
-# Windows portable release compile
+# Windows portable release compile / package verification
 
-この手順はPhase 23D-C1B-1の**portable release compile validation**を扱う。Windows x64の単一application EXEを、privacy検査付きの専用runnerで生成する。versionは0.3.0。正式release candidate、配布可能判定、一般公開の手順ではない。
+この手順はPhase 23D-C1B-1の**portable release compile validation**と、C1B-2の固定ZIP生成・独立検証を扱う。Windows x64の単一application EXEを専用runnerでcompileし、package工程はその検証済みrunを入力にする。versionは0.3.0。正式release candidate、一般公開の手順ではない。
 
-第三者通知と包含条件、MPL/Unicode、WebView2 Loader SDK由来、toolchain生成物の条件は未解決。ZIP、SHA256SUMS、配布README/NOTICE生成、package検証、最小acceptanceは後続Phaseで扱う。compile成功によってlicense clearanceや公開可否が変わることはない。
+第三者通知と包含条件、MPL/Unicode、WebView2 Loader SDK由来、toolchain生成物の条件は未解決。ZIP/hash/verifierのlogicは合成fixtureで検証するが、正式通知入力がない現在は正式packageを拒否する。READMEのWindows x64明記もC1Cで必要であり、generatorが不足説明を捏造しない。通知原本・review evidence、利用者README、最終versionとminimal acceptanceの完成は後続Phaseに残る。compile成功によってlicense clearanceや公開可否が変わることはない。
 
 ## 前提とsource guard
 
@@ -99,6 +99,103 @@ testは専用ignored fixtureにsynthetic bytes/PE/sourceだけを作り、アプ
 
 generated EXEはsize/hash、AMD64/PE32+/GUI、privacyをrunnerで検証する。詳細import/resource/package gateはC1B-2以降に分ける。application Rust/TS sourceが不変の場合、B3F full suiteを継承できる。必要な検証証拠は各Phase報告へ保存する。
 
-C1B-2では5member staging、README/LICENSE/NOTICE input、内部manifest/外部ZIP hash、ZIP生成・独立verifierとnegative testsを実装する。C1Cでthird-party obligationsを解決し通知/metadataを確定する。一般公開にはpackage検証とminimal synthetic acceptanceが必要。
+C1B-2のpackage/verifierは以下の工程を実装する。C1Cでthird-party obligationsとREADMEを完成し、metadataを確定する。一般公開にはclean checkpointからの正式compile/packageとminimal synthetic acceptanceが必要。
 
 Authenticodeは別工程であり、今回は署名しない。WebView2 Runtimeは外部prerequisiteで、B2 native preflightを維持し、自動download/installしない。旧installer検証物は保存したまま新flowから隔離する。このrunnerはアプリ/installer/VM起動、Runtime導入、staging/commit/tag/push/公開を行わない。
+
+## Package entryとsource trust
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-portable-package.ps1 -ExpectedSourceHead <signed-clean-HEAD> -CompileRunId <compile-run-UUID>
+    if ($LASTEXITCODE -ne 0) { throw 'Portable package failed' }
+
+packageはcompileを呼ばない。EXE pathや任意OutputPath、notice/test/skip optionは受け付けない。必要なnotice inputがない時点でfail closedに停止し、run/ZIPを作らない。入力がある場合はGit署名、ExpectedSourceHead、完全clean source、source versionを要求する。compileの限定dirty例外をpackageへ拡張しない。C1B-2の未commit sourceから正式packageを作ることもできない。
+
+compile runはtmp/portable-release/<UUID>のownership/resultから特定する。current signed HEAD、CLEAN_SIGNED_CHECKPOINT、dirty_paths空、COMPILE_VALIDATED/exit 0、target、version、formal build command、EXE名/hash、privacy/log PASS、manifest guard、全source input hashを検査する。target/outputの双方のEXE hashを照合し、markerより古いtarget EXEを拒否する。privacyを現在のhost prefixで再検査する。C1B-1の未commit compile runを現在のHEADの成果物に流用しない。
+
+### 固定5member
+
+ZIPには次のファイル5件だけをOrdinal順で入れる。directory entryは入れない。writerはこの固定mappingを使用し、directoryを再帰的にZIPへ詰めない。hidden/extra staging fileも拒否する。
+
+```text
+DOL-Progress-Manager/LICENSE.txt
+DOL-Progress-Manager/README.txt
+DOL-Progress-Manager/SHA256SUMS.txt
+DOL-Progress-Manager/THIRD-PARTY-NOTICES.txt
+DOL-Progress-Manager/dol-progress-manager.exe
+```
+
+data/config/DB/WAL/SHM、PDB/ILK/log、source/.git/node_modules/target/tmp/tests/scripts、NSIS/MSI/Runtime/bootstrapper/GVDB/user backupは含めない。初回起動の保存契約はapplication側のまま維持する。
+
+### READMEとLICENSE
+
+README.mdから概要、主な機能、動作環境と起動、GVDB手動import、保存場所、backup/restore、folder移動、更新、削除、旧版/Custom、謝辞、Licenseの各節を全文抽出する。開発と検証、Windows build、仕様書一覧は除外する。必須sectionの一意性、Windows x64、official WebView2 URL、各運用説明を確認し、不足や未対応Markdown/未解決linkはfailureとする。現在のREADMEはx64明記不足のため正式変換を通過しない。利用者向け原文の改訂はC1Cで行う。
+
+HTTP URLはhttpsのみを扱い、labelとURLを保持する。LICENSEはLICENSE.txt、third-party方針はTHIRD-PARTY-NOTICES.txtへ明示mappingする。その他の補助docs参照はlabelと元のrelative targetを残し、「開発資料、ZIPには含みません」と説明する。C1Aの補助relative link処理案を、C1B-2指示のlink先保持に合わせた。配布に必須の安全説明を非同梱docsへ依存させる改訂は行わない。
+
+README.txtはUTF-8 BOM、CRLF、末尾CRLF。見出し/表/箇条書き/code fence等の本文構造はtextとして保持し、要約しない。先頭にtrusted sourceからApplication versionを付記し、verifierで一致を要求する。LICENSE.txtはLICENSE原本bytesをそのままcopyし、source/staging/decompressed/extractedのSHA-256を照合する。
+
+## C1Cへのnotice input契約
+
+正式inputはsigned source内の固定release/notices配下に置く。現在この入力は存在せず、REVIEWED metadataも通知原本も生成していない。docs/third-party-licenses.mdの名前変更/copy、単なるnotice file存在ではgateを通さない。
+
+| ファイル | 必須契約（schema 1） |
+| --- | --- |
+| manifest.json | status=REVIEWED、scope=DISTRIBUTION、boolean test_only=false、source version、unresolved空array。inventory/review/noticesのSHA-256、Cargo/npm lock hashes、compile toolchain hashを束縛する。 |
+| inventory.json | schema/version、target=x86_64-pc-windows-msvc、components。各id/version/group/included（boolean）。rust/frontend/native/toolchain/assetsの全groupが必要。包含/除外のactual evidenceをC1Cで確定する。 |
+| review.json | schema/version、status=REVIEWED、boolean test_only=false、reviewer/reviewed_at、unresolved空array、coverage。inventoryの全idへ一意に対応し、included一致、obligations_completed/provenance_completedのboolean trueとsigned evidence pathが必要。 |
+| THIRD-PARTY-NOTICES.txt | manifestが束縛する完成原本。TEST_ONLY/SYNTHETIC/PLACEHOLDER/TODO/TBD/UNRESOLVEDを含まない。単なるcomponent一覧では完成としない。 |
+| texts/*.txt | reviewのrequired_textsから固定relative pathとSHA-256で参照する必要なLICENSE/NOTICE/copyright原文。原文全文がnotice本文に存在することを確認する。 |
+
+manifestのhash field名はinventory_sha256、review_sha256、notices_sha256、cargo_lock_sha256、npm_lock_sha256、toolchain_sha256。compile toolchain hashはresult.toolchainのrustc/cargo/node/npm/tauri_cli/powershellをこの順で、name=value＋LFとしてUTF-8 BOMなしで連結したSHA-256。rustc arrayの各行もLFで連結する。最終LFを含める。native/host生成物の条件を異なるtoolchainのcompileへ無条件で継承しない。
+
+coverageのincluded recordはselected_license、required_texts（path/sha256）、copyrights、source_provision（NOT_REQUIREDまたはCOMPLETE）を持つ。MPLを選択したrecordではCOMPLETEとhttps source_urlを必須とする。除外recordはexclusion_reasonを必要とする。evidenceはsigned sourceに実在するrelative path、required_textsはrelease/notices/texts配下のtxtだけ。missing/duplicate/不一致、blocker、原文/hash/copyright不足はfailure。
+
+これはC1Cの人による包含・原文・SDK由来・MPL source提供・Unicode・toolchain条件reviewを受け渡す契約であり、文字列検索だけで法的充足やURL到達可能性を証明するものではない。signed source内のreview証拠を必要とする。合成noticeや偽のclearance metadataを正式inputとして使用しない。
+
+## ZIP / manifest / 独立verifier
+
+SHA256SUMS.txtはEXE/README/LICENSE/noticesの4basenameをOrdinal順に記載する。lowercase hex64桁、ASCII space2個、basename、LF、UTF-8 BOMなし、最終LF。manifest自身を対象に含めない。外部<ZIP basename>.sha256も同formatでZIPだけの1行。ZIP名はtrusted source versionからDOL-Progress-Manager_<version>_windows-x64_portable.zipとする。0.4.0を固定値にせず、現在0.3.0を維持する。
+
+writerはWindows標準.NET ZipArchiveで明示5entryをCreateし、CompressionLevel.Optimal（Deflate）、1980-01-01 00:00:00、ExternalAttributes=0、ASCII member名をUTF-8 encoding指定で生成する。PS5.1/.NET FrameworkのASCII名ではflag=0となる。verifierはflag=0またはUTF-8 flagだけを許可し、central/local一致を要求する。fixed timestampが有効なことと、同fixtureの2回生成bytes一致をtestsで確認する。compiler EXEのbit-for-bit再現性を保証するものではない。
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-portable-package.ps1 -ExpectedSourceHead <signed-clean-HEAD> -CompileRunId <compile-run-UUID> -PackageRunId <package-run-UUID>
+    if ($LASTEXITCODE -ne 0) { throw 'Independent verification failed' }
+
+public verifierはsource/notice/compile gateを再検査し、owned package runの既存ZIPをread-onlyで読む。generatorを呼ばず、新規owned verification runにだけ展開する。low-level readerもgeneratorとは独立して自身の5member/順序/制約を持ち、ZipArchiveの展開成功に依存しない。
+
+readerはraw ZIP32のcentral/local headers、EOCD、count/name/order、version、flags/method、timestamp、attributes、size/offset、contiguous layoutを検査する。extra/comment、preamble/trailer、ZIP64、encryption、data descriptor、別compression、directory/symlink、重複/大小文字衝突、traversal/absolute/drive/ADS/UNC/backslash等をfixed exact allowlistで拒否する。汎用ZIP互換性を目的としたparserではない。[PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT)を根拠に必要なsubsetだけを実装した。
+
+DeflateStreamで全entryを上限付きでdecompressし、sizeと独立CRC32を照合する。.NET FrameworkのZIP readではCRC確認を前提にできないため、自前計算で補う。[Microsoft ZIP integrity説明](https://learn.microsoft.com/en-us/dotnet/standard/io/zip-tar-best-practices)。上限はZIP/展開合計96 MiB、EXE64 MiB、notices16 MiB、README/LICENSE各2 MiB、manifest4 KiB。現在の検証EXEは約13 MiB。上限を超える将来versionは別途reviewが必要。
+
+manifestは独立したstrict parserでencoding/LF/4件/order/grammar/hashを確認し、decompressed bytesからSHA-256を再計算する。source payload、staging5file、decompressed5member、extracted5fileのhashを照合する。PEはAMD64/PE32+/GUIとVERSION resourceのFile/ProductVersionを検査し、source versionに一致させる。これはapplicationを実行しない基本PE gateであり、完全なimport/runtime dependency/Authenticode acceptanceを代替しない。
+
+unsafe entryを含むZIPを展開してから検知する方式にはしない。構造/CRC/manifest/document gateが通ってから、新規verify directoryへ固定path・create-newで展開する。reparse/containmentを再確認し、既存fileを上書きしない。payload全5fileと展開内容、member名、生成log、外部hashを既存privacy scannerで検査し、definite leak/review requiredはfailure。
+
+## Package runとfailure
+
+compile runはread-only input。packageは別の新UUID runを作り、ownershipにsource HEADとcompile run IDを記録する。
+
+```text
+tmp/portable-release/<package-UUID>/
+  ownership.json
+  staging/DOL-Progress-Manager/  # fixed 5 files
+  verify/                      # candidate ZIP, external hash, fresh extraction
+  logs/                        # fixed sanitized records/member names
+  output/                      # all gates passed only
+  result.json
+```
+
+ZIPをcloseして独立検証した後で外部hashを確定する。source bytes/HEAD/clean stateが不変と確認し、全gate成功後にoutputへ非上書きcopyする。分類はPACKAGE_VERIFIEDで、public_release=NOT_AUTHORIZED。これはpackage integrityの判定であり、一般公開の承認ではない。途中failureはFAILED/nonzeroとし、診断はgate名のみ。preflight失敗ではrun自体を作らない。result/log/exitの成功が揃わないpartial outputを成果物として使用しない。
+
+cleanup/recursive delete、古いrun/installer/ZIPの再利用・削除・上書きは実装しない。retryは新UUID。storage/bootstrap/Recovery/Runtime/import/backupの変更やuser data操作は行わない。
+
+## Synthetic検証
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/portable-package.tests.ps1
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/release-tooling.tests.ps1
+    cargo fmt --manifest-path src-tauri/Cargo.toml --check
+    npm run typecheck
+
+新testsはignored tmp/phase-23d-c1b-2/tests/<UUID>だけにTEST_ONLY marker、resource-only合成PE、合成README/LICENSE/notices、TEST_ONLY名のZIPを生成する。実EXEや本番データをZIP入力へ使用しない。低レベルhelperへのfixture注入でlogicを検証し、public entryにはtest modeを追加しない。正式notice gateが欠落inputを拒否することもpublic entryで確認する。第三者通知が未解決の現在、正式ZIPは生成しない。
+
+positive/negative testsは5member、決定的order/timestamp、CRC/decompression/hash、外部hash、各missing/extra/duplicate/unsafe member、header/size/flags/attributes/corruption、manifest、PE/version、privacy、stale provenance、notice、output/extraction collision、unreadable/reparseを対象にする。C1B-1の50 testsもregressionとして再実行する。application Rust/TS不変ならB3F full suiteとC1B-1 compileを継承し、新compileやアプリ起動は不要。
