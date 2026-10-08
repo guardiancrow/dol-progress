@@ -2,7 +2,7 @@
 
 ## 対象範囲
 
-Phase 23D-B1はportableの標準保存場所、外部Custom root、bootstrap、filesystem startup failureを扱う。active databaseは常に1つだけであり、Frontendは保存場所を決定しない。Phase 23D-B2ではこれらの処理の前にWindowsのWebView2 Runtime preflightを追加する。release packaging、version変更は後続Phaseとする。クラウド同期・ネットワーク共有の正式サポートを追加しない。
+Phase 23D-B1はportableの標準保存場所、外部Custom root、bootstrap、filesystem startup failureを扱う。active databaseは常に1つだけであり、Frontendは保存場所を決定しない。Phase 23D-B2ではこれらの処理の前にWindowsのWebView2 Runtime preflightを追加する。Phase 23D-B3は表示用情報と利用者向け案内を整備し、保存処理は変更しない。release packaging、version変更は後続Phaseとする。クラウド同期・ネットワーク共有の正式サポートを追加しない。
 
 ## 保存場所とbootstrap
 
@@ -12,7 +12,7 @@ primaryとlast-goodの両方がなく標準DBもない場合だけ、clean first
 
 両bootstrapがなくても既存portable標準DBがあれば、SQLite/application/schema/migration prefixを検証してからopenし、必要な既存migrationと最終検証の成功後にDefault markerを保存する。不正DBをoverwrite・truncate・新規DBで置換しない。markerがある標準DBの欠落、またはprimary欠落かつlast-good artifactが存在する場合はRecoveryとし、空DBやdata directoryを自動で再作成しない。不読・不正なlast-goodもfirst launch扱いにはしない。
 
-旧AppData DB/bootstrapの探索、auto-import、auto-copy、fallbackは行わない。公開前のprivate利用者は旧版backupから新版へ明示restoreする方針とし、具体的な利用者手順は後続Phaseで整備する。
+旧AppData DB/bootstrapの探索、auto-import、auto-copy、fallbackは行わない。旧開発版等からは旧版の内蔵backupを新版で明示restoreする。利用者手順はREADMEを参照する。
 
 ```json
 {
@@ -41,6 +41,18 @@ WebView2 UDFはアプリのDB/configとは別であり、Tauriの通常の`%LOCA
 
 Importer、Progress Link、Backup、Restore、repository commandは`ActiveDatabase`だけを使用する。inactiveな旧DBへpathを渡すAPIは持たない。
 
+## 利用者向けの保存場所表示
+
+`DataRootInfo`は既存のmode、dataRoot、databasePath、defaultDatabasePath、defaultDatabaseExistsに加え、portableRoot、defaultDataRoot、configRootをread-onlyで返す。後者3項目はstartupで解決済みの`PortablePaths`から取得し、bootstrapやDBへ追加保存しない。FrontendはDB pathから別folderを推測しない。Customでも標準data/configの基点はアプリfolderのままである。
+
+通常UIは「データベース」と「アプリの設定」を別cardに分ける。データベースcardにはdataRootを「データベースのフォルダー」として表示し、Custom時だけ「カスタム保存先を使用しています」と補足する。保存場所変更・移行・標準へ戻す操作はデータベースを対象とすることを明示し、同card内に置く。移行先の条件は既存の固定NTFS、書き込み可能、空folder、アプリfolder・移行元との重なり禁止等の検証に合わせて箇条書きで示す。
+
+アプリの設定cardにはconfigRootを「設定フォルダー」として表示し、「設定フォルダーにはアプリの設定が保存されます。」と説明する。configはアプリfolderに従属し、DB移行では移動しないため、変更操作を置かない。databasePath、portableRoot、defaultDataRoot等のbackend fieldは維持するが通常UIには表示しない。「現在の保存方式: 標準」と現在/標準data folderの重複表示は行わない。pathは省略せず折り返し、選択可能なtextとする。backupはマスターデータ画面へ案内し、手動移動・手編集を避けること、終了後のEXE削除、DB/設定削除前のbackup確認とWebView2使用の説明を簡潔に示す。
+
+DB backup・ファイルの手動移動/編集・アプリ削除の案内は「データとアプリの管理」cardにまとめ、「Windows側に残るデータ」は独立した補足情報cardとする。
+
+詳細な運用手順はREADMEに記載する。標準では完全終了後のアプリfolder全体のcopyで本体・data・configを保全でき、Customでは外部DBの内蔵backupを別途保存する。folder移動は完全終了後とし、Customのabsolute pathは変わらない。更新時はdata/configを保持する。アプリ本体だけの削除は終了後のEXE削除で行い、folder全体の削除を必須としない。folder全体を削除した場合の標準のdata lossとCustomのconfig再設定はREADMEに説明を残す。
+
 ## カスタム保存場所
 
 カスタム保存場所はユーザーが選んだ外部absolute directoryそのものであり、その直下に`dol-progress.db`を置く。relative pathは保存しない。Windows 10/11のローカル固定NTFS、書込み可能な通常directoryだけを正式にサポートする。UNC、ネットワークドライブ、removable drive、FAT/exFAT、filesystem root、Program Files、reparse point（symlink/junction）を拒否する。
@@ -63,7 +75,9 @@ primaryとlast-goodは2file一括atomic transactionではない。primary失敗�
 
 ## RecoveryとBackup
 
-Recovery画面は設定済みroot、空DBを自動作成していないこと、失敗理由を示す。再試行、検証済み既存rootの再指定、検証済みlast-good Custom rootの再使用、pending transitionのprevious rootへのrollback、終了を提供する。previousへのrollbackはcurrent bootstrapがpendingで、valid previous locatorを持つ場合だけ表示する。Recoveryから古いDefault DBを直接activeにする操作は提供しない。CustomからDefaultへ戻す場合は、通常UIのsnapshotを伴うmigrationを使用する。
+Recovery画面は設定済みroot、空DBを自動作成していないこと、失敗理由を示す。検証済み既存rootの再指定、検証済みlast-good Custom rootの再使用、pending transitionのprevious rootへのrollback、終了を提供する。画面reloadはRustのStartupState取得を繰り返すだけでresolver/DB初期化を再実行しないため、「再試行」buttonは提供せず、保存場所を修正した後の終了・再起動を案内する。previousへのrollbackはcurrent bootstrapがpendingで、valid previous locatorを持つ場合だけ表示する。Recoveryから古いDefault DBを直接activeにする操作は提供しない。CustomからDefaultへ戻す場合は、通常UIのsnapshotを伴うmigrationを使用する。
+
+既存Custom rootの再指定はRecovery画面に限定する。通常画面の移行先は空directoryであり、configを失った新規起動時に既存Custom DBへ直接切り替える機能はない。通常の移行・再導入手順は内蔵backup/restoreとし、復旧画面での再指定はその画面が表示されている場合だけ案内する。
 
 BackupとRestoreは現在の`ActiveDatabase.path`だけを対象にする。Custom modeでも標準DBへアクセスしない。backup formatは保存場所を含まず、Phase 10/11/12 backupを現在activeなDBへ復元できる。各snapshot、復元、起動確定で`PRAGMA quick_check = ok`と`PRAGMA foreign_key_check = 0 rows`を確認する。候補DBは既知migrationのversion、description、success、checksumからなるprefixと、対応versionの必須table・columnを満たさなければならない。
 

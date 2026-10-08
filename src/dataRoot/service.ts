@@ -4,6 +4,9 @@ export interface DataRootInfo {
   mode: "default" | "custom";
   dataRoot: string;
   databasePath: string;
+  portableRoot: string;
+  defaultDataRoot: string;
+  configRoot: string;
   defaultDatabasePath: string;
   defaultDatabaseExists: boolean;
 }
@@ -16,8 +19,8 @@ export interface RecoveryInfo {
 }
 
 export type StartupPresentation =
-  | { kind: "normal"; mode: "default" | "custom"; dataRoot: string; databasePath: string; defaultDatabasePath: string; defaultDatabaseExists: boolean }
-  | { kind: "recovery"; message: string; configuredRoot?: string; lastGoodAvailable: boolean; pendingPreviousAvailable: boolean };
+  | ({ kind: "normal" } & DataRootInfo)
+  | ({ kind: "recovery" } & RecoveryInfo);
 
 export const dataRootService = {
   status: () => invoke<StartupPresentation>("data_root_status"),

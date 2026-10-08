@@ -60,6 +60,9 @@ pub(crate) struct DataRootInfo {
     mode: String,
     data_root: String,
     database_path: String,
+    portable_root: String,
+    default_data_root: String,
+    config_root: String,
     default_database_path: String,
     default_database_exists: bool,
 }
@@ -235,6 +238,9 @@ fn resolved_info(
             },
             data_root: root.display().to_string(),
             database_path: database.display().to_string(),
+            portable_root: String::new(),
+            default_data_root: String::new(),
+            config_root: String::new(),
             default_database_path: String::new(),
             default_database_exists: false,
         },
@@ -274,6 +280,9 @@ async fn initialize_resolved(
     paths: &PortablePaths,
     mut resolved: ResolvedRoot,
 ) -> Result<(ActiveDatabase, DataRootInfo), StartupFailure> {
+    resolved.info.portable_root = paths.executable_root.display().to_string();
+    resolved.info.default_data_root = paths.default_data_root.display().to_string();
+    resolved.info.config_root = paths.config_root.display().to_string();
     resolved.info.default_database_path = paths.default_database_path().display().to_string();
     if !resolved.create_if_missing {
         // Never migrate an unvalidated existing database (including marker-less adoption).

@@ -10,7 +10,7 @@ function StartupApp() {
   useEffect(() => { void dataRootService.status().then(setStartup).catch((cause: unknown) => setError(String(cause))); }, []);
   if (error) return <main className="recovery-screen"><section className="state-panel"><h2>起動状態を確認できません。</h2><p>{error}</p></section></main>;
   if (!startup) return <main className="recovery-screen"><section className="state-panel"><p>データ保存場所を確認しています...</p></section></main>;
-  if (startup.kind === "recovery") return <RecoveryScreen info={startup} onRetry={() => window.location.reload()} />;
+  if (startup.kind === "recovery") return <RecoveryScreen info={startup} />;
   return <App dataRootInfo={startup} />;
 }
 

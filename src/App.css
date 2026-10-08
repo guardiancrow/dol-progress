@@ -214,6 +214,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .data-safety-card > h4 { margin: 0 0 .65rem; color: #17324d; font-size: 1.1rem; }
 .data-safety-card > p { color: #536575; }
 .data-root-action { margin-left: .7rem; }
+.portable-storage-guide { margin-top: 1rem; }
+.data-safety-card > h3 { margin: 0 0 .65rem; color: #17324d; font-size: 1.1rem; }
+.storage-path { min-width: 0; overflow-wrap: anywhere; user-select: text; }
+.master-status-list dd { min-width: 0; user-select: text; }
+.storage-warning { padding: .75rem; border-left: 3px solid #f79009; background: #fffaeb; }
 .recovery-screen { min-height: 100vh; display: grid; place-items: center; padding: 2rem; }
 .recovery-screen .state-panel { width: min(100%, 44rem); text-align: left; }
 .recovery-actions { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: 1.5rem; }

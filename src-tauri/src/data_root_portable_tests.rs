@@ -56,6 +56,41 @@ fn custom_locator(root: &Path) -> Bootstrap {
 }
 
 #[tokio::test]
+async fn storage_display_fields_follow_portable_paths_in_default_and_custom_modes() {
+    for custom in [false, true] {
+        let fixture = Fixture::new();
+        if custom {
+            seed(&fixture.custom).await;
+            write_committed(&fixture.paths.config_root, &custom_locator(&fixture.custom)).unwrap();
+        }
+        let (database, info) = initialize_at(&fixture.paths).await.unwrap();
+        let expected_root = if custom {
+            &fixture.custom
+        } else {
+            &fixture.paths.default_data_root
+        };
+        assert_eq!(info.mode, if custom { "custom" } else { "default" });
+        assert_eq!(info.data_root, expected_root.display().to_string());
+        assert_eq!(
+            info.database_path,
+            database.database_path().display().to_string()
+        );
+        let serialized = serde_json::to_value(&info).unwrap();
+        for (field, expected) in [
+            ("portableRoot", fixture.paths.executable_root.clone()),
+            ("defaultDataRoot", fixture.paths.default_data_root.clone()),
+            ("configRoot", fixture.paths.config_root.clone()),
+            ("defaultDatabasePath", fixture.paths.default_database_path()),
+            ("databasePath", expected_root.join(DATABASE_FILE_NAME)),
+        ] {
+            assert_eq!(serialized[field], expected.display().to_string());
+        }
+        assert_eq!(info.default_database_exists, !custom);
+        close(database).await;
+    }
+}
+
+#[tokio::test]
 async fn first_launch_commits_default_marker_and_restart_keeps_data() {
     let fixture = Fixture::new();
     assert!(!fixture.paths.config_root.exists() && !fixture.paths.default_data_root.exists());

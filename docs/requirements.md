@@ -368,6 +368,12 @@ GUI上で対象datasetのローカルファイルを選択し、内容の解析�
 
 このportable保存方式の対象はアプリ所有のDB/configである。WebView2のuser-data/cacheは現行TauriのLocalAppData defaultを維持する。Runtime事前検査は3.3に従い、配布packageの変更は別Phaseで扱う。
 
+保存場所画面は「データベース」と「アプリの設定」を別cardに分ける。前者はRustのdataRootを「データベースのフォルダー」として表示し、「データベースの保存場所を変更」操作を置く。Customの場合だけ同cardに「カスタム保存先を使用しています」と補足する。後者はconfigRootを「設定フォルダー」として表示し、「設定フォルダーにはアプリの設定が保存されます。」と説明する。設定はDB移行の対象ではなく、同cardに変更操作を置かない。通常表示にDB file path、アプリfolder、保存方式や標準data folderを並べない。表示用pathはRustからread-only情報として取得し、Frontendでは組み立てない。移行先の条件は固定NTFS等のbackend検証に合わせて箇条書きで示す。画面内の案内はbackup操作の場所、起動中の手作業移動・手編集を避けること、終了後のEXE削除、DB/設定削除前のbackup確認、WebView2使用の説明に絞る。folder copy、更新、標準/Customの違い等の詳細はREADMEに記載する。
+
+DB backup・ファイルの手動移動/編集・アプリ削除の案内は「データとアプリの管理」cardにまとめ、WebView2の補足情報は「Windows側に残るデータ」cardに分ける。
+
+Recovery画面は既存DBの再指定等の復旧操作を維持する。画面reloadだけを「再試行」と表示せず、保存場所を修正した後はアプリの終了・再起動を案内する。新しいrestart機構や空DB作成操作は追加しない。
+
 ## 6. 状態遷移
 
 ## 6.1 クエスト

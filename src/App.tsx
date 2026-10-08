@@ -72,7 +72,7 @@ function App({
   masterImportService = defaultMasterImportService,
   backupRestoreService = defaultBackupRestoreService,
   progressLinkService = defaultProgressLinkService,
-  dataRootInfo = { mode: "default", dataRoot: "", databasePath: "", defaultDatabasePath: "", defaultDatabaseExists: false },
+  dataRootInfo = { mode: "default", dataRoot: "", databasePath: "", portableRoot: "", defaultDataRoot: "", configRoot: "", defaultDatabasePath: "", defaultDatabaseExists: false },
 }: AppProps) {
   const [page, setPage] = useState<AppPage>("profiles");
   const [discoveryCategoryId, setDiscoveryCategoryId] = useState<number | undefined>();

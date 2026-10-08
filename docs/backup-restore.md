@@ -35,6 +35,8 @@ renameする。rename失敗時は既存ファイルを元へ戻す。生成ま�
 
 推奨拡張子は`.sqlite3`とする。バックアップ操作によって現在DBの内容を変更してはならない。
 
+利用者向けには内蔵backupと終了後のfolder copyを区別する。内蔵backupは実行中のactive DB全体を対象とし、config folderを含まない。標準利用で本体・data・configをまとめて保全するfolder copyは、アプリを完全終了してから行う。Custom利用ではアプリfolderのcopyだけに外部DBは含まれないため、内蔵backupも別途保存する。live DB単体の手作業copyは通常手順にしない。
+
 ## 3. 復元前検証と互換性
 
 open dialogで選択したローカルファイル1件を、現在DBとは別connectionで検証する。選択した
@@ -72,7 +74,7 @@ backupはData Rootのbootstrap設定を含まない。Default／Customのどち�
 Portable Defaultは`<exe-dir>/data/dol-progress.db`、Customは選択した外部absolute rootのDBである。
 bootstrapは`<exe-dir>/config`に分離するが、backup fileへ追加しない。Custom使用時はinactiveな
 Default DBをopen・migrationせず、標準data directoryも起動ごとに作成しない。
-旧private版のデータは旧版でbackupし、portable版で明示restoreする手順を後続Phaseで扱う。
+旧開発版等のデータは旧版で内蔵backupを保存し、旧版を完全終了した後にportable版で検証・明示restoreする。具体的な操作はREADMEの移行手順を参照する。
 public runtimeは旧AppData DB/bootstrapを探索・自動コピーしない。
 
 ## 4. 復元手順
