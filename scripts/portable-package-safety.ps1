@@ -121,6 +121,31 @@ function Assert-PortableNoticeAvailability([string]$Root) {
     }
 }
 
+function Assert-PortableCopyrightMapping([string]$Root, $Record, $SourceHashes, [string]$Text) {
+    if ($Record.copyrights -isnot [array]) { throw 'Notices: explicit copyright mapping required.' }
+    if ($Record.copyrights.Count -gt 0) {
+        foreach ($copyright in $Record.copyrights) {
+            if ([string]::IsNullOrWhiteSpace($copyright) -or -not $Text.Contains($copyright)) { throw 'Notices: copyright missing.' }
+        }
+        return
+    }
+    # Only an explicit, signed source assessment can represent an original with no separate notice.
+    # The caller still requires a real REVIEWED record and completed obligations/provenance.
+    $assessment=$Record.copyright_review
+    if ($null -eq $assessment -or $assessment.state -cne 'NO_SEPARATE_NOTICE_IN_REVIEWED_SOURCES' -or
+        [string]::IsNullOrWhiteSpace($assessment.reason) -or $assessment.source_evidence -isnot [array] -or
+        $assessment.source_evidence.Count -eq 0) { throw 'Notices: no-owner source assessment absent.' }
+    $paths=New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach ($evidence in $assessment.source_evidence) {
+        if ($evidence.path -cnotmatch '^release/notices/evidence/[a-zA-Z0-9._-]+\.txt$' -or
+            -not $paths.Add($evidence.path) -or -not $SourceHashes.Contains($evidence.path) -or
+            @($Record.evidence) -cnotcontains $evidence.path -or $evidence.sha256 -cnotmatch '^[a-f0-9]{64}$') { throw 'Notices: untrusted no-owner assessment.' }
+        $bytes=Read-PortableBytes (Join-Path $Root $evidence.path) 16777216
+        if ((Get-ReleaseSHA256 $bytes) -cne $evidence.sha256 -or $SourceHashes[$evidence.path] -cne $evidence.sha256 -or
+            [string]::IsNullOrWhiteSpace((Get-PortableText $bytes))) { throw 'Notices: no-owner assessment hash mismatch.' }
+    }
+}
+
 function Read-PortableNotices([string]$Root, [string]$Version, $SourceHashes) {
     Assert-PortableNoticeAvailability $Root
     $raw=@{}
@@ -135,7 +160,7 @@ function Read-PortableNotices([string]$Root, [string]$Version, $SourceHashes) {
     $text=Get-PortableText $raw['THIRD-PARTY-NOTICES.txt']
     if ($manifest.schema -ne 1 -or $manifest.status -cne 'REVIEWED' -or $manifest.scope -cne 'DISTRIBUTION' -or $manifest.test_only -isnot [bool] -or $manifest.test_only -ne $false -or
         $manifest.version -cne $Version -or $manifest.unresolved -isnot [array] -or @($manifest.unresolved).Count -ne 0 -or [string]::IsNullOrWhiteSpace($text) -or
-        $text -match '(?i)\b(TEST_ONLY|SYNTHETIC|PLACEHOLDER|TODO|TBD|UNRESOLVED)\b') { throw 'Notices: unresolved or fixture input.' }
+        $text -match '(?i)\b(TEST_ONLY|SYNTHETIC|PLACEHOLDER|TODO|TBD|UNRESOLVED)\b|DRAFT\s+.\s+NOT FOR DISTRIBUTION|LICENSE CLEARANCE INCOMPLETE') { throw 'Notices: unresolved or fixture input.' }
     foreach ($pair in @(@('inventory.json','inventory_sha256'),@('review.json','review_sha256'),@('THIRD-PARTY-NOTICES.txt','notices_sha256'))) {
         if ($manifest.($pair[1]) -cne (Get-ReleaseSHA256 $raw[$pair[0]])) { throw 'Notices: evidence hash mismatch.' }
     }
@@ -159,7 +184,7 @@ function Read-PortableNotices([string]$Root, [string]$Version, $SourceHashes) {
         $record=$record[0]
         foreach ($evidence in $record.evidence) { if (-not $SourceHashes.Contains([string]$evidence)) { throw 'Notices: evidence outside signed inputs.' } }
         if (-not $component.included) { if ([string]::IsNullOrWhiteSpace($record.exclusion_reason)) { throw 'Notices: exclusion lacks reason.' }; continue }
-        if ([string]::IsNullOrWhiteSpace($record.selected_license) -or @($record.required_texts).Count -eq 0 -or @($record.copyrights).Count -eq 0 -or
+        if ([string]::IsNullOrWhiteSpace($record.selected_license) -or @($record.required_texts).Count -eq 0 -or
             $record.source_provision -cnotin @('NOT_REQUIRED','COMPLETE')) { throw 'Notices: required obligations absent.' }
         if ($record.selected_license -match 'MPL' -and ($record.source_provision -cne 'COMPLETE' -or $record.source_url -notmatch '^https://')) { throw 'Notices: source provision incomplete.' }
         foreach ($required in $record.required_texts) {
@@ -167,7 +192,7 @@ function Read-PortableNotices([string]$Root, [string]$Version, $SourceHashes) {
             $original=Read-PortableBytes (Join-Path $Root $required.path) 16777216
             if ((Get-ReleaseSHA256 $original) -cne $required.sha256 -or -not $text.Replace("`r`n","`n").Contains((Get-PortableText $original).Replace("`r`n","`n"))) { throw 'Notices: original text missing.' }
         }
-        foreach ($copyright in $record.copyrights) { if ([string]::IsNullOrWhiteSpace($copyright) -or -not $text.Contains($copyright)) { throw 'Notices: copyright missing.' } }
+        Assert-PortableCopyrightMapping $Root $record $SourceHashes $text
     }
     return ,$raw['THIRD-PARTY-NOTICES.txt']
 }

@@ -4,6 +4,56 @@
 
 第三者通知と包含条件、MPL/Unicode、WebView2 Loader SDK由来、toolchain生成物の条件は未解決。ZIP/hash/verifierのlogicは合成fixtureで検証するが、正式通知入力がない現在は正式packageを拒否する。READMEのWindows x64明記もC1Cで必要であり、generatorが不足説明を捏造しない。通知原本・review evidence、利用者README、最終versionとminimal acceptanceの完成は後続Phaseに残る。compile成功によってlicense clearanceや公開可否が変わることはない。
 
+## 未承認third-party noticeの組立
+
+Phase 23D-C1C-B2Bの組立scriptはcompile/package runnerと独立している。application build、
+network取得、cache探索、formal入力の作成を行わず、明示された証拠bundleだけを読む。
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-third-party-notices.ps1 `
+      -InputManifest tmp/phase-23d-c1c-b2b/input/assembly-manifest.json `
+      -OutputDirectory tmp/phase-23d-c1c-b2b/new-assembly
+    if ($LASTEXITCODE -ne 0) { throw 'Draft assembly failed' }
+
+OutputDirectoryはignored `tmp/`内の未使用directoryを指定する。成功時は
+`THIRD-PARTY-NOTICES.DRAFT.txt`、`notice-inventory.DRAFT.json`、`assembly-result.json`を作る。
+失敗時はnonzeroで、pathやraw例外をconsoleへ表示しない。入力検証を終えてから出力先を作り、
+既存directoryを再利用しない。I/O途中で失敗したdirectoryは診断用に残し、次は新しいdirectoryを使う。
+
+入力manifestはschema1、kind `NOTICE_ASSEMBLY_DRAFT`、status DRAFT、version/target/source HEAD、
+inventory file/hash、copyright assessment file/hash、期待件数、component contractsを持つ。
+inventoryはrecords、hash/version/originを持つtexts、実owner表示を検証するsource filesを持つ。
+file参照はbundle内の相対pathだけを認め、traversal/absolute/reparseを拒否する。
+原文148種類はraw bytesのSHA-256で照合し、本文はLFで組み立てる。COPYRIGHT/NOTICEと
+componentの対応をcontractで固定し、同本文のorigin/version associationを保つ。
+
+NOTICEとinventory/result JSONは同じ入力とPowerShell環境で再実行してbyte一致を検証する。
+componentと本文はcultureに依存しないordinal順。契約は入力inventoryのhashも固定し、
+version/OR/AND/表示/未解決項目の変更を無条件に受け入れない。入力manifest自体の正当性・
+全適用条件は実reviewとversion管理で確定するもので、hash照合だけでclearanceを証明しない。
+
+現在の実bundleはignored監査成果のためclean cloneにはない。将来はreview可能な
+`release/notice-source/assembly-manifest.json`、inventory、`texts/<sha256>.txt`、実表示sourceと
+scope/review証拠をversion管理する設計とする。現在の監査bundleをそのまま公開正本とせず、
+原本の権利・private path不在・適用scopeを確認して正本化する。
+生成inventoryのfile参照は`input_bundle_reference`で識別する入力bundleを基準とし、
+出力directoryに原文があるとは扱わない。
+
+formal `release/notices/`へのmappingは別工程である。manifest/inventory/reviewと原文を
+署名対象へ含め、実reviewer、全ID coverage、必要表示、source実提供、hash/locksを揃える。
+原本に独立owner表示がない場合の限定schema表現は
+[third-party方針](third-party-licenses.md#独立した著作権者表示がない原本)を参照する。
+既存のREVIEWED・signed evidence・MPL COMPLETE/HTTPS・本文/表示・16MiB gateは維持し、
+draft markerも明示拒否する。未公開source候補や今回のdraft成功でpackage gateを開けない。
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/third-party-notices.tests.ps1
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/portable-package.tests.ps1
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/release-tooling.tests.ps1
+
+testsの原文は合成データだけを使う。実207候補・148原文の照合はignored evidenceを入力した
+integration検証で行う。application source不変のため既存full suiteを継承し、fmt/typecheckを
+再実行する。新application compileが必要な最終helper/native帰属は、目的・privacy対策・
+検証方法を別Phaseで明示する。
+
 ## 前提とsource guard
 
 Windows x64上の64bit PowerShell 5.1以降、x86_64-pc-windows-msvcのRust toolchain、Node/npm、Git、Microsoft C++ Build Tools/Windows SDKが必要。npm依存とRust dependency cacheは事前にlockfileに従って準備する。runnerはinstall/updateやnetwork fallbackを行わない。
