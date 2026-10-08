@@ -34,12 +34,14 @@ ORの選択案、AND/WITH、legacy式の保留も入力contractと照合し、�
 通知はUTF-8 BOMなし・LFで出力し、raw原本のhashは改行正規化前のbytesで確認する。
 本文、必要表示、provenanceの条件をそれぞれ保持し、16MiB上限を変更しない。
 
-現在の実データ入力は監査用ignored bundleにあるため、clean cloneには含まれない。
-合成testsはcloneだけで再現できるが、207候補の実通知には対応するbundleが必要である。
-将来の正本は`release/notice-source/`等に、assembly manifest、inventory、hashを名前にした
-原文、実表示のsource証拠、scope/review資料をversion管理する設計とする。この正本は
-今回作成していない。個人のcacheや絶対pathを生成scriptから探索せず、取得時のURL・版・
-revision・raw hashと、再配布できる原文の対応をreviewしてから正本化する。
+Phase 23D-C1C-C1で[未承認原文の正本候補](../release/notice-source/README.md)を用意した。
+752 inventory、207通知候補、148原文と6公開source証拠、出典・収録根拠・original/curated hashを
+version管理対象にする。原文の全文・文字コード・改行は維持し、Gitの原本txt変換も禁止する。
+これらだけを入力にした隔離実行で旧draftの通知本文と同じbytesを再現できる。
+生成scriptは個人cache/絶対path/network/旧ignored evidenceを探索しない。
+Microsoft製品契約・旧Unicode data等の35参照資料は本文を取り込まず、URL/hash・保留理由を残す。
+収録原文の許諾・表示保持の確認と、アプリ配布の正式clearanceは別である。
+正式な人手reviewやsource提供は未完で、今回の候補は未stage・未commitに留める。
 assemblyの実行方法と入力契約は[release手順](release-build.md#未承認third-party-noticeの組立)を参照。
 
 ## 独立した著作権者表示がない原本
@@ -61,9 +63,15 @@ componentのreview evidenceへ含め、記録hash・署名対象hash・実bytes�
 
 MPLの対応sourceはアプリZIPとは別のversion対応補助archiveを匿名HTTPSで提供する方針だが、
 公開先・実URL・維持責任が未確定である。検証済source候補を公開済み、提供完了と扱わない。
-旧Unicode10 data条件、Microsoftの実static objectに対応する契約と配布資格、host生成物・
+旧Unicode10 data条件、Microsoftの実static objectに対応する契約と再配布条件、host生成物・
 Rust個別条件・Loader SDK NOTICE・最終frontend/helperの包含scope、実reviewは残る。
 Microsoft製品のinstallやsystem DLL importを再配布資格・static寄与の不存在の証明にしない。
+
+Microsoft関連では、Visual Studio Community/Build Toolsの利用条件、MSVC/Windows SDK由来codeの
+再配布条件、WebView2 SDK固有LICENSE/NOTICEを分ける。現端末のBuild Tools 2022、別端末の
+Community 2022とMicrosoft account sign-in、同一個人開発者というuser contextは原文正本の
+provenanceへ記録した。別端末の利用やsign-inだけでcode/SDKの再配布を承認しない。
+Tao keyboard sourceにあるW3C全文と通知も正本に残し、最終配布scope/表示は実reviewへ残す。
 
 正式入力`release/notices/manifest.json`、`inventory.json`、`review.json`、
 `THIRD-PARTY-NOTICES.txt`、`texts/*.txt`には、実review、署名対象証拠、全coverageとhash、

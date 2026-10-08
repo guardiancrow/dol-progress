@@ -1,5 +1,6 @@
 #Requires -Version 5.1
 . (Join-Path $PSScriptRoot 'portable-package-safety.ps1')
+. (Join-Path $PSScriptRoot 'notice-source.ps1')
 
 function Get-NoticeRelativeFile([string]$Root, [string]$Relative) {
     if ($Relative -cnotmatch '^[a-zA-Z0-9._/-]+$' -or $Relative.StartsWith('/') -or
@@ -50,6 +51,8 @@ function Invoke-NoticeDraftAssembly([string]$RepositoryRoot, [string]$ManifestPa
     if ($manifest.inventory_sha256 -cnotmatch '^[a-f0-9]{64}$' -or (Get-ReleaseSHA256 $inventoryBytes) -cne $manifest.inventory_sha256) { throw 'Assembly: inventory hash mismatch.' }
     $inventory=Get-PortableText $inventoryBytes | ConvertFrom-Json
     if ($inventory.status -cne 'DRAFT' -or $inventory.version -cne $manifest.version -or $inventory.source_head -cne $manifest.source_head) { throw 'Assembly: inventory identity mismatch.' }
+    if ([IO.Path]::GetFileName($evidenceRoot) -ceq 'notice-source' -and $manifest.source_mode -cne 'VERSIONED_CURATED') { throw 'Source: versioned source mode required.' }
+    Assert-NoticeVersionedSource $evidenceRoot $manifest $inventory
     $records=New-Object 'Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal)
     $contracts=New-Object 'Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal)
     foreach ($contract in $manifest.component_contracts) {

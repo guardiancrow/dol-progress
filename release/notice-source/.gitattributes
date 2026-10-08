@@ -1,0 +1,5 @@
+# Preserve exact upstream bytes, including intentional trailing spaces and EOF blank lines.
+texts/*.txt -text whitespace=-blank-at-eol,-blank-at-eof
+copyright-evidence/*.txt -text whitespace=-blank-at-eol,-blank-at-eof
+*.json text eol=lf
+reviews/*.json text eol=lf

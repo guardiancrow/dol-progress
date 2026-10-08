@@ -10,8 +10,8 @@ Phase 23D-C1C-B2Bの組立scriptはcompile/package runnerと独立している�
 network取得、cache探索、formal入力の作成を行わず、明示された証拠bundleだけを読む。
 
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-third-party-notices.ps1 `
-      -InputManifest tmp/phase-23d-c1c-b2b/input/assembly-manifest.json `
-      -OutputDirectory tmp/phase-23d-c1c-b2b/new-assembly
+      -InputManifest release/notice-source/manifest.json `
+      -OutputDirectory tmp/notice-source-draft
     if ($LASTEXITCODE -ne 0) { throw 'Draft assembly failed' }
 
 OutputDirectoryはignored `tmp/`内の未使用directoryを指定する。成功時は
@@ -31,10 +31,12 @@ componentと本文はcultureに依存しないordinal順。契約は入力invent
 version/OR/AND/表示/未解決項目の変更を無条件に受け入れない。入力manifest自体の正当性・
 全適用条件は実reviewとversion管理で確定するもので、hash照合だけでclearanceを証明しない。
 
-現在の実bundleはignored監査成果のためclean cloneにはない。将来はreview可能な
-`release/notice-source/assembly-manifest.json`、inventory、`texts/<sha256>.txt`、実表示sourceと
-scope/review証拠をversion管理する設計とする。現在の監査bundleをそのまま公開正本とせず、
-原本の権利・private path不在・適用scopeを確認して正本化する。
+Phase 23D-C1C-C1の[正本候補](../release/notice-source/README.md)はmanifest/inventory/provenance、
+148原文、6公開source証拠、限定copyright reviewを持つ。752IDと未解決状態を維持する。
+source_mode=VERSIONED_CURATEDでは、provenance hash、個別収録根拠、原本/curated hash、
+component/version/式・出典・必要assetを追加検証する。原本は変換なしだけを認める。
+必要assetが保留ならINCOMPLETEで止め、旧tmp/cache/networkへfallbackしない。
+本文を収録しない契約・data・監査資料は独立したreferenceで、assembly inputとして使わない。
 生成inventoryのfile参照は`input_bundle_reference`で識別する入力bundleを基準とし、
 出力directoryに原文があるとは扱わない。
 
@@ -46,11 +48,15 @@ formal `release/notices/`へのmappingは別工程である。manifest/inventory
 draft markerも明示拒否する。未公開source候補や今回のdraft成功でpackage gateを開けない。
 
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/third-party-notices.tests.ps1
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/notice-source.tests.ps1
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/portable-package.tests.ps1
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/release-tooling.tests.ps1
 
-testsの原文は合成データだけを使う。実207候補・148原文の照合はignored evidenceを入力した
-integration検証で行う。application source不変のため既存full suiteを継承し、fmt/typecheckを
+既存testsと新validatorのnegative testsは合成データを使う。新source-only検証は宣言済み正本と
+必要source filesだけを隔離directoryへcopyし、空のcache指定・無効proxyで実207/148を組み立てる。
+入力に旧ignored監査bundleを使わず、同じ入力から3出力fileのbyte一致と旧通知hashを確認する。
+Gitは出力先のignore確認にだけ使う。新clone/Git変更は不要で、原本の存在・hashと正式な条件履行は別。
+application source不変のため既存full suiteを継承し、fmt/typecheckを
 再実行する。新application compileが必要な最終helper/native帰属は、目的・privacy対策・
 検証方法を別Phaseで明示する。
 
