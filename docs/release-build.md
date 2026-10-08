@@ -1,75 +1,104 @@
-# Windows release build
+# Windows portable release compile
 
-Windows maintainer 向けに、Rust/Cargo の source paths が配布 application binary に残ることを防ぐ手順を定める。通常の development build は変更しない。application version は0.3.0のままとする。
+この手順はPhase 23D-C1B-1の**portable release compile validation**を扱う。Windows x64の単一application EXEを、privacy検査付きの専用runnerで生成する。versionは0.3.0。正式release candidate、配布可能判定、一般公開の手順ではない。
 
-## 前提
+第三者通知と包含条件、MPL/Unicode、WebView2 Loader SDK由来、toolchain生成物の条件は未解決。ZIP、SHA256SUMS、配布README/NOTICE生成、package検証、最小acceptanceは後続Phaseで扱う。compile成功によってlicense clearanceや公開可否が変わることはない。
 
-Windows PowerShell 5.1以降または Windows 上の PowerShell 7を使用する。Node/npm、Rust、Tauri は現在の project と lockfiles に従い、npm dependencies と Rust toolchain/dependency cache を事前に準備する。build は `--locked --offline` で Rust dependency の更新・download を行わない。npm scripts と Tauri CLI が実行できる PATH、Git、および通常の Windows build prerequisites が必要。
+## 前提とsource guard
 
-MSI の WiX ICE 検証には Windows Installer service にアクセスできる通常の Windows host execution context が必要。制限された execution sandbox では service access に失敗する場合がある。script は昇格、UAC bypass、policy変更、ICE検証の無効化を行わない。
+Windows x64上の64bit PowerShell 5.1以降、x86_64-pc-windows-msvcのRust toolchain、Node/npm、Git、Microsoft C++ Build Tools/Windows SDKが必要。npm依存とRust dependency cacheは事前にlockfileに従って準備する。runnerはinstall/updateやnetwork fallbackを行わない。
 
-## Build
+Tauri CLIはpackage-lockと一致する2.11.xを要求し、build helpのno-bundle対応を確認する。Rust host triple、CLI version、Node/npm/Cargo/rustc/PowerShellを記録する。arm64/x86/GNU toolchainや32bit processは拒否する。PEでもx64 GUIを再確認する。
 
-repository root から実行する。script 自身は自身の位置から repository root を解決するため、別の working directory からも呼び出せる。dot-source はせず、script として実行する。
+callerはreviewしたsource HEADを明示する。actual HEAD不一致、Git署名検証失敗、staged変更は停止する。通常はclean signed sourceを使用する。今回の未commit compile検証に限り、以下6pathの変更だけを許可し、変更pathと全source inputのhashをresultへ記録する。
 
-```powershell
-& ./scripts/build-release.ps1
-# rustc invocation / fresh rebuild の証拠を詳しく残す場合
-& ./scripts/build-release.ps1 -VerboseBuild
-if ($LASTEXITCODE -ne 0) { throw 'Release build failed' }
-```
+- scripts/build-release.ps1
+- scripts/check-release-privacy.ps1
+- scripts/release-safety.ps1
+- scripts/tests/release-tooling.tests.ps1
+- docs/release-build.md
+- src-tauri/tauri.conf.json
 
-`CARGO_HOME` は process environment を優先し、未設定の場合だけ Windows の `%USERPROFILE%\.cargo`（profile environment も未設定なら OS の UserProfile directory）を使用する。`RUSTUP_HOME` は process environment を優先し、未設定なら installed `rustup show home` の結果を使用する。解決不能または directory 不存在なら停止する。credentials/config の内容は読まない。
+application source、dependency/lock、schema等の変更や未知のuntracked sourceは拒否する。これはcompile検証の限定条件であり、公開sourceのclean/signature gateの代わりではない。検査skip、test mode、任意dirty-tree許可optionはない。
 
-相対 home は repository root を基準に full path へ解決する。明示した absolute home の separator/case/spelling は維持し、slash・dot-segment等の正規化が必要な値は診断して停止する。適切な full Windows path を caller が指定する。解決した homes は child process にも同じ値を設定する。host固有 path は repository に固定しない。
+## 実行
 
-`RUSTFLAGS`、`CARGO_ENCODED_RUSTFLAGS`、`CARGO_TARGET_DIR` が non-empty なら停止する。暗黙の merge/overwrite はしない。Cargo config に設定した追加 flags とも併用する手順ではなく、encoded flags の優先順位を理解した maintainer が release environment を確認する。
+scriptとして実行し、dot-sourceしない。ExpectedSourceHeadには確認した40桁commitを指定する。
 
-4 tokens `--remap-path-prefix`, `<resolved Cargo home>=/cargo`, `--remap-path-prefix`, `<resolved Rustup home>=/rustup` を U+001F で結合し、process-local `CARGO_ENCODED_RUSTFLAGS` に渡す。workspace remap は現在の実測で不要なため追加しない。rustc は textual replacement を行うので、virtualized paths の separator は混在し得る。
+    & ./scripts/build-release.ps1 -ExpectedSourceHead <reviewed-40-character-HEAD>
+    if ($LASTEXITCODE -ne 0) { throw 'Portable compile validation failed' }
 
-process-local `CARGO_TARGET_DIR` は `<repo>\tmp\release-build\target`。Git ignore を確認してから使用する。通常の development target や過去の実験出力は使用しない。新しい target では dependencies も再コンパイルされる。再実行時は同じ flags の Cargo cache を使用できる。全 target の cargo clean はしない。
+VerboseBuildはcompiler診断を増やすだけで、同じguardとprivacy検査を必ず通る。formal compile commandは次のとおり。
 
-通常の `npm run tauri -- build --bundles nsis msi -- --locked --offline` を呼び出す。`beforeBuildCommand` が typecheck と frontend build を実行する。出力は以下。
+    npm run tauri -- build --no-bundle -- --locked --offline
 
-- application EXE: `tmp/release-build/target/release/dol-progress-manager.exe`
-- NSIS: `tmp/release-build/target/release/bundle/nsis/`
-- MSI: `tmp/release-build/target/release/bundle/msi/`
+beforeBuildCommandがnpm typecheckとVite production buildを実行し、frontendはTauriへ埋め込む。Rustはrelease profile。NSIS/MSI、bundle-all、Runtime/bootstrapper生成は呼ばない。
 
-build 成功・失敗とも `finally` で homes、flags、target environment と working directory を復元する。user/machine environment、registry は変更しない。build が返した non-zero exit code を維持し、preflight / safety guard の失敗は1を返す。
+tauri.confのbundle.activeはfalseとし、targets: allの明示指定を削除した。固定CLIのschemaではactiveはbundlingとEXE出力の切替である。tauri-build 2.6.3のWindows resource生成はactive判定から独立し、bundle.icon/copyright/productName/versionを使用するため、それらは維持する。identifier、frontendDist、Runtime preflight、保存契約は変更しない。[Tauri設定](https://v2.tauri.app/reference/config/#bundleconfig)。
 
-## Cargo.toml guard
+## 環境と一意なrun
 
-build 前に Cargo.toml の exact bytes と SHA-256 を保存する。終了時の bytes が不変なら何もしない。CRLF/LF を正規化した UTF-8 text が完全一致する場合だけ original exact bytes を復元する。内容差分なら書き戻さず失敗として review に残す。before / after-build / final SHA-256 と normalized comparison の判定を表示し、復元後の hash 一致を必須とする。Git index を操作して差分を隠さない。
+CARGO_HOMEはprocess値、未設定ならUSERPROFILE/.cargo。RUSTUP_HOMEはprocess値、未設定ならrustup show home。存在する正規のdirectoryを要求し、absolute値のslash/dot-segment正規化が必要なら停止する。実homeやcheckout pathをconsole/resultへ表示しない。
 
-## Privacy validation
+RUSTFLAGS、CARGO_ENCODED_RUSTFLAGS、CARGO_TARGET_DIR、CARGO_BUILD_TARGET、target linker/runner/rustflags、Cargo profile、Rust compiler/wrapper、TAURI_CONFIG等のoverrideは拒否する。Cargo homeとcheckout祖先の.cargo/config/config.tomlは存在だけを確認し、ambient configがあれば別途reviewするまで停止する。内容やcredentialsを読まず、暗黙のtarget変更を防ぐ。
 
-build の exit 0だけで release candidate を合格にしない。build と checker は分離し、以下3実物をそれぞれ検査する。
+runはGit ignoredなtmp/portable-releaseの下に新UUIDで作る。sourceとのcontainmentとancestorのreparseを検査し、既存runを再利用しない。ownership.jsonをcreate-newで作成する。
 
-1. release application EXE
-2. 新 NSIS から抽出した application EXE
-3. 新 MSI の embedded cabinet から抽出した application EXE
+    tmp/portable-release/<run-id>/
+      ownership.json
+      target/
+      logs/compile.txt
+      output/
+      temp/
+      result.json
 
-```powershell
-& ./scripts/check-release-privacy.ps1 -Path ./tmp/release-build/target/release/dol-progress-manager.exe
-if ($LASTEXITCODE -ne 0) { throw 'Application privacy check failed' }
-```
+CARGO_TARGET_DIRはrun/target。TEMP/TMPはrun/tempにprocess内で切り替える。古いsrc-tauri/target/release、tmp/release-build、旧installer出力からEXEを探さない。expected inputはrun/target/release/dol-progress-manager.exeだけ。bundle/data/configの生成を検知したら失敗する。
 
-同じ host/environment で checker を実行する。homes の解決順序は build と同じで、repository root と current user profile も自動で検査する。binary を read-only で読み、exact prefix の UTF-8 bytes（ASCII paths では Latin-1相当の byte match）と UTF-16LE bytes を探す。UTF-16LE は byte alignment の違いも検出する。file/category/encoding/count を表示し、host-sensitive findings が1件以上なら exit 1、0件なら exit 0。解決・read error も失敗とする。virtual `/cargo` / `/rustup` の件数は informational で固定値を要求しない。
+outputへは全compile/privacy/source guardの成功後にEXEを非上書きcopyし、hashとprivacyを再検査する。cleanup/recursive deleteは実装しない。失敗runは診断用に残し、再実行は新UUIDを使う。旧成果物、production/user dataへアクセスしない。
 
-generic drive-like bytes は blocker にしない。machine code の偶然一致を actual host prefix と区別する。この checker は current host の source-path leakage を検査する maintainer toolであり、malware、任意の secrets、別 host で生成した binary の安全性を保証するものではない。
+## Privacy-safe compile
 
-NSIS は maintainer が準備した 7-Zip 等で静的抽出する。MSI は read-only Windows Installer database inspection で Media / File tables と cabinet streams を取得し、CAB を静的抽出する。installer の install/admin-install/uninstall で抽出しない。ツールの場所は PATH または maintainer が選択した値を使用し、machine-specific location は script に固定しない。抽出先は ignored tmp に置く。MSI cabinet の member 名が File ID の場合は File table から application を識別する。
+Cargo home→/cargo、rustup home→/rustupを維持し、checkout→/source、developer home→/user、元のTEMP/TMP→/temp、run→/build、target→/target、専用temp→/build-tempを追加する。Windows/backslashとforward slashを設定し、U+001F区切りのCARGO_ENCODED_RUSTFLAGSへ渡す。
 
-抽出後の2 application payload を同じ checker の `-Path` に渡し、各 invocation の exit code を確認する。hashes、checker出力、抽出 inventory を証拠として保存する。別途、source/tests/node_modules/.git、raw GVDB、user DB、backup/bootstrap config、private keys/allowed_signers、tmp reports の非同梱を確認する。通常の WebView2 downloadBootstrapper 設定と user data の bootstrap config を混同しない。
+rustcは最後に一致したmappingを採用するため、広いprefixを先、具体的prefixを後に置く。synthetic Rust sourceをLLVM IRへemitするtestで、実sourceを読めることとfile!文字列が最も具体的なvirtual prefixへ変わることを確認する。アプリのruntime path APIやstorage設定を改変しない。[rustc path remapping](https://doc.rust-lang.org/rustc/remap-source-paths.html)。
 
-application metadata は AMD64 / PE32+ / GUI subsystem、ProductName `DOL Progress Manager`、ProductVersion/FileVersion `0.3.0`、IsDebug=false、source ICO の6種と一致を確認する。NSIS installer stub の architecture は application と区別する。NSIS currentUser、MSI ALLUSERS=1 / perMachine、UpgradeCode の継続も確認する。ProductCode は通常 Tauri/WiX の自動生成により変わり得る。既知 ICE warnings を記録し、新しい warning/error を見逃さない。
+MSVCには/PDBALTPATH:%_PDB%をlink argumentとして渡す。EXE内のPDB locatorをbasenameへ限定し、実際のPDB生成先は変更しない。PDB自体はoutputへcopyしない。[Microsoft PDBALTPATH](https://learn.microsoft.com/en-us/cpp/build/reference/pdbaltpath-use-alternate-pdb-path?view=msvc-170)。
 
-現在 Authenticode signing は提供しない。WebView2 mode は downloadBootstrapper のまま。guest の WebView2 ABSENT という既知結果を引き継ぎ、offline guest の preprovision と runtime lifecycle は別の検証で扱う。この手順は application/installer を起動しない。
+Rust remapがnative code、frontend、resource、generated code全てのpathを除くとは仮定しない。最終EXEのbyte検査を必須にし、明確な漏えいと根拠未確定のprintable pathはともに失敗させる。
 
-## 最終確認
+## Scanner
 
-typecheck、frontend tests/build、Cargo tests/check/fmt、full/production npm audit と保護対象 files の hashes を確認する。ESET等の手動 scan は maintainer の任意の最終検証で、build の dependency ではない。過去の candidate の user-provided ESET on-demand PASS を別hashの新candidateへ継承しない。過去の LiveGuard submission evidence はなく verdict も未取得であり、この build script は submission/verdict を取得しない。
+    & ./scripts/check-release-privacy.ps1 -Path <artifact-file> -BuildRoot <owned-run-directory>
+    if ($LASTEXITCODE -ne 0) { throw 'Privacy inspection failed' }
 
-この手順は staging、commit、tag、push、公開、runtime lifecycle を行わない。artifact の privacy/metadata と runtime 動作を別々に検証する。
+BuildRootは追加の検査prefixであり、検査を弱めるoptionではない。省略時もCargo/rustup/checkout/profile/TEMP/TMPを検査する。公開runnerは共通scanner関数を必ず呼び、skip optionを持たない。
 
-仕様の参照: [Cargo environment variables](https://doc.rust-lang.org/cargo/reference/environment-variables.html)、[Rustup environment variables](https://rust-lang.github.io/rustup/environment-variables.html)、[rustc source-path remapping](https://doc.rust-lang.org/rustc/remap-source-paths.html)。
+known prefixはUTF-8とUTF-16LEのbyte検索で、非ASCIIやunaligned UTF-16LEも扱う。case、slash/backslash/混在separator、JSON escaped、Unicode separator escaped、percent encoded表現を検査する。virtual /cargo /rustup等はinformationalで件数を固定しない。
+
+結果はartifact番号、category、encoding、count、pass/failだけ。入力path、検出substring、read errorのraw exceptionは出さない。複数categoryが同じbytesへ一致することがあり、件数は一意な秘密数ではない。
+
+known prefixはdefinite leak。printableな未知のWindows absolute/UNC pathはreview requiredで、根拠なしに成功扱いしない。限定的なWindows System32/SysWOW64のDLL pathと、固定null deviceの`\\.\NUL`だけをallowed genericとして区別する。後者は最初のcompileで検出し、[Microsoftのdevice namespace仕様](https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#win32-device-namespaces)と照合した。任意のdevice/UNC名を許可しない。単なるdrive-like machine bytesは自動漏えい扱いしない。無制限allowlistはない。heuristicは任意のsecret、全表現、他host由来のpathやmalwareの不存在を保証しない。
+
+compile stdout/stderrはknown prefix、残るabsolute Windows path、代表的なsecret assignmentをredactしてからconsole/logへ出す。raw transcriptは保存しない。sanitized compile logもprivacy検査する。
+
+## Manifest / source / failure
+
+Cargo.tomlはcompile前のexact bytesとhashを保存する。変更がCRLF/LFだけでUTF-8正規化同一の場合に限り元bytesへ復元する。意味差分は復元せず、失敗としてreviewに残す。
+
+trackedと許可したuntracked sourceの全inventory/hash、HEADを終了時に比較する。source変化、child command nonzero、missing/不正PE、bundle/data/config、privacy violation/review requiredはfailure。古いEXEの再利用はしない。childの失敗exit codeは維持し、guard failureは1。
+
+finallyでCargo/rustup/flags/target/offline/TEMP/TMPとcwdを復元する。registry、user/machine environment、Runtime、Git index/historyは変更しない。成功はCOMPILE_VALIDATED、失敗はFAILEDとしてrun/result.jsonへ記録し、source HEAD・version・target・tool versions・input hashes・EXE name/hash・privacy・manifest guardをsanitizedな形で残す。途中失敗でoutput EXEが残ってもresult/exitが成功でなければ成果物として使わない。
+
+## 検証と後続
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/release-tooling.tests.ps1
+    cargo fmt --manifest-path src-tauri/Cargo.toml --check
+    npm run typecheck
+
+testは専用ignored fixtureにsynthetic bytes/PE/sourceだけを作り、アプリEXEを起動しない。unreadable fixtureはFileShare.Noneで検証しACLを変更しない。process限定のexecution policy指定は恒久設定の変更ではない。
+
+generated EXEはsize/hash、AMD64/PE32+/GUI、privacyをrunnerで検証する。詳細import/resource/package gateはC1B-2以降に分ける。application Rust/TS sourceが不変の場合、B3F full suiteを継承できる。必要な検証証拠は各Phase報告へ保存する。
+
+C1B-2では5member staging、README/LICENSE/NOTICE input、内部manifest/外部ZIP hash、ZIP生成・独立verifierとnegative testsを実装する。C1Cでthird-party obligationsを解決し通知/metadataを確定する。一般公開にはpackage検証とminimal synthetic acceptanceが必要。
+
+Authenticodeは別工程であり、今回は署名しない。WebView2 Runtimeは外部prerequisiteで、B2 native preflightを維持し、自動download/installしない。旧installer検証物は保存したまま新flowから隔離する。このrunnerはアプリ/installer/VM起動、Runtime導入、staging/commit/tag/push/公開を行わない。
