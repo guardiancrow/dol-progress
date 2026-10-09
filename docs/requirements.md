@@ -30,6 +30,12 @@ DBの具体的な列定義は `database-design.md`、GVDB公開データの取�
 - 単一ユーザー
 - ローカル利用
 
+当面、実行ファイルもソースコードも一般公開せず、個人用Windowsアプリとして開発する。
+GitHubのPrivateリポジトリは開発とバックアップのために継続する。インストーラーを必要とせず、
+完全終了後のフォルダー全体のコピー・移動で利用できる構成とする。
+公開用のlicense clearance、正式通知、ZIP／installer、GitHub Releaseの工程は停止中であり、
+正式package gateを通常のローカル開発の必須条件にしない。
+
 ### 3.2 通常利用時の前提
 
 - インターネット接続を必要としない。
@@ -38,13 +44,13 @@ DBの具体的な列定義は `database-design.md`、GVDB公開データの取�
 
 ### 3.3 外部Runtimeと起動前検査
 
-native codeの実行にはMicrosoft Visual C++ Redistributable x64が必要である。MSVC toolsetと
-互換性があり、buildに使用したtoolsetと同じか新しい公式最新版を利用者へ案内する。
-CRT/VCRuntimeは動的リンクとし、SQLite bundledとWebView2 Loader static libraryは維持する。
-VC++ Runtimeが不足するとRust entryより前にWindows loaderが起動を停止し得るため、
-アプリ内の案内表示を保証しない。READMEと公開説明で公式導入先を示す。
-VC++／WebView2 Runtimeは配布ZIPへ同梱せず、自動導入や独自bootstrapperも追加しない。
-portable data/configと固定5ファイルの配布仕様は変更しない。
+CRT/VCRuntimeはlock済みTauriの既定動作による静的リンクへ戻し、Microsoft Visual C++
+Redistributable x64をアプリ独自の追加前提条件として要求しない。Windows標準のUCRT等の
+OS提供DLLへの依存は許容する。SQLite bundledとWebView2 Loader static libraryは維持する。
+SQLiteの静的ライブラリ化とCコンパイル時のCRT選択は別であり、最終EXEのimportsと
+リンク診断を確認する。全Rustターゲットへの追加RUSTFLAGSやcrt-static設定は導入しない。
+WebView2 Runtimeは外部前提条件とし、自動導入や独自bootstrapperを追加しない。
+portable data/config仕様は維持する。
 
 画面表示にはMicrosoft Edge WebView2 Runtimeが必要である。Rust entryへ到達した後、既存Tauriの
 `tauri::webview_version()`で利用可能versionを取得し、成功した場合だけportable filesystem
@@ -374,7 +380,7 @@ GUI上で対象datasetのローカルファイルを選択し、内容の解析�
 
 ユーザーは設定画面から、従来と同じローカル固定NTFS上の外部空directoryへDB全体を安全に移行できる。実行ファイルdirectory、その子directory、親directoryをCustom rootとして選択できない。移行は整合したsnapshotを使用し、旧DBを削除しない。Custom rootが使えない場合はRecoveryとし、inactiveな標準DBを開いたりdata directoryを自動作成したりしない。詳細は`data-root.md`を正本とする。
 
-このportable保存方式の対象はアプリ所有のDB/configである。WebView2のuser-data/cacheは現行TauriのLocalAppData defaultを維持する。Runtime事前検査は3.3に従い、配布packageの変更は別Phaseで扱う。
+このportable保存方式の対象はアプリ所有のDB/configである。異なるEXEフォルダーは別々のDefault DBを使用する。WebView2のuser-data/cacheは現行TauriのLocalAppData default（Option A）を維持する。同じWindowsユーザーの異なるEXEコピーはWebView2 UDFを共有し、複数フォルダーからの同時起動は現時点の保証対象としない。Runtime事前検査は3.3に従う。
 
 保存場所画面は「データベース」と「アプリの設定」を別cardに分ける。前者はRustのdataRootを「データベースのフォルダー」として表示し、「データベースの保存場所を変更」操作を置く。Customの場合だけ同cardに「カスタム保存先を使用しています」と補足する。後者はconfigRootを「設定フォルダー」として表示し、「設定フォルダーにはアプリの設定が保存されます。」と説明する。設定はDB移行の対象ではなく、同cardに変更操作を置かない。通常表示にDB file path、アプリfolder、保存方式や標準data folderを並べない。表示用pathはRustからread-only情報として取得し、Frontendでは組み立てない。移行先の条件は固定NTFS等のbackend検証に合わせて箇条書きで示す。画面内の案内はbackup操作の場所、起動中の手作業移動・手編集を避けること、終了後のEXE削除、DB/設定削除前のbackup確認、WebView2使用の説明に絞る。folder copy、更新、標準/Customの違い等の詳細はREADMEに記載する。
 

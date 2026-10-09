@@ -2,6 +2,8 @@
 
 『大航海時代 Online』のクエスト・発見物の進捗を、プロフィールごとにPC上で管理するWindows向けデスクトップアプリケーションです。ユーザーが手動取得したGVDBマスターデータを取り込み、進捗はローカルSQLiteへ保存します。取り込み後の通常利用はオフラインで行えます。
 
+本プロジェクトは当面、実行ファイルもソースコードも一般公開しません。Windows x64での個人利用を前提とし、GitHubのPrivateリポジトリは開発とバックアップのために継続します。インストーラーを使わず、アプリのフォルダーをコピー・移動して利用できます。
+
 本プロジェクトは非公式のfan utilityです。ゲームの開発元・販売元・運営元による公式toolではなく、それらの組織やGVDBとの提携・公認を示すものでもありません。ゲーム名、製品名、商標などの権利は各権利者に帰属します。
 
 ## 主な機能
@@ -17,24 +19,17 @@
 
 ## 動作環境と起動方法
 
-利用対象はWindows 10／11 x64です。ポータブル版はアプリ本体のインストーラーを使わず、フォルダーから起動します。Microsoft Visual C++ Redistributable x64とMicrosoft Edge WebView2 RuntimeはWindows側に別途必要です。どちらも配布ZIPには同梱しません。配布ZIPの生成・検証はまだ完了していません。以下はポータブル版を利用する際の手順です。
+利用対象はWindows 10／11 x64です。CRT/VCRuntimeは静的リンクとし、Microsoft Visual C++ Redistributable x64をアプリ独自の追加前提条件として要求しない構成へ戻しています。SQLite bundledとWebView2 Loaderの既存構成を維持し、Microsoft Edge WebView2 Runtimeは引き続きWindows側に必要です。Windows標準のUCRT等のOS提供DLLへの依存は残ります。
 
-1. ZIP配布物は必ずすべて展開します。ExplorerのZIP内部から直接EXEを実行する使い方には対応しません。
-2. 展開したアプリのフォルダーを、ユーザーが書き込める場所へ置きます。
-3. `dol-progress-manager.exe`を起動します。初回起動時に必要なデータ・設定フォルダーが作成されます。
-4. 「保存場所」画面で現在のデータベースと設定フォルダーを確認します。
+1. ローカルビルドした`dol-progress-manager.exe`を、ユーザーが書き込めるアプリ用フォルダーへ置きます。
+2. `dol-progress-manager.exe`を起動します。初回起動時に必要なデータ・設定フォルダーが作成されます。
+3. 「保存場所」画面で現在のデータベースと設定フォルダーを確認します。
 
 Program Filesや読み取り専用フォルダー等で書き込めない場合は、アプリを終了し、フォルダー全体を書き込み可能な場所へ移動してください。管理者としての実行やACL変更は標準の解決手順にしません。データ保存先をAppDataへ自動で切り替えることもありません。
 
-### Microsoft Visual C++ Redistributable x64
-
-アプリ本体の実行にはMicrosoft Visual C++ Redistributable x64が必要です。[Microsoft公式の導入案内](https://learn.microsoft.com/ja-jp/cpp/windows/latest-supported-vc-redist)から、アプリのbuildに使用したMSVC toolsetと同じか新しい、互換性のある公式最新版のx64版を導入してください。x86版だけでは動作条件を満たしません。
-
-未導入や古いversionの場合、アプリの処理が始まる前にWindowsが起動を停止することがあります。その場合、アプリ内の案内は表示できません。公式Runtimeを導入してから起動し直してください。アプリはRuntimeを自動で導入しません。
-
 ### WebView2 Runtime
 
-画面表示にはMicrosoft Edge WebView2 Runtimeが必要です。VC++ Runtimeの前提条件を満たしてアプリの処理を開始できた場合、利用できるWebView2 Runtimeを確認できなければ、画面を開く前に日本語の案内を表示して終了します。この場合、データ・設定フォルダーは初期化しません。
+画面表示にはMicrosoft Edge WebView2 Runtimeが必要です。利用できるWebView2 Runtimeを確認できなければ、画面を開く前に日本語の案内を表示して終了します。この場合、データ・設定フォルダーは初期化しません。
 
 [Microsoft公式WebView2ページ](https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section)からEvergreen Runtimeを導入し、その後にDOL Progress Managerを起動し直してください。アプリはRuntimeを自動でダウンロード・インストール・更新せず、案内時にブラウザーも自動で開きません。アプリを削除するときにRuntimeを削除する必要はありません。
 
@@ -62,6 +57,8 @@ DOL-Progress\
 
 `data`内のデータベースには、プロフィール、クエスト・発見物の進捗、メモ、取り込んだマスターデータ等を保存します。`config`には保存場所を判断する設定と復旧情報を保存します。通常、設定ファイルを手編集する必要はありません。
 
+保存先はEXEの親フォルダーを基準に決まり、カレントディレクトリに依存しません。異なるEXEフォルダーは別々の標準DBを使用します。
+
 「保存場所」画面は「データベース」と「アプリの設定」を別のカードに分け、それぞれデータベースのフォルダーと設定フォルダーを表示します。保存場所の変更はデータベースだけが対象です。設定フォルダーはアプリのフォルダー内にあり、カスタムDBへ移行しても移動しません。カスタム利用時にはデータベースのカードに「カスタム保存先を使用しています」と補足します。
 
 「データとアプリの管理」カードには、データベースのバックアップ、ファイルの移動と編集、アプリ削除の案内をまとめています。Windows側に残るデータの説明は別のカードに表示します。
@@ -76,6 +73,8 @@ DOL-Progress\
 設定されたDBが見つからない場合や、カスタム保存場所を確認できない場合は復旧画面を表示します。別の場所に空DBを自動作成しません。保存場所を修正した後は、アプリを一度終了して起動し直してください。詳細は[データ保存場所の仕様](docs/data-root.md)を参照してください。
 
 WebView2のキャッシュやブラウザー用データは、Windows側のユーザーデータ領域（LocalAppData）に残る場合があります。進捗を保存する`data`や保存場所を記録する`config`とは別です。「Windowsに一切何も残さない」構成ではありません。
+
+WebView2 UDFは既存のOption A（`%LOCALAPPDATA%\com.dolprogress.manager`）を維持します。異なるEXEコピーも同じWindowsユーザーではこのUDFを共有するため、複数フォルダーからの同時起動は現時点の保証対象としません。
 
 ## バックアップと復元
 
@@ -101,11 +100,11 @@ WebView2のキャッシュやブラウザー用データは、Windows側のユ�
 
 1. 更新前に内蔵バックアップを保存します。
 2. DOL Progress Managerを完全に終了し、必要ならフォルダーバックアップも保管します。
-3. 新しい配布物を別のフォルダーへ展開します。
-4. 既存の`data`と`config`を保持したまま、アプリ本体と配布文書を更新します。**data/configを削除・上書きしないでください。**
+3. 新しくローカルビルドしたEXEを用意します。
+4. 既存の`data`と`config`を保持したまま、アプリ本体を更新します。**data/configを削除・上書きしないでください。**
 5. 再起動し、「保存場所」画面とプロフィール・進捗を確認します。
 
-配布物の構成と具体的な置換対象は、正式な配布手順の確定時に案内します。新しい空のdata/configで既存データを置き換えないことが原則です。
+新しい空のdata/configで既存データを置き換えないことが原則です。
 
 ## 削除
 
@@ -159,19 +158,21 @@ cargo fmt --check --manifest-path src-tauri/Cargo.toml
 
 ## Windows build
 
-開発起動と別に、Windows desktopのrelease buildを行うcommandは次のとおりです。bundle toolの準備が必要になる場合があります。
+通常のローカル開発では、次のcommandでインストーラーを生成しないWindows Releaseビルドを行います。依存関係は事前にcacheしておきます。
 
 ```powershell
-npm run tauri build
+npm run tauri -- build --no-bundle -- --locked --offline
 ```
 
-installerを生成しないdebug buildの確認には次を使用します。
+インストーラーを生成しないDebugビルドの確認には次を使用します。
 
 ```powershell
-npm run tauri build -- --debug --no-bundle
+npm run tauri -- build --debug --no-bundle -- --locked --offline
 ```
 
-application iconは本プロジェクト用に新規作成したvectorから生成しています。[iconの制作・再生成手順](docs/icon-assets.md)を参照してください。公開commitはGit SSH signing、release tagはsigned annotated tagを使用する方針です。これはWindows Authenticodeとは別で、現時点ではAuthenticode署名を保証しません。releaseとdependency noticeの確認方針は[third-party licenses](docs/third-party-licenses.md)に記載しています。
+application iconは本プロジェクト用に新規作成したvectorから生成しています。[iconの制作・再生成手順](docs/icon-assets.md)を参照してください。
+
+公開用のlicense clearance、正式通知、ZIP／installer、GitHub Releaseの工程は停止中です。[旧release手順](docs/release-build.md)と[third-party license資料](docs/third-party-licenses.md)、既存script・原文・証拠・監査資料は保持します。署名済みclean HEADを要求する`build-release.ps1`や正式package gateは、通常のローカル開発の必須条件にしません。
 
 ## 謝辞
 

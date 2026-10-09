@@ -1,10 +1,46 @@
 # Windows portable release compile / package verification
 
+## 現在のローカル開発方針（Phase Local-1）
+
+実行ファイル・ソースコードの一般公開は当面行わない。GitHubのPrivateリポジトリを継続し、
+Windows 10／11 x64の個人用アプリとして通常開発を行う。公開用のcompile runner、正式通知、
+license clearance、ZIP／installer、GitHub Releaseの工程は停止中である。
+本書の後半は旧公開工程の記録として保持し、通常開発の必須条件にはしない。
+既存script、第三者原文、証拠、過去の監査資料と正式package gateは変更・削除しない。
+
+インストーラーを生成しないローカルReleaseビルドは、repository rootで次を実行する。
+lockfileを維持し、cache済みの依存関係を使用する。署名済みclean HEADを要求する
+`scripts/build-release.ps1`はこの手順には使用しない。
+
+```powershell
+npm run tauri -- build --no-bundle -- --locked --offline
+```
+
+`src-tauri/target/release/dol-progress-manager.exe`を生成する。アプリを完全終了してから
+EXEを更新し、既存のdata/configを保持する。Custom Data Rootの外部DBは別途扱う。
+保存場所とコピー・移動の条件は[Data Root](data-root.md)と[README](../README.md)を正とする。
+
+## 現在のWindows CRT構成
+
+`src-tauri/build.rs`の`STATIC_VCRUNTIME=false`上書きを削除し、lock済みTauri CLI
+2.11.4／tauri-build 2.6.3の既定動作へ戻す。Tauriの既存helperがlibcmt／libvcruntimeを
+選択し、CRT/VCRuntimeを静的リンクする。UCRTはOS提供DLLへの依存を維持する。
+Microsoft Visual C++ Redistributable x64をアプリ独自の追加前提条件として要求しない。
+新たなRUSTFLAGS、crt-static、NODEFAULTLIB、警告抑制は追加しない。
+
+SQLite bundledとWebView2 Loader static libraryは維持する。SQLiteが静的ライブラリで
+あることは、SQLite CコンパイルのCRT選択を意味しない。D1の静的リンク版にもSQLiteの
+`/MD`が存在していた。新しいEXEのimports、SQLite objectのdirective、link診断と
+SQLite／SQLx境界のメモリー管理を確認し、設定の混在だけで安全・危険を断定しない。
+WebView2 RuntimeとOption A（LocalAppData UDF）は従来どおり維持する。
+
+## 停止中の旧公開工程
+
 この手順はPhase 23D-C1B-1の**portable release compile validation**と、C1B-2の固定ZIP生成・独立検証を扱う。Windows x64の単一application EXEを専用runnerでcompileし、package工程はその検証済みrunを入力にする。versionは0.3.0。正式release candidate、一般公開の手順ではない。
 
 第三者通知と包含条件、MPL/Unicode、WebView2 Loader SDK由来、toolchain生成物の条件は未解決。ZIP/hash/verifierのlogicは合成fixtureで検証するが、正式通知入力がない現在は正式packageを拒否する。READMEにはWindows x64と外部Runtimeの前提条件を記載し、generatorは不足説明を捏造しない。通知原本・review evidence、最終versionとminimal acceptanceの完成は後続Phaseに残る。compile成功によってlicense clearanceや公開可否が変わることはない。
 
-## Windows CRTの動的リンク
+### 旧Phase D3BのWindows CRT動的リンク（適用停止）
 
 lock済みTauri CLI 2.11.4／tauri-build 2.6.3では、最新資料の
 `build.windows.staticVCRuntime`はschema未対応である。`src-tauri/build.rs`はCargoの

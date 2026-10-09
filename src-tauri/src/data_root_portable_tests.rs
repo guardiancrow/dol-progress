@@ -302,6 +302,95 @@ async fn reserved_regions_cannot_be_selected_or_bootstrapped_as_custom() {
 }
 
 #[tokio::test]
+async fn separate_executable_folders_keep_default_databases_independent() {
+    let first = Fixture::new();
+    let second = Fixture::new();
+    let (database, _) = initialize_at(&first.paths).await.unwrap();
+    {
+        let pool = database.pool().await;
+        sqlx::query("INSERT INTO profiles (name) VALUES ('first folder profile')")
+            .execute(&*pool)
+            .await
+            .unwrap();
+    }
+    close(database).await;
+    let (database, _) = initialize_at(&second.paths).await.unwrap();
+    assert_ne!(
+        database.database_path(),
+        first.paths.default_database_path()
+    );
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM profiles")
+        .fetch_one(&*database.pool().await)
+        .await
+        .unwrap();
+    assert_eq!(count, 0);
+    close(database).await;
+    let (database, _) = initialize_at(&first.paths).await.unwrap();
+    let name: String = sqlx::query_scalar("SELECT name FROM profiles")
+        .fetch_one(&*database.pool().await)
+        .await
+        .unwrap();
+    assert_eq!(name, "first folder profile");
+    close(database).await;
+}
+
+#[tokio::test]
+async fn copying_closed_default_folder_retains_database_and_bootstrap() {
+    let fixture = Fixture::new();
+    let (database, _) = initialize_at(&fixture.paths).await.unwrap();
+    {
+        let pool = database.pool().await;
+        sqlx::query("INSERT INTO profiles (name) VALUES ('copied profile')")
+            .execute(&*pool)
+            .await
+            .unwrap();
+    }
+    close(database).await;
+    let copied = fixture.root.join("Copied Folder");
+    let copied_paths = PortablePaths::from_executable(&copied.join("app.exe")).unwrap();
+    fs::create_dir_all(&copied_paths.default_data_root).unwrap();
+    fs::create_dir(&copied_paths.config_root).unwrap();
+    for (source, target) in [
+        (
+            fixture.paths.default_database_path(),
+            copied_paths.default_database_path(),
+        ),
+        (
+            fixture.paths.primary_bootstrap_path(),
+            copied_paths.primary_bootstrap_path(),
+        ),
+        (
+            fixture.paths.last_good_bootstrap_path(),
+            copied_paths.last_good_bootstrap_path(),
+        ),
+    ] {
+        fs::copy(&source, &target).unwrap();
+        assert_eq!(fs::read(source).unwrap(), fs::read(target).unwrap());
+    }
+    let (database, info) = initialize_at(&copied_paths).await.unwrap();
+    assert_eq!(info.mode, "default");
+    assert_eq!(
+        database.database_path(),
+        copied_paths.default_database_path()
+    );
+    let name: String = sqlx::query_scalar("SELECT name FROM profiles")
+        .fetch_one(&*database.pool().await)
+        .await
+        .unwrap();
+    assert_eq!(name, "copied profile");
+    close(database).await;
+    assert_eq!(
+        read_bootstrap(&copied_paths.primary_bootstrap_path()).unwrap(),
+        Some(default_bootstrap())
+    );
+    assert_eq!(
+        read_bootstrap(&copied_paths.last_good_bootstrap_path()).unwrap(),
+        Some(default_bootstrap())
+    );
+    assert!(fixture.paths.default_database_path().exists());
+}
+
+#[tokio::test]
 async fn relocating_folder_moves_default_and_config_but_keeps_custom_absolute() {
     let fixture = Fixture::new();
     let (database, _) = initialize_at(&fixture.paths).await.unwrap();

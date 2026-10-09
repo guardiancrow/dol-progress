@@ -39,6 +39,8 @@ configと使用中Default dataの書込み検査は、create_newの一意probe -
 
 WebView2 UDFはアプリのDB/configとは別であり、Tauriの通常の`%LOCALAPPDATA%\com.dolprogress.manager`を維持する。環境/policyによるWebView2 overrideはこの保存場所仕様の管理外である。「AppDataを一切使わない完全portable」とはしない。
 
+Phase Local-1でもOption A（LocalAppData）を維持する。同じWindowsユーザーの異なるEXEコピーはこのWebView2 UDFを共有する。EXEフォルダーごとのDefault DBは独立するが、複数フォルダーからの同時起動は現時点の保証対象としない。
+
 Importer、Progress Link、Backup、Restore、repository commandは`ActiveDatabase`だけを使用する。inactiveな旧DBへpathを渡すAPIは持たない。
 
 ## 利用者向けの保存場所表示

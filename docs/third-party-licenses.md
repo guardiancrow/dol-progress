@@ -1,5 +1,14 @@
 # Third-party licensesとrelease方針
 
+## 現在の運用方針（Phase Local-1）
+
+当面、実行ファイルもソースコードも一般公開しない。GitHubのPrivateリポジトリを
+開発とバックアップに使用し、Windows x64の個人用アプリとして通常開発を継続する。
+公開用のlicense clearance、正式通知、ZIP／installer、GitHub Releaseは停止中である。
+以下の配布条件・公開履歴・監査工程は旧公開工程の資料として保持し、正式package gateや
+未完の公開用reviewをローカル開発の必須条件にしない。原文、証拠、scriptは削除しない。
+この切替によって第三者licenseの条件充足や正式clearanceを認定するものではない。
+
 本プロジェクト独自のcode、文書、synthetic tests／fixtures、iconにはrootの
 [MIT License](../LICENSE)を適用する。第三者libraryや外部データには、それぞれの
 権利とlicenseが適用される。GVDBデータ、ゲーム・製品の名称や商標、ユーザーが取得した
@@ -67,13 +76,12 @@ MPLの対応sourceはアプリZIPとは別のversion対応補助archiveを匿名
 Rust個別条件・Loader SDK NOTICE・最終frontend/helperの包含scope、実reviewは残る。
 Microsoft製品のinstallやsystem DLL importを再配布資格・static寄与の不存在の証明にしない。
 
-Windows CRT/VCRuntimeは動的リンクへ移行する方針とし、VC++ Redistributable x64は利用者が
-Microsoft公式から導入する。Runtime DLL本体はこちらのZIPへ同梱しない。SQLite bundledと
-WebView2 Loader static libraryは維持する。新しい診断buildでVCRuntime importsとSQLiteの
-`/MD`、CRT競合の不在を実証するまで、動的化が完了したとは扱わない。
-移行後も通常のCRT startup／import stub、Windows SDK／Loaderの静的寄与と必要条件を
-実link結果に対応させる。動的化はUnicode10、MPL source実提供、本人reviewを解決せず、
-第三者license全体のclearanceを意味しない。
+Phase Local-1ではCRT/VCRuntimeをlock済みTauriの既定の静的リンクへ戻し、VC++
+Redistributable x64をアプリ独自の追加前提条件として要求しない。SQLite bundledと
+WebView2 Loader static libraryは維持し、WebView2 Runtimeは外部前提条件のままとする。
+WindowsのUCRT等のOS提供DLLへの依存は残る。SQLiteの`/MD`と最終CRT選択は区別し、
+新EXEのimportsとlink診断を確認する。CRT構成の切替はUnicode10、MPL source実提供、
+本人reviewを解決せず、第三者license全体のclearanceを意味しない。
 
 Microsoft関連では、Visual Studio Community/Build Toolsの利用条件、MSVC/Windows SDK由来codeの
 再配布条件、WebView2 SDK固有LICENSE/NOTICEを分ける。現端末のBuild Tools 2022、別端末の
@@ -86,7 +94,7 @@ Tao keyboard sourceにあるW3C全文と通知も正本に残し、最終配布s
 必要表示、MPLの実source提供が必要である。未承認draftや未解決metadataは正式packageが
 引き続き拒否する。今回の組立成功はlicense clearance・一般公開の許可ではない。
 
-## Git署名と公開履歴
+## 停止中のGit署名と公開履歴の旧方針
 
 公開開発commitにはGit SSH signingを使用し、release tagはsigned annotated tagとする。
 公開Git履歴は公開対象を整理したsnapshotから、parentなしのsigned root commitで開始する。
