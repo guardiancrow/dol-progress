@@ -67,6 +67,14 @@ MPLの対応sourceはアプリZIPとは別のversion対応補助archiveを匿名
 Rust個別条件・Loader SDK NOTICE・最終frontend/helperの包含scope、実reviewは残る。
 Microsoft製品のinstallやsystem DLL importを再配布資格・static寄与の不存在の証明にしない。
 
+Windows CRT/VCRuntimeは動的リンクへ移行する方針とし、VC++ Redistributable x64は利用者が
+Microsoft公式から導入する。Runtime DLL本体はこちらのZIPへ同梱しない。SQLite bundledと
+WebView2 Loader static libraryは維持する。新しい診断buildでVCRuntime importsとSQLiteの
+`/MD`、CRT競合の不在を実証するまで、動的化が完了したとは扱わない。
+移行後も通常のCRT startup／import stub、Windows SDK／Loaderの静的寄与と必要条件を
+実link結果に対応させる。動的化はUnicode10、MPL source実提供、本人reviewを解決せず、
+第三者license全体のclearanceを意味しない。
+
 Microsoft関連では、Visual Studio Community/Build Toolsの利用条件、MSVC/Windows SDK由来codeの
 再配布条件、WebView2 SDK固有LICENSE/NOTICEを分ける。現端末のBuild Tools 2022、別端末の
 Community 2022とMicrosoft account sign-in、同一個人開発者というuser contextは原文正本の

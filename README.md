@@ -17,7 +17,7 @@
 
 ## 動作環境と起動方法
 
-利用対象はWindows 10／11です。ポータブル版はアプリ本体のインストーラーを使わず、フォルダーから起動します。Microsoft Edge WebView2 RuntimeはWindows側に別途必要です。配布ZIPの生成・検証はまだ完了していません。以下はポータブル版を利用する際の手順です。
+利用対象はWindows 10／11 x64です。ポータブル版はアプリ本体のインストーラーを使わず、フォルダーから起動します。Microsoft Visual C++ Redistributable x64とMicrosoft Edge WebView2 RuntimeはWindows側に別途必要です。どちらも配布ZIPには同梱しません。配布ZIPの生成・検証はまだ完了していません。以下はポータブル版を利用する際の手順です。
 
 1. ZIP配布物は必ずすべて展開します。ExplorerのZIP内部から直接EXEを実行する使い方には対応しません。
 2. 展開したアプリのフォルダーを、ユーザーが書き込める場所へ置きます。
@@ -26,9 +26,15 @@
 
 Program Filesや読み取り専用フォルダー等で書き込めない場合は、アプリを終了し、フォルダー全体を書き込み可能な場所へ移動してください。管理者としての実行やACL変更は標準の解決手順にしません。データ保存先をAppDataへ自動で切り替えることもありません。
 
+### Microsoft Visual C++ Redistributable x64
+
+アプリ本体の実行にはMicrosoft Visual C++ Redistributable x64が必要です。[Microsoft公式の導入案内](https://learn.microsoft.com/ja-jp/cpp/windows/latest-supported-vc-redist)から、アプリのbuildに使用したMSVC toolsetと同じか新しい、互換性のある公式最新版のx64版を導入してください。x86版だけでは動作条件を満たしません。
+
+未導入や古いversionの場合、アプリの処理が始まる前にWindowsが起動を停止することがあります。その場合、アプリ内の案内は表示できません。公式Runtimeを導入してから起動し直してください。アプリはRuntimeを自動で導入しません。
+
 ### WebView2 Runtime
 
-画面表示にはMicrosoft Edge WebView2 Runtimeが必要です。利用できるRuntimeを確認できない場合は、画面を開く前に日本語の案内を表示して終了します。この場合、データ・設定フォルダーは初期化しません。
+画面表示にはMicrosoft Edge WebView2 Runtimeが必要です。VC++ Runtimeの前提条件を満たしてアプリの処理を開始できた場合、利用できるWebView2 Runtimeを確認できなければ、画面を開く前に日本語の案内を表示して終了します。この場合、データ・設定フォルダーは初期化しません。
 
 [Microsoft公式WebView2ページ](https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section)からEvergreen Runtimeを導入し、その後にDOL Progress Managerを起動し直してください。アプリはRuntimeを自動でダウンロード・インストール・更新せず、案内時にブラウザーも自動で開きません。アプリを削除するときにRuntimeを削除する必要はありません。
 

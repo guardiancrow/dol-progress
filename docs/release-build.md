@@ -2,7 +2,24 @@
 
 この手順はPhase 23D-C1B-1の**portable release compile validation**と、C1B-2の固定ZIP生成・独立検証を扱う。Windows x64の単一application EXEを専用runnerでcompileし、package工程はその検証済みrunを入力にする。versionは0.3.0。正式release candidate、一般公開の手順ではない。
 
-第三者通知と包含条件、MPL/Unicode、WebView2 Loader SDK由来、toolchain生成物の条件は未解決。ZIP/hash/verifierのlogicは合成fixtureで検証するが、正式通知入力がない現在は正式packageを拒否する。READMEのWindows x64明記もC1Cで必要であり、generatorが不足説明を捏造しない。通知原本・review evidence、利用者README、最終versionとminimal acceptanceの完成は後続Phaseに残る。compile成功によってlicense clearanceや公開可否が変わることはない。
+第三者通知と包含条件、MPL/Unicode、WebView2 Loader SDK由来、toolchain生成物の条件は未解決。ZIP/hash/verifierのlogicは合成fixtureで検証するが、正式通知入力がない現在は正式packageを拒否する。READMEにはWindows x64と外部Runtimeの前提条件を記載し、generatorは不足説明を捏造しない。通知原本・review evidence、最終versionとminimal acceptanceの完成は後続Phaseに残る。compile成功によってlicense clearanceや公開可否が変わることはない。
+
+## Windows CRTの動的リンク
+
+lock済みTauri CLI 2.11.4／tauri-build 2.6.3では、最新資料の
+`build.windows.staticVCRuntime`はschema未対応である。`src-tauri/build.rs`はCargoの
+target OS=windows／target env=msvcの場合だけ、tauri_buildの呼出し前に
+`STATIC_VCRUNTIME=false`を設定する。これでTauriの静的CRT強制helperを無効にする。
+Cargoの`crt-static`や外部RUSTFLAGSを追加せず、SQLite bundled／Loader staticを維持する。
+`bundle.windows.bundleVCRuntime`も追加せず、Runtime DLL非同梱は固定5member契約で保つ。
+
+最初の診断buildは0.3.0の署名済みclean HEADから既存runnerのVerboseBuildで行う。
+SQLite C compileの`/MD`、objectのMSVCRT directive、最終VCRuntime DLL imports、
+Tauriの静的DEFAULTLIB／NODEFAULTLIB強制の解消とCRT競合警告の不在を照合する。
+必要なstartup／import stubの静的寄与までゼロとは要求しない。compiler診断を増やす場合も
+flagsやgateを変更せず、既存sanitized log／privacy検査を通す。
+EXE起動とsynthetic DBの複数回読み書き・再起動後の永続性は後続の実行時検証とし、
+compile成功だけで動作上の安全性を最終PASSにしない。
 
 ## 未承認third-party noticeの組立
 
@@ -157,7 +174,7 @@ generated EXEはsize/hash、AMD64/PE32+/GUI、privacyをrunnerで検証する。
 
 C1B-2のpackage/verifierは以下の工程を実装する。C1Cでthird-party obligationsとREADMEを完成し、metadataを確定する。一般公開にはclean checkpointからの正式compile/packageとminimal synthetic acceptanceが必要。
 
-Authenticodeは別工程であり、今回は署名しない。WebView2 Runtimeは外部prerequisiteで、B2 native preflightを維持し、自動download/installしない。旧installer検証物は保存したまま新flowから隔離する。このrunnerはアプリ/installer/VM起動、Runtime導入、staging/commit/tag/push/公開を行わない。
+Authenticodeは別工程であり、今回は署名しない。VC++ Redistributable x64とWebView2 Runtimeは外部prerequisiteで、B2 native preflightを維持し、自動download/installしない。VC++不足はRust entry前に起動失敗し得るため、アプリ内preflightを保証しない。旧installer検証物は保存したまま新flowから隔離する。このrunnerはアプリ/installer/VM起動、Runtime導入、staging/commit/tag/push/公開を行わない。
 
 ## Package entryとsource trust
 
@@ -184,7 +201,7 @@ data/config/DB/WAL/SHM、PDB/ILK/log、source/.git/node_modules/target/tmp/tests
 
 ### READMEとLICENSE
 
-README.mdから概要、主な機能、動作環境と起動、GVDB手動import、保存場所、backup/restore、folder移動、更新、削除、旧版/Custom、謝辞、Licenseの各節を全文抽出する。開発と検証、Windows build、仕様書一覧は除外する。必須sectionの一意性、Windows x64、official WebView2 URL、各運用説明を確認し、不足や未対応Markdown/未解決linkはfailureとする。現在のREADMEはx64明記不足のため正式変換を通過しない。利用者向け原文の改訂はC1Cで行う。
+README.mdから概要、主な機能、動作環境と起動、GVDB手動import、保存場所、backup/restore、folder移動、更新、削除、旧版/Custom、謝辞、Licenseの各節を全文抽出する。開発と検証、Windows build、仕様書一覧は除外する。必須sectionの一意性、Windows x64、VC++ Redistributable x64とofficial導入URL、official WebView2 URL、各運用説明を確認し、不足や未対応Markdown/未解決linkはfailureとする。Runtimeの前提条件と未導入時の案内は利用者向けREADMEに保持する。
 
 HTTP URLはhttpsのみを扱い、labelとURLを保持する。LICENSEはLICENSE.txt、third-party方針はTHIRD-PARTY-NOTICES.txtへ明示mappingする。その他の補助docs参照はlabelと元のrelative targetを残し、「開発資料、ZIPには含みません」と説明する。C1Aの補助relative link処理案を、C1B-2指示のlink先保持に合わせた。配布に必須の安全説明を非同梱docsへ依存させる改訂は行わない。
 

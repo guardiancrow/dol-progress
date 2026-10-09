@@ -26,7 +26,7 @@ DBの具体的な列定義は `database-design.md`、GVDB公開データの取�
 
 ### 3.1 初期ターゲット
 
-- Windowsデスクトップ
+- Windows 10／11 x64デスクトップ
 - 単一ユーザー
 - ローカル利用
 
@@ -36,9 +36,17 @@ DBの具体的な列定義は `database-design.md`、GVDB公開データの取�
 - SQLiteデータベースはユーザーPC上に保存する。
 - GVDBマスターの更新は、ユーザーが手動で取得したファイルを明示的にインポートする。
 
-### 3.3 WebView2 Runtimeと起動前検査
+### 3.3 外部Runtimeと起動前検査
 
-Windowsでの実行にはMicrosoft Edge WebView2 Runtimeが必要である。起動時に既存Tauriの
+native codeの実行にはMicrosoft Visual C++ Redistributable x64が必要である。MSVC toolsetと
+互換性があり、buildに使用したtoolsetと同じか新しい公式最新版を利用者へ案内する。
+CRT/VCRuntimeは動的リンクとし、SQLite bundledとWebView2 Loader static libraryは維持する。
+VC++ Runtimeが不足するとRust entryより前にWindows loaderが起動を停止し得るため、
+アプリ内の案内表示を保証しない。READMEと公開説明で公式導入先を示す。
+VC++／WebView2 Runtimeは配布ZIPへ同梱せず、自動導入や独自bootstrapperも追加しない。
+portable data/configと固定5ファイルの配布仕様は変更しない。
+
+画面表示にはMicrosoft Edge WebView2 Runtimeが必要である。Rust entryへ到達した後、既存Tauriの
 `tauri::webview_version()`で利用可能versionを取得し、成功した場合だけportable filesystem
 preflight、Tauri Builder、WebView生成、setup/DB初期化へ進む。Loaderが正常に返すchannel付き
 versionも許可し、アプリ独自のchannel拒否やminimum version判定は行わない。
