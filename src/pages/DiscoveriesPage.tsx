@@ -243,6 +243,8 @@ export function DiscoveriesPage({
         return {
           id: discovery.id,
           name: discovery.name,
+          description: discovery.description,
+          notes: discovery.notes,
           category,
           rank: discovery.rank,
           era: discovery.era,

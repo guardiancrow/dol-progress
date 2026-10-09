@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-table";
 
 import type { DiscoveryRowViewModel } from "../../discoveries/types";
+import { MasterInfoButton, MasterInfoProvider } from "../MasterInfoPopover";
 
 const featureSet = tableFeatures({
   columnFilteringFeature,
@@ -94,7 +95,12 @@ export function DiscoveryTable({
           header: "発見物名",
           filterFn: (row, id, value) => row.getValue<string>(id).includes(String(value).trim()),
           sortFn: (a, b, id) => collator.compare(a.getValue(id), b.getValue(id)),
-          cell: ({ getValue }) => <span className="quest-title">{getValue<string>()}</span>,
+          cell: ({ row, getValue }) => (
+            <span className="master-info-name">
+              <span className="quest-title">{getValue<string>()}</span>
+              <MasterInfoButton rowId={row.original.id} />
+            </span>
+          ),
         }),
         columnHelper.accessor((row) => row.category?.name ?? null, {
           id: "category",
@@ -219,6 +225,13 @@ export function DiscoveryTable({
   }
 
   return (
+    <MasterInfoProvider
+      items={table.getRowModel().rows.map(({ original }) => ({
+        id: original.id, title: original.name, description: original.description, notes: original.notes,
+      }))}
+      resetKey={JSON.stringify([paginationResetKey, columnFilters, sorting, pagination])}
+      hint="説明・備考を表示"
+    >
     <div className="workspace-table">
       <div className="quest-filters discovery-filters">
         <label>発見物名を検索<input type="search" value={String(table.getColumn("name")?.getFilterValue() ?? "")} onChange={(event) => setFilter("name", event.target.value || undefined)} /></label>
@@ -232,6 +245,7 @@ export function DiscoveryTable({
       )}
       <div className="pagination" aria-label="発見物一覧ページ操作"><button type="button" className="button secondary" disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()}>前ページ</button><span>{pageCount === 0 ? 0 : table.state.pagination.pageIndex + 1} / {pageCount}ページ</span><button type="button" className="button secondary" disabled={!table.getCanNextPage()} onClick={() => table.nextPage()}>次ページ</button><label>1ページの件数<select value={table.state.pagination.pageSize} onChange={(event) => table.setPageSize(Number(event.target.value))}><option value={50}>50件</option><option value={100}>100件</option></select></label></div>
     </div>
+    </MasterInfoProvider>
   );
 }
 

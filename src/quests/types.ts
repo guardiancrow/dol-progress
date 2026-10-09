@@ -16,6 +16,7 @@ export interface QuestProgressRepositoryPort {
 export interface QuestRowViewModel {
   id: number;
   title: string;
+  notes: string | null;
   difficulty: number | null;
   offerMethod: string | null;
   offerCity: string | null;

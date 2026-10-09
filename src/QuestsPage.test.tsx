@@ -30,6 +30,24 @@ afterEach(() => {
 });
 
 describe("Quest UI", () => {
+  it("passes master notes to the popup without changing completion, and closes on profile or page changes", async () => {
+    const repositories = createRepositories([profile(1, "A"), profile(2, "B")], [
+      quest(1, "合成依頼", { notes: "GVDB由来の合成備考\n二行目" }),
+    ]);
+    const user = await openQuests(repositories);
+    await user.click(screen.getByRole("button", { name: "合成依頼の備考を表示" }));
+    expect(screen.getByRole("dialog", { name: "合成依頼" })).toHaveTextContent("GVDB由来の合成備考");
+    expect(repositories.progress.markCompleted).not.toHaveBeenCalled();
+    expect(repositories.progress.markIncomplete).not.toHaveBeenCalled();
+    expect(repositories.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    await screen.findByRole("table");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "合成依頼の備考を表示" }));
+    await user.click(screen.getByRole("button", { name: "プロフィール" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it("asks for a profile when selectedProfileId is null", async () => {
     const repositories = createRepositories([], [quest(1, "テスト依頼A")]);
     await openQuests(repositories);
@@ -990,7 +1008,7 @@ describe("Quest UI", () => {
     const first = quest(1, "天文Quest", { discoveries: [linkedDiscovery(10, "天文A", 1, "天文", 1)] });
     const second = quest(2, "地理Quest", { discoveries: [linkedDiscovery(11, "地理A", 2, "地理", 2)] });
     const toRow = (item: QuestWithDiscoveries): QuestRowViewModel => ({
-      id: item.quest.id, title: item.quest.title, difficulty: null, offerMethod: null,
+      id: item.quest.id, title: item.quest.title, notes: item.quest.notes, difficulty: null, offerMethod: null,
       offerCity: null, offerCities: [], requiredSkills: null, requiredSkillNames: [],
       requiredSkillsNormalized: [], discoveries: item.discoveries, completed: false,
       updating: false, prerequisiteStatus: "NONE", directPrerequisites: [],
@@ -1200,6 +1218,7 @@ function offerTableRow(id: number, offerMethod: string | null): QuestRowViewMode
   return {
     id,
     title: `Quest ${id}`,
+    notes: null,
     difficulty: null,
     offerMethod,
     offerCity: null,
@@ -1219,6 +1238,7 @@ function quest(
   id: number,
   title: string,
   overrides: {
+    notes?: string | null;
     difficulty?: number | null;
     offerMethod?: string | null;
     offerCity?: string | null;
@@ -1245,7 +1265,7 @@ function quest(
       requiredSkills,
       discoveryTypeText: null,
       rewardItems: null,
-      notes: null,
+      notes: overrides.notes ?? null,
       chainName: null,
       chainOrder: null,
       sourceUpdatedAt: null,

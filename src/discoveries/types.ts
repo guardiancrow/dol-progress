@@ -28,6 +28,8 @@ export type DiscoveryStatus = "undiscovered" | "unreported" | "reported";
 export interface DiscoveryRowViewModel {
   id: number;
   name: string;
+  description: string | null;
+  notes: string | null;
   category: { id: number; name: string; sortOrder: number } | null;
   rank: number | null;
   era: string | null;

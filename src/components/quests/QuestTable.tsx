@@ -16,6 +16,7 @@ import {
 } from "@tanstack/react-table";
 
 import type { QuestRowViewModel } from "../../quests/types";
+import { MasterInfoButton, MasterInfoProvider } from "../MasterInfoPopover";
 import { getRequiredSkillRank } from "../../quests/requiredSkillRank";
 import {
   buildOfferMethodOptions,
@@ -128,8 +129,11 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion }: Que
               rowA.getValue<string>(columnId),
               rowB.getValue<string>(columnId),
             ),
-          cell: ({ getValue }) => (
-            <span className="quest-title">{getValue<string>()}</span>
+          cell: ({ row, getValue }) => (
+            <span className="master-info-name">
+              <span className="quest-title">{getValue<string>()}</span>
+              <MasterInfoButton rowId={row.original.id} />
+            </span>
           ),
         }),
         columnHelper.accessor(
@@ -333,6 +337,13 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion }: Que
   }
 
   return (
+    <MasterInfoProvider
+      items={table.getRowModel().rows.map(({ original }) => ({
+        id: original.id, title: original.title, notes: original.notes,
+      }))}
+      resetKey={JSON.stringify([paginationResetKey, columnFilters, sorting, pagination])}
+      hint="備考を表示"
+    >
     <div className="workspace-table">
       <div className="quest-filters">
         <label>
@@ -580,6 +591,7 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion }: Que
         </label>
       </div>
     </div>
+    </MasterInfoProvider>
   );
 }
 

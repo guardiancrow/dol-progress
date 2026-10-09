@@ -169,6 +169,7 @@ export function QuestsPage({
     return quests.map(({ quest, discoveries, offerCities, requiredSkillsNormalized }) => ({
         id: quest.id,
         title: quest.title,
+        notes: quest.notes,
         difficulty: quest.difficulty,
         offerMethod: quest.offerMethod,
         offerCity: quest.offerCity,

@@ -26,6 +26,31 @@ afterEach(() => {
 });
 
 describe("Discovery UI", () => {
+  it("passes master description and notes separately and excludes profile memo without changing progress", async () => {
+    const repositories = setup([profile(1, "A"), profile(2, "B")], [
+      discovery(1, "合成発見物", { description: "合成の説明", notes: "合成の攻略備考" }),
+    ], new Map([[1, [progress(1, 1, false, true, "ユーザーの個人メモ")]]]));
+    const user = await open(repositories);
+    await user.click(screen.getByRole("button", { name: "合成発見物の説明・備考を表示" }));
+    const popup = screen.getByRole("dialog", { name: "合成発見物" });
+    expect(within(popup).getByRole("heading", { name: "説明" })).toBeInTheDocument();
+    expect(within(popup).getByRole("heading", { name: "備考" })).toBeInTheDocument();
+    expect(popup).toHaveTextContent("合成の説明");
+    expect(popup).toHaveTextContent("合成の攻略備考");
+    expect(popup).not.toHaveTextContent("ユーザーの個人メモ");
+    expect(repositories.progress.markDiscovered).not.toHaveBeenCalled();
+    expect(repositories.progress.markUndiscovered).not.toHaveBeenCalled();
+    expect(repositories.progress.setReported).not.toHaveBeenCalled();
+    expect(repositories.progress.setCardOwned).not.toHaveBeenCalled();
+    expect(repositories.link.discoverWithLinkedQuest).not.toHaveBeenCalled();
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    await screen.findByRole("table");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "合成発見物の説明・備考を表示" }));
+    await user.click(screen.getByRole("button", { name: "プロフィール" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it("opens every Overview category by ID, supports keyboard activation, and preserves the selected profile", async () => {
     const categories = [
       { id: 1, name: "史跡", sortOrder: 1 },
@@ -639,9 +664,9 @@ function progress(profileId: number, discoveryId: number, reported = false, card
 
 function masterThree() { return [discovery(1, "未発見物"), discovery(2, "未報告物"), discovery(3, "報告済み物")]; }
 
-function discovery(id: number, name: string, overrides: { category?: { id: number; name: string; sortOrder: number } | null; rank?: number | null; era?: string | null; points?: number | null; difficulty?: number | null; experience?: number | null; relatedQuests?: Array<{ id: number; title: string }> } = {}): DiscoveryWithRelations {
+function discovery(id: number, name: string, overrides: { description?: string | null; notes?: string | null; category?: { id: number; name: string; sortOrder: number } | null; rank?: number | null; era?: string | null; points?: number | null; difficulty?: number | null; experience?: number | null; relatedQuests?: Array<{ id: number; title: string }> } = {}): DiscoveryWithRelations {
   return {
-    discovery: { id, gvdbId: id + 1000, categoryId: overrides.category === null ? null : (overrides.category?.id ?? 1), name, rank: overrides.rank ?? null, description: null, era: overrides.era ?? null, points: overrides.points ?? null, difficulty: overrides.difficulty ?? null, experience: overrides.experience ?? null, notes: null, sourceUpdatedAt: null, isActive: true, rawRowJson: "{}", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+    discovery: { id, gvdbId: id + 1000, categoryId: overrides.category === null ? null : (overrides.category?.id ?? 1), name, rank: overrides.rank ?? null, description: overrides.description ?? null, era: overrides.era ?? null, points: overrides.points ?? null, difficulty: overrides.difficulty ?? null, experience: overrides.experience ?? null, notes: overrides.notes ?? null, sourceUpdatedAt: null, isActive: true, rawRowJson: "{}", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
     category: overrides.category === null ? null : (overrides.category ?? { id: 1, name: "地理", sortOrder: 10 }),
     relatedQuests: overrides.relatedQuests ?? [],
   };
