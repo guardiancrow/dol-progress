@@ -1,5 +1,6 @@
 mod active_database;
 mod backup_restore;
+pub mod consent;
 mod data_root;
 mod database_commands;
 mod discovery_capabilities;
