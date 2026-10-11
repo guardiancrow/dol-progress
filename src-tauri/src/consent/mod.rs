@@ -2,6 +2,7 @@
 //!
 //! 保存APIの呼出し元が明示同意を確認する。記録の整合性は本人性を証明しない。
 
+pub mod native_ui;
 mod record;
 mod storage;
 mod terms;
