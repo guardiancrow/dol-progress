@@ -20,12 +20,17 @@ npm run tauri -- build --no-bundle -- --locked --offline
 EXEを更新し、既存のdata/configを保持する。Custom Data Rootの外部DBは別途扱う。
 保存場所とコピー・移動の条件は[Data Root](data-root.md)と[README](../README.md)を正とする。
 
-## 現在のWindows CRT構成
+## 現在のWindows CRT構成（Phase Local-4B）
 
-`src-tauri/build.rs`の`STATIC_VCRUNTIME=false`上書きを削除し、lock済みTauri CLI
-2.11.4／tauri-build 2.6.3の既定動作へ戻す。Tauriの既存helperがlibcmt／libvcruntimeを
-選択し、CRT/VCRuntimeを静的リンクする。UCRTはOS提供DLLへの依存を維持する。
-Microsoft Visual C++ Redistributable x64をアプリ独自の追加前提条件として要求しない。
+Windows/MSVC向けの正式なローカル開発構成として動的CRT方式を採用する。
+`src-tauri/build.rs`はCargo target OS=windows／env=msvcの場合だけ、
+`tauri_build::build()`より前に`STATIC_VCRUNTIME=false`を設定する。lock済みTauri CLI
+2.11.4／tauri-build 2.6.3の静的CRT強制helperを解除し、UCRTのOS提供DLL依存は維持する。
+Microsoft Visual C++ Redistributable x64（v14系）とWebView2 Runtimeは外部要件である。
+Redistributableはビルド時のMSVC Build Toolsと同じか新しい互換版を使用し、固定の旧版を
+最低要件としない。[Microsoft公式の対応条件・導入案内](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)。
+両Runtimeをアプリ側から自動取得・導入しない。VC++ DLL不足ではRust entry前に起動失敗し、
+アプリ内案内が表示できない場合がある。Rust entry後の既存WebView2検出・日本語案内は維持する。
 新たなRUSTFLAGS、crt-static、NODEFAULTLIB、警告抑制は追加しない。
 
 SQLite bundledとWebView2 Loader static libraryは維持する。SQLiteが静的ライブラリで
@@ -34,13 +39,27 @@ SQLite bundledとWebView2 Loader static libraryは維持する。SQLiteが静的
 SQLite／SQLx境界のメモリー管理を確認し、設定の混在だけで安全・危険を断定しない。
 WebView2 RuntimeとOption A（LocalAppData UDF）は従来どおり維持する。
 
+Local-4Aでは独立targetでRelease EXEを生成し、VCRUNTIME140.dll／VCRUNTIME140_1.dllの
+imports、SQLiteの実`/MD`と`static=sqlite3`、Tauri静的強制の解消、Loader static維持を確認した。
+SQLite／Loader DLLへの依存はなく、CRT競合警告も検出しなかった。既存静的版EXE/PDBは保持した。
+[Local-4A検証記録](../tmp/phase-local-4a/report.md)はローカルのignored成果物で、Git管理対象ではない。
+Local-4Aのユーザー実機確認はWindows 10／11ともPASS。config・data初期生成、CSVマスターの
+新規取り込み、クエスト・発見物のチェック変更、プロファイル作成・データ取り込みもPASSと
+報告された。結果を同記録へ追記した。Local-4BではアプリコードとCRT設定を維持しているため、
+この機能確認を採用判断の証拠として引き継ぐ。新EXEのhashと技術検証は
+[Local-4B記録](../tmp/phase-local-4b/report.md)に区別して残す。
+
 ## 停止中の旧公開工程
 
 この手順はPhase 23D-C1B-1の**portable release compile validation**と、C1B-2の固定ZIP生成・独立検証を扱う。Windows x64の単一application EXEを専用runnerでcompileし、package工程はその検証済みrunを入力にする。versionは0.3.0。正式release candidate、一般公開の手順ではない。
 
 第三者通知と包含条件、MPL/Unicode、WebView2 Loader SDK由来、toolchain生成物の条件は未解決。ZIP/hash/verifierのlogicは合成fixtureで検証するが、正式通知入力がない現在は正式packageを拒否する。READMEにはWindows x64と外部Runtimeの前提条件を記載し、generatorは不足説明を捏造しない。通知原本・review evidence、最終versionとminimal acceptanceの完成は後続Phaseに残る。compile成功によってlicense clearanceや公開可否が変わることはない。
 
-### 旧Phase D3BのWindows CRT動的リンク（適用停止）
+### 旧Phase D3BのWindows CRT動的リンク（履歴）
+
+以下は当時の検証手順・判断の記録である。Local-1でいったん適用停止して静的CRTへ戻したが、
+Local-4Aで同じ切替方法を再検証し、Local-4Bでローカル開発構成として採用した。
+当時の公開用runner／packageの条件はそのまま保持し、今回のローカル採用でgateを変更しない。
 
 lock済みTauri CLI 2.11.4／tauri-build 2.6.3では、最新資料の
 `build.windows.staticVCRuntime`はschema未対応である。`src-tauri/build.rs`はCargoの

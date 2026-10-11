@@ -72,16 +72,31 @@ componentのreview evidenceへ含め、記録hash・署名対象hash・実bytes�
 
 MPLの対応sourceはアプリZIPとは別のversion対応補助archiveを匿名HTTPSで提供する方針だが、
 公開先・実URL・維持責任が未確定である。検証済source候補を公開済み、提供完了と扱わない。
-旧Unicode10 data条件、Microsoftの実static objectに対応する契約と再配布条件、host生成物・
-Rust個別条件・Loader SDK NOTICE・最終frontend/helperの包含scope、実reviewは残る。
+旧Unicode10 data条件の資料は履歴として保持し、Local-3A／3Bで除去確認した旧UNIC経路を
+現行の残件へ戻さない。現行Unicode関連条件、Microsoftの実static objectに対応する契約と
+再配布条件、host生成物・Rust個別条件・Loader SDK NOTICE・最終frontend/helperの包含scope、
+実reviewは残る。
 Microsoft製品のinstallやsystem DLL importを再配布資格・static寄与の不存在の証明にしない。
 
-Phase Local-1ではCRT/VCRuntimeをlock済みTauriの既定の静的リンクへ戻し、VC++
-Redistributable x64をアプリ独自の追加前提条件として要求しない。SQLite bundledと
-WebView2 Loader static libraryは維持し、WebView2 Runtimeは外部前提条件のままとする。
-WindowsのUCRT等のOS提供DLLへの依存は残る。SQLiteの`/MD`と最終CRT選択は区別し、
-新EXEのimportsとlink診断を確認する。CRT構成の切替はUnicode10、MPL source実提供、
-本人reviewを解決せず、第三者license全体のclearanceを意味しない。
+Phase Local-1では静的CRTへ戻したが、Local-4Aの独立ビルドを経てLocal-4BではWindows/MSVC
+向けの動的CRT方式を正式なローカル開発構成として採用する。`build.rs`のtarget条件付き
+`STATIC_VCRUNTIME=false`でTauriの静的CRT強制を解除する。VC++ Redistributable x64（v14系）と
+WebView2 Runtimeは外部要件で、Runtime DLL／installerは同梱・自動導入しない。
+SQLite bundledとWebView2 Loader static library、OS提供UCRT依存は維持する。
+
+Local-3B〜3DのM03は、静的版で特定したlibcmt.lib／libvcruntime.lib由来objectの
+再頒布許諾との対応を対象としていた。現行の動的版ではその強制選択方式がなくなるため、
+「Tauriがこの二つを強制して静的CRT本体を組み込む構成」を前提とした論点は非適用となる。
+ただしDLL importsとhelper解除だけで、最終EXE内のMSVC由来static codeがすべてなくなったとは
+認定しない。Local-4Bの一致するEXE/PDBでは旧二libraryのDBI module記録がなく、
+msvcrt.lib／vcruntime.libが記録される。msvcrt.lib由来のstartup等にはcode寄与も残る。
+残存寄与の全範囲と権利対応は未確認として残し、
+M03全体を許諾VERIFIEDへ変更しない。[Local-4BのM03再評価](../tmp/phase-local-4b/m03-decision.md)に
+対象EXE・技術根拠・状態と限界を記録する。旧Local-3B〜3Dの判断・証拠は履歴として保持する。
+
+M02／M04／O02の既存評価は再開しない。M05の配布条件、M07／M08のLoader表示・scope、
+O01の通知版対応等の公開関連事項も解決済みにしない。CRTの切替は残るUnicode関連条件、
+包含時のMPL source実提供、本人reviewを解決せず、第三者license全体のclearanceを意味しない。
 
 Microsoft関連では、Visual Studio Community/Build Toolsの利用条件、MSVC/Windows SDK由来codeの
 再配布条件、WebView2 SDK固有LICENSE/NOTICEを分ける。現端末のBuild Tools 2022、別端末の

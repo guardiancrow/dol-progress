@@ -20,13 +20,19 @@
 
 ## 動作環境と起動方法
 
-利用対象はWindows 10／11 x64です。CRT/VCRuntimeは静的リンクとし、Microsoft Visual C++ Redistributable x64をアプリ独自の追加前提条件として要求しない構成へ戻しています。SQLite bundledとWebView2 Loaderの既存構成を維持し、Microsoft Edge WebView2 Runtimeは引き続きWindows側に必要です。Windows標準のUCRT等のOS提供DLLへの依存は残ります。
+利用対象はWindows 10／11 x64です。Windows/MSVC向けのローカル開発構成として動的CRT方式を正式採用し、Microsoft Visual C++ Redistributable x64（v14系）とMicrosoft Edge WebView2 Runtimeを外部要件とします。SQLite bundledとWebView2 LoaderはEXE内に静的リンクされるため、個別インストールは不要です。Windows標準のUCRT等のOS提供DLLへの依存も残ります。アプリはVC++ RedistributableやWebView2 Runtimeを自動ダウンロード・インストールしません。
 
 1. ローカルビルドした`dol-progress-manager.exe`を、ユーザーが書き込めるアプリ用フォルダーへ置きます。
 2. `dol-progress-manager.exe`を起動します。初回起動時に必要なデータ・設定フォルダーが作成されます。
 3. 「保存場所」画面で現在のデータベースと設定フォルダーを確認します。
 
 Program Filesや読み取り専用フォルダー等で書き込めない場合は、アプリを終了し、フォルダー全体を書き込み可能な場所へ移動してください。管理者としての実行やACL変更は標準の解決手順にしません。データ保存先をAppDataへ自動で切り替えることもありません。
+
+### Visual C++ Redistributable x64
+
+[Microsoft公式のVisual C++ Redistributable案内](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)から、ビルド時のMSVCツールセットと互換のあるv14系x64を導入してください。Microsoftの対応条件は、Redistributableの版が使用したMSVC Build Toolsと同じか新しいことです。古い固定版を必要条件にせず、対応する最新サポート版を使用します。
+
+VC++ Runtime DLLが不足していると、WindowsローダーがRustのentry pointへ到達する前に起動を失敗させる場合があります。その場合、アプリ内のpreflightや日本語案内は表示できません。以下のWebView2 Runtime検出・案内とは別の起動要件です。
 
 ### WebView2 Runtime
 

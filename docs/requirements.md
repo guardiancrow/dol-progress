@@ -44,9 +44,15 @@ GitHubのPrivateリポジトリは開発とバックアップのために継続�
 
 ### 3.3 外部Runtimeと起動前検査
 
-CRT/VCRuntimeはlock済みTauriの既定動作による静的リンクへ戻し、Microsoft Visual C++
-Redistributable x64をアプリ独自の追加前提条件として要求しない。Windows標準のUCRT等の
-OS提供DLLへの依存は許容する。SQLite bundledとWebView2 Loader static libraryは維持する。
+Windows/MSVCでは動的CRT方式を正式なローカル開発構成とする。`build.rs`でCargo target
+OS=windows／env=msvcの場合だけ、`tauri_build::build()`より前に`STATIC_VCRUNTIME=false`を
+設定し、Tauriの静的CRT強制を解除する。Microsoft Visual C++ Redistributable x64（v14系）を
+外部要件とし、ビルド時のMSVCツールセットと同じか新しい互換版を使用する。固定の旧版を
+最低条件として指定しない。アプリによるRedistributableの自動取得・導入は行わない。
+VC++ Runtime DLL不足ではRust entry前にWindowsローダーが起動を失敗させる場合があり、
+以下のアプリ内WebView2検出・日本語案内を保証できない。
+Windows標準のUCRT等のOS提供DLLへの依存は許容する。SQLite bundledとWebView2 Loader
+static libraryはEXE内への静的リンクを維持し、個別インストールを要求しない。
 SQLiteの静的ライブラリ化とCコンパイル時のCRT選択は別であり、最終EXEのimportsと
 リンク診断を確認する。全Rustターゲットへの追加RUSTFLAGSやcrt-static設定は導入しない。
 WebView2 Runtimeは外部前提条件とし、自動導入や独自bootstrapperを追加しない。
