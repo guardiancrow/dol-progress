@@ -22,6 +22,13 @@ pub struct UiAcceptance {
 }
 
 impl UiAcceptance {
+    #[cfg(test)]
+    pub(crate) fn for_test(terms: &CanonicalTerms) -> Self {
+        Self {
+            terms_version: terms.version().get(),
+            terms_sha256: terms.sha256().into(),
+        }
+    }
     pub fn terms_version(&self) -> u32 {
         self.terms_version
     }

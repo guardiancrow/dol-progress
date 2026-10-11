@@ -34,9 +34,17 @@ impl ConsentStore {
     }
 
     pub fn read(&self, current: &CanonicalTerms) -> Result<RecordStatus, StorageError> {
+        self.snapshot(current).map(|(status, _)| status)
+    }
+
+    // gateがUI前後を比較するためのbytes。読取りと同じ排他・path検査を使う。
+    pub(super) fn snapshot(
+        &self,
+        current: &CanonicalTerms,
+    ) -> Result<(RecordStatus, Option<Vec<u8>>), StorageError> {
         let mut directories = pin_root(&self.portable_root)?;
         if !pin_config(&self.config_root, &mut directories, false)? {
-            return Ok(RecordStatus::Missing);
+            return Ok((RecordStatus::Missing, None));
         }
         let read_lock = acquire_read_lock_if_present(&self.config_root.join(LOCK_NAME))?;
         let snapshot = self.read_pinned(current);
@@ -44,10 +52,10 @@ impl ConsentStore {
             // 最初のwriterがlockを新設した場合も、無排他snapshotをそのまま返さない。
             let later_lock = acquire_read_lock_if_present(&self.config_root.join(LOCK_NAME))?;
             if later_lock.is_some() {
-                return self.read_pinned(current).map(|(status, _)| status);
+                return self.read_pinned(current);
             }
         }
-        snapshot.map(|(status, _)| status)
+        snapshot
     }
 
     /// 明示同意を確認した呼出し元だけが使用する。UI・起動許可は生成しない。
@@ -78,6 +86,16 @@ impl ConsentStore {
     pub(super) fn save_with(
         &self,
         current: &CanonicalTerms,
+        before: impl FnMut(SaveStage) -> io::Result<()>,
+    ) -> Result<ConsentLease, StorageError> {
+        self.save_checked(current, None, before)
+    }
+
+    // 既存save APIの意味論は維持し、gateだけがUI前snapshotを指定する。
+    pub(super) fn save_checked(
+        &self,
+        current: &CanonicalTerms,
+        expected: Option<&Option<Vec<u8>>>,
         mut before: impl FnMut(SaveStage) -> io::Result<()>,
     ) -> Result<ConsentLease, StorageError> {
         // 破損・未対応記録は、lock/config作成より前にも拒否する。
@@ -93,6 +111,13 @@ impl ConsentStore {
                 was_written: false,
                 _lock: lock,
             });
+        }
+
+        if expected.is_some_and(|expected| expected != &original) {
+            return Err(StorageError::new(
+                SaveStage::ReadRecord,
+                StorageErrorKind::RecordChanged,
+            ));
         }
 
         let record = ConsentRecord::accepted(current);

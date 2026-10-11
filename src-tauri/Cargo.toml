@@ -32,10 +32,15 @@ windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Storage
 [features]
 # 明示指定した隔離exampleだけに使用し、通常起動には接続しない。
 consent-ui-harness = []
+consent-gate-harness = []
 
 [[example]]
 name = "consent_native"
 required-features = ["consent-ui-harness"]
+
+[[example]]
+name = "consent_gate"
+required-features = ["consent-gate-harness"]
 
 [dev-dependencies]
 encoding_rs = "0.8"
