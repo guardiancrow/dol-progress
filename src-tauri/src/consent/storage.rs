@@ -33,6 +33,11 @@ impl ConsentStore {
         self.config_root.join(RECORD_NAME)
     }
 
+    // gateの許可を検証済みrootへ結び付ける。path取得だけで書込みはしない。
+    pub(super) fn portable_root(&self) -> &Path {
+        &self.portable_root
+    }
+
     pub fn read(&self, current: &CanonicalTerms) -> Result<RecordStatus, StorageError> {
         self.snapshot(current).map(|(status, _)| status)
     }
