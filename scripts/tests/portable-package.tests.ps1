@@ -96,6 +96,56 @@ function Reject-Archive([string]$Path) {
     Reject { Test-PortableArchive $Path '' $verify $hashes '0.3.0' $payload $prefixes }
 }
 
+# Run the production Output statements with synthetic files, without invoking package gates.
+$outputTokens=$null; $outputErrors=$null
+$packageAst=[Management.Automation.Language.Parser]::ParseFile((Join-Path $repo 'scripts/build-portable-package.ps1'),[ref]$outputTokens,[ref]$outputErrors)
+if ($outputErrors.Count -ne 0) { throw 'Package script parse failed.' }
+$copyLoops=@($packageAst.FindAll({param($node) $node -is [Management.Automation.Language.ForEachStatementAst] -and $node.Body.Extent.Text.Contains('[IO.File]::Copy($from,$to,$false)')},$true))
+if ($copyLoops.Count -ne 1) { throw 'Expected one production Output loop.' }
+$outputLoop=$copyLoops[0]
+$afterOutput=@($outputLoop.Parent.Statements | Where-Object { $_.Extent.StartOffset -gt $outputLoop.Extent.EndOffset -and $_.Extent.Text -match '^\$exitCode\s*=\s*0$' })
+if ($afterOutput.Count -ne 1) { throw 'Output success assignment missing.' }
+$outputBlock=[scriptblock]::Create($outputLoop.Extent.Text+"`n"+$afterOutput[0].Extent.Text)
+$outputNames=[scriptblock]::Create($outputLoop.Condition.Extent.Text)
+$successBranches=@($packageAst.FindAll({param($node) $node -is [Management.Automation.Language.IfStatementAst] -and $node.Clauses[0].Item1.Extent.Text.Trim() -ceq '$exitCode -eq 0'},$true))
+if ($successBranches.Count -ne 1) { throw 'Package result success guard missing.' }
+$resultSuccess=[scriptblock]::Create($successBranches[0].Extent.Text)
+function New-OutputFixture {
+    $root=New-TestPath '.output-root'
+    New-Item -ItemType Directory -Path (Join-Path $root 'verify'),(Join-Path $root 'output') | Out-Null
+    $base='DOL-Progress-Manager_0.3.0_windows-x64_portable.zip'
+    Write-PortableBytes $root (Join-Path $root ('verify/'+$base)) $zipBytes
+    Write-ReleaseNewText (Join-Path $root ('verify/'+$base+'.sha256')) ((Get-ReleaseSHA256 $zipBytes)+'  '+$base+"`n")
+    return [pscustomobject]@{Path=$root;Verify=(Join-Path $root 'verify');Output=(Join-Path $root 'output')}
+}
+
+Case 'Production Output copies exactly ZIP and external hash' {
+    $run=New-OutputFixture; $basename='DOL-Progress-Manager_0.3.0_windows-x64_portable.zip'
+    $names=@(& $outputNames)
+    Expect ($names.Count -eq 2 -and @($names | Select-Object -Unique).Count -eq 2)
+    Expect ($names[0] -ceq $basename -and $names[1] -ceq ($basename+'.sha256'))
+    $exitCode=1; . $outputBlock
+    Expect ($exitCode -eq 0 -and @(Get-ChildItem -LiteralPath $run.Output).Count -eq 2)
+    foreach ($name in $names) { Expect ((Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $run.Output $name))) -ceq (Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $run.Verify $name)))) }
+    $result=[ordered]@{classification='FAILED'}; $verified=@{sha256=(Get-ReleaseSHA256 $zipBytes)}
+    . $resultSuccess
+    Expect ($result.classification -ceq 'PACKAGE_VERIFIED')
+}
+foreach ($collision in @('ZIP','external hash')) {
+    Case ('Production Output preserves existing '+$collision+' and failed classification') {
+        $run=New-OutputFixture; $basename='DOL-Progress-Manager_0.3.0_windows-x64_portable.zip'
+        $existingName=if ($collision -ceq 'ZIP') { $basename } else { $basename+'.sha256' }
+        $existing=Join-Path $run.Output $existingName
+        Write-ReleaseNewText $existing 'TEST_ONLY existing output must stay unchanged'
+        $before=Get-ReleaseSHA256 (Read-PortableBytes $existing)
+        $exitCode=1; $rejected=$false
+        try { . $outputBlock } catch { $rejected=$true }
+        $result=[ordered]@{classification='FAILED'}; . $resultSuccess
+        Expect ($rejected -and $exitCode -eq 1 -and $result.classification -ceq 'FAILED')
+        Expect ((Get-ReleaseSHA256 (Read-PortableBytes $existing)) -ceq $before)
+    }
+}
+
 Case 'CRC32 known vector' { Expect ([PortableZipVerifier]::Crc([Text.Encoding]::ASCII.GetBytes('123456789')) -eq 3421780262) }
 Case 'PE x64 GUI version resource' { [PortableZipVerifier]::Pe($payload['dol-progress-manager.exe'],'0.3.0') }
 Case 'Fixed five members independent verifier positive' {
@@ -118,6 +168,9 @@ Case 'README BOM CRLF complete section and external URL retention' {
     Expect ($text.Contains('大航海時代データベースからのマスターデータ取得と取り込み') -and $text -cnotmatch 'GVDB')
     Expect ($text.Contains('Microsoft Visual C++ Redistributable x64') -and $text.Contains('https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist'))
     Expect ($text.Contains('LICENSE.txt') -and $text.Contains('THIRD-PARTY-NOTICES.txt') -and $text.Contains('data/configを削除・上書きしない'))
+    Expect (-not $text.Contains('ユーザーレビュー待ち') -and $text.Contains('通知の正式レビューは完了しています'))
+    Expect ($text.Contains('配布物内のTHIRD-PARTY-NOTICES.txtを参照してください') -and $text.Contains('一般公開の承認や正式license clearanceの完了を意味しません'))
+    Expect ($text.Contains('当面、実行ファイルもソースコードも一般公開しません'))
 }
 Case 'README missing Windows x64' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes([regex]::Replace($fixtureReadme,'Windows[ \t]+[^。\r\n]*x64','Windows'))) } }
 Case 'README missing VC Runtime guidance' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('Microsoft Visual C++ Redistributable','Microsoft native Runtime'))) } }

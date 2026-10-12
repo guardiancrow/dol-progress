@@ -191,7 +191,7 @@ application iconは本プロジェクト用に新規作成したvectorから生�
 
 本プロジェクト用に作成したsource code、documentation、synthetic tests／fixtures、独自iconのSVG sourceと生成assetには[MIT License](LICENSE)を適用します。
 
-第三者libraryと外部依存関係には各licenseが適用されます。大航海時代データベースのデータ・名称・service、『大航海時代 Online』、製品名・商標、ユーザーが外部からimportしたデータについて、第三者の権利を本プロジェクトのMIT Licenseで再licenseするものではありません。[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)に現行Windows x64 Releaseの第三者原文・表示を収録しています。配布時はEXEと同じ配布経路でこの通知を提供します。現在はユーザーレビュー待ちで、一般公開の承認や正式license clearanceの完了を意味しません。詳細は[third-party license方針](docs/third-party-licenses.md)を参照してください。
+第三者libraryと外部依存関係には各licenseが適用されます。大航海時代データベースのデータ・名称・service、『大航海時代 Online』、製品名・商標、ユーザーが外部からimportしたデータについて、第三者の権利を本プロジェクトのMIT Licenseで再licenseするものではありません。[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)に現行Windows x64 Releaseの第三者原文・表示を収録しています。配布時はEXEと同じ配布経路でこの通知を提供します。配布物内のTHIRD-PARTY-NOTICES.txtを参照してください。通知の正式レビューは完了していますが、一般公開の承認や正式license clearanceの完了を意味しません。詳細は[third-party license方針](docs/third-party-licenses.md)を参照してください。
 
 ## 仕様書
 

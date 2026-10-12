@@ -51,7 +51,7 @@ try {
     Assert-ReleasePrivacy (Test-PrivacyArtifact $externalPath $prefixes 'external-manifest')
     Assert-PortableSourceUnchanged $root $source
     $gate='Output'
-    foreach ($name in @($basename,$basename+'.sha256')) {
+    foreach ($name in @($basename, ($basename + '.sha256'))) {
         $from=Join-Path $run.Verify $name; $to=Join-Path $run.Output $name
         Assert-ReleaseContained $run.Path $to; Assert-ReleaseNoReparse $to
         [IO.File]::Copy($from,$to,$false)
