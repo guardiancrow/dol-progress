@@ -20,6 +20,12 @@ npm run tauri -- build --no-bundle -- --locked --offline
 EXEを更新し、既存のdata/configを保持する。Custom Data Rootの外部DBは別途扱う。
 保存場所とコピー・移動の条件は[Data Root](data-root.md)と[README](../README.md)を正とする。
 
+### Debug直接実行と検証用Release
+
+`cargo build`で作成した通常Debug EXEは、Tauriのcustom-protocol featureを指定しない場合、devUrlの`http://localhost:1420`を読み込む。Vite開発サーバーが起動していなければ、Native同意後の画面が「ページに到達できない」状態になる。これはその開発用ビルドの前提であり、同意処理やUDFの異常とは区別する。Debug／Releaseの最適化区分だけではFrontend埋込みの有無を判断しない。
+
+単体で確認するReleaseは上記のTauri CLIでビルドする。beforeBuildCommandでViteのdistを生成し、製品用のcustom-protocol経路でfrontendDistをEXEへ埋め込む。既存Releaseを保持する検証ではCARGO_TARGET_DIRを新規の専用target（例：tmp/first-run-consent/release-review-target）へ指定し、実行後に環境変数を元へ戻す。通常アプリのUDFはEXEコピーだけでは隔離されないため、検証前に普段のアプリを終了する。
+
 ## 現在のWindows CRT構成（Phase Local-4B）
 
 Windows/MSVC向けの正式なローカル開発構成として動的CRT方式を採用する。
@@ -48,6 +54,17 @@ Local-4Aのユーザー実機確認はWindows 10／11ともPASS。config・data�
 報告された。結果を同記録へ追記した。Local-4BではアプリコードとCRT設定を維持しているため、
 この機能確認を採用判断の証拠として引き継ぐ。新EXEのhashと技術検証は
 [Local-4B記録](../tmp/phase-local-4b/report.md)に区別して残す。
+
+## 公開前の使用許諾本文確認TODO
+
+初回起動用の承認済み本文はtermsVersion 1で、「本アプリのソースコードはGitHubで公開する予定です。」と記載する。これは公開済みという説明ではなく、公開工程の再開承認も意味しない。
+
+- GitHubの実際の公開状態を確認する。
+- Publicへ変更する際は「公開する予定です」を必要に応じて更新する。
+- 表示本文を変更する場合はユーザー承認を得て、termsVersionとcanonical SHA-256を更新する。
+- 配布前に実際の公開先URL `https://github.com/guardiancrow/dol-progress` が有効か確認する。
+
+README／LICENSEの既存権利条件、正式通知、license clearance、package／privacy／release gateの停止状態は維持する。
 
 ## 停止中の旧公開工程
 
