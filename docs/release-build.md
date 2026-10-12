@@ -16,6 +16,49 @@ license clearance、ZIP／installer、GitHub Releaseの工程は停止中であ�
 SHA256SUMS.txt）は維持する。root通知の存在だけでは後述の正式gateを通さず、
 完成後に`release/notices/`へのmappingと実review・hash束縛が必要である。
 
+### Step 4：ローカル配布候補（PREVIEW PACKAGE）
+
+0.3.0の配布候補は既存の正式compile runnerで専用runへ生成する。
+`scripts/build-release.ps1 -ExpectedSourceHead <signed-clean-HEAD>`はTauri CLIの
+`build --no-bundle -- --locked --offline`を呼び、Frontend埋込み、既存のpath remap、
+EXE／log privacy、source不変性を検査する。動的CRT・依存・Tauri設定は変更しない。
+旧EXE／PDB／installerを上書きせず、成功したrunのoutput EXEだけを使用する。
+
+第三者通知の配布入力は[release/notices/source.json](../release/notices/source.json)に
+登録する。正本はrootのTHIRD-PARTY-NOTICES.txtで、byte複製や本文再生成を避け、
+version／source commit／原文SHA-256／Cargo・npm lock SHA-256を対応付ける。
+このsource参照登録は後述の正式manifest／inventory／reviewの代わりではない。
+formal_review_stateはPENDINGで、未承認のreviewをREVIEWEDへ変更しない。
+
+正式review入力がない現在は正式package entryがGate=Noticesで停止する。
+ローカルPREVIEWは既存のREADME変換、固定5member writer、独立CRC／hash／PE／privacy
+verifierを再利用して生成する。正式gateを通過した成果物とは扱わない。
+今回のローカル組立手順はignoredの`tmp/release-package/build-preview.ps1`に保存した。
+これは当該workspaceの確認用で、clone後の正式配布手順として自動的に提供されない。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tmp/release-package/build-preview.ps1 -CompileRunId <validated-compile-run-UUID>
+```
+
+出力は新しい`tmp/release-package/preview-<UUID>/`。既存命名規則に合わせて
+`DOL-Progress-Manager_0.3.0_windows-x64_portable.zip`と外部sha256を生成する。
+ZIPは下記固定5member構成を維持し、README.txtへPREVIEW／公開未承認の表示を付ける。
+LICENSEと通知は原本bytesを保持する。失敗runやresultがないZIPを候補として使わない。
+完了したrunの`preview-result.json`とhashを確認する。
+
+公開前には、配布候補の人手起動確認、Microsoft M03／M05-P01・P06・P09の別件判断、
+全Git履歴を公開する範囲の本人判断、正式review／署名済みclean source／package・privacy
+gate、GitHub Public変更・Release公開の承認が必要である。First-Run Consent、
+通知整備、Step 3の限定輸出管理監査を未実装という理由でやり直さない。
+公開URLと本文の「公開する予定です」の確認は既存の
+[公開前の使用許諾本文確認TODO](#公開前の使用許諾本文確認todo)を使い、項目を重複作成しない。
+
+最終起動確認は新しい書込み可能な配置へZIPを展開して行う。実DB／configをコピーせず、
+同意後の通常画面、終了・再起動、同梱文書だけを確認する。
+通常WebView2 UDFは同じWindowsユーザーで共有されるため、配置コピーで隔離されたとは
+扱わず、実UDFの削除・移動や同時起動をしない。詳しい当該候補の手順と結果は
+ignoredの`tmp/release-package/report.md`へ記録する。
+
 インストーラーを生成しないローカルReleaseビルドは、repository rootで次を実行する。
 lockfileを維持し、cache済みの依存関係を使用する。署名済みclean HEADを要求する
 `scripts/build-release.ps1`はこの手順には使用しない。

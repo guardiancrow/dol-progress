@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "purpose": "PACKAGE_NOTICE_SOURCE",
+  "version": "0.3.0",
+  "target": "x86_64-pc-windows-msvc",
+  "canonical_file": "THIRD-PARTY-NOTICES.txt",
+  "sha256": "37e763e27a6fd410324b3617d6e55ba0bb058d0086949dac776dc073c0c282a1",
+  "source_commit": "9fa2ba9b3e2da5abdcec9de3b27a218a4e228627",
+  "cargo_lock_sha256": "05c112cb5269dba19ac792bbbb33d200a29ede4074d219c384b0f5faff4095e8",
+  "npm_lock_sha256": "e54ce7518f50b7d2ec8252d0b715b415f0056f30436f7c9ce72f78e4a39c6466",
+  "formal_review_state": "PENDING",
+  "formal_package_gate": "NOT_COMPLETED"
+}

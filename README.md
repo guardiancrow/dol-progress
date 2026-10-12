@@ -22,8 +22,10 @@
 
 利用対象はWindows 10／11 x64です。Windows/MSVC向けのローカル開発構成として動的CRT方式を正式採用し、Microsoft Visual C++ Redistributable x64（v14系）とMicrosoft Edge WebView2 Runtimeを外部要件とします。SQLite bundledとWebView2 LoaderはEXE内に静的リンクされるため、個別インストールは不要です。Windows標準のUCRT等のOS提供DLLへの依存も残ります。アプリはVC++ RedistributableやWebView2 Runtimeを自動ダウンロード・インストールしません。
 
+配布候補ZIPを利用する場合は、書き込み可能な新しいフォルダーへZIP全体を展開し、展開後のEXEを実行してください。ZIP内から直接実行せず、README.txt、LICENSE.txt、THIRD-PARTY-NOTICES.txtをEXEと一緒に保持してください。外部RuntimeやインストーラーはZIPに含みません。
+
 1. ローカルビルドした`dol-progress-manager.exe`を、ユーザーが書き込めるアプリ用フォルダーへ置きます。
-2. `dol-progress-manager.exe`を起動します。初回起動時に必要なデータ・設定フォルダーが作成されます。
+2. `dol-progress-manager.exe`を起動します。初回は使用許諾を確認し、「同意する」を選択すると通常起動して必要なデータ・設定フォルダーが作成されます。拒否または画面を閉じた場合は起動しません。同意済みの同じ配置では次回から画面を省略します。
 3. 「保存場所」画面で現在のデータベースと設定フォルダーを確認します。
 
 Program Filesや読み取り専用フォルダー等で書き込めない場合は、アプリを終了し、フォルダー全体を書き込み可能な場所へ移動してください。管理者としての実行やACL変更は標準の解決手順にしません。データ保存先をAppDataへ自動で切り替えることもありません。

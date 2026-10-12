@@ -37,7 +37,7 @@ function Assert-PortableReadme([string]$Text) {
         if ([regex]::Matches($Text,'(?m)^## '+[regex]::Escape($title)+'\r?$').Count -ne 1) { throw 'README: missing or duplicate section.' }
     }
     foreach ($pattern in @('DOL Progress Manager','Windows[ \t]+[^。\r\n]*x64','dol-progress-manager\.exe','ZIP','展開','WebView2',
-        'Microsoft Visual C\+\+ Redistributable x64','https://learn\.microsoft\.com/ja-jp/cpp/windows/latest-supported-vc-redist',
+        'Microsoft Visual C\+\+ Redistributable x64','https://learn\.microsoft\.com/(?:ja-jp|en-us)/cpp/windows/latest-supported-vc-redist',
         'https://developer\.microsoft\.com/en-us/microsoft-edge/webview2/#download-section','data','config','書き込|書き込み',
         '標準','カスタム','バックアップ','更新','移動','削除','手動','オフライン','MIT')) {
         if ($Text -notmatch $pattern) { throw 'README: required guidance missing.' }
@@ -61,6 +61,7 @@ function ConvertTo-PortableReadme([byte[]]$MarkdownBytes, [string]$Version='') {
         $label=$m.Groups[1].Value; $target=$m.Groups[2].Value
         if ($target -match '^https://') { return $label+' ('+$target+')' }
         if ($target -ceq 'LICENSE') { return $label+' (LICENSE.txt)' }
+        if ($target -ceq 'THIRD-PARTY-NOTICES.txt') { return $label+' (THIRD-PARTY-NOTICES.txt)' }
         if ($target -ceq 'docs/third-party-licenses.md') { return $label+' (THIRD-PARTY-NOTICES.txt)' }
         # Supplementary development references are explicitly identified; no URL is discarded.
         if ($target -match '^docs/[a-z-]+\.md$') { return $label+' (開発資料: '+$target+'、ZIPには含みません)' }

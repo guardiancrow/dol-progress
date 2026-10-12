@@ -101,13 +101,20 @@ Case 'README BOM CRLF complete section and external URL retention' {
     $text=Get-PortableText $readme; Assert-PortableReadme $text
     Expect ($text -notmatch '(?<!\r)\n' -and $text -notmatch '## 開発と検証|## Windows build|## 仕様書')
     Expect ($text.Contains('https://gvdb.mydns.jp/db/') -and $text.Contains('https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section'))
-    Expect ($text.Contains('Microsoft Visual C++ Redistributable x64') -and $text.Contains('https://learn.microsoft.com/ja-jp/cpp/windows/latest-supported-vc-redist'))
+    Expect ($text.Contains('Microsoft Visual C++ Redistributable x64') -and $text.Contains('https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist'))
     Expect ($text.Contains('LICENSE.txt') -and $text.Contains('THIRD-PARTY-NOTICES.txt') -and $text.Contains('data/configを削除・上書きしない'))
 }
-Case 'README missing Windows x64' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('Windows 10／11 x64','Windows 10／11'))) } }
+Case 'README missing Windows x64' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes([regex]::Replace($fixtureReadme,'Windows[ \t]+[^。\r\n]*x64','Windows'))) } }
 Case 'README missing VC Runtime guidance' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('Microsoft Visual C++ Redistributable','Microsoft native Runtime'))) } }
 Case 'README VC Runtime x86 only' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('Redistributable x64','Redistributable x86'))) } }
-Case 'README missing VC official URL' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('https://learn.microsoft.com/ja-jp/cpp/windows/latest-supported-vc-redist','https://example.invalid'))) } }
+Case 'README missing VC official URL' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist','https://example.invalid'))) } }
+Case 'README Japanese VC official URL retained' {
+    $converted=ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist','https://learn.microsoft.com/ja-jp/cpp/windows/latest-supported-vc-redist')))
+    Expect ((Get-PortableText $converted).Contains('https://learn.microsoft.com/ja-jp/cpp/windows/latest-supported-vc-redist'))
+}
+Case 'README canonical notice link mapped' {
+    Expect ((Get-PortableText $readme).Contains('THIRD-PARTY-NOTICES.txt (THIRD-PARTY-NOTICES.txt)'))
+}
 Case 'README missing section' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('## 更新','## Unknown'))) } }
 Case 'README duplicate section' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme+"`n## 更新`nDuplicate")) } }
 Case 'README missing official URL' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section','https://example.invalid'))) } }
