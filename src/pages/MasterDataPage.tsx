@@ -109,7 +109,7 @@ export function MasterDataPage({ statusRepository, importService, backupRestoreS
         <div>
           <p className="page-eyebrow">ローカルファイルから更新</p>
           <h2 id="master-data-title">マスターデータ</h2>
-          <p>手動で取得したGVDBファイルだけを使用します。自動ダウンロードは行いません。</p>
+          <p>大航海時代データベースから手動で取得したファイルだけを使用します。自動ダウンロードは行いません。</p>
         </div>
       </div>
 

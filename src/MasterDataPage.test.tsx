@@ -24,6 +24,8 @@ describe("Master Data UI", () => {
   it("shows acknowledgement after backup controls and opens the fixed external site", async () => {
     vi.mocked(openGvdbSite).mockResolvedValue();
     const user = await open(setup(fullStatus()));
+    expect(screen.getByText("大航海時代データベースから手動で取得したファイルだけを使用します。自動ダウンロードは行いません。")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "マスターデータ" }).closest("section")).not.toHaveTextContent("GVDB");
     const heading = screen.getByRole("heading", { name: "データ提供元・謝辞" });
     expect(heading).toBeInTheDocument();
     expect(heading.closest("section")).toHaveTextContent("コミュニティの皆さまに感謝します");

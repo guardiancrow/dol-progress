@@ -89,7 +89,7 @@ describe("Overview UI", () => {
     expect(merit).toHaveTextContent("報告済み発見物 221件");
     expect(merit).toHaveTextContent("経験値判明 211件");
     expect(merit).toHaveTextContent("経験値不明 10件");
-    expect(merit).toHaveTextContent("GVDB経験値から算出した参考値");
+    expect(merit).toHaveTextContent("大航海時代データベースに記載された報告済み発見物の経験値から算出した参考値");
   });
 
   it("groups primary and secondary Overview summaries separately", async () => {

@@ -1,17 +1,17 @@
 # DOL Progress Manager
 
-『大航海時代 Online』のクエスト・発見物の進捗を、プロフィールごとにPC上で管理するWindows向けデスクトップアプリケーションです。ユーザーが手動取得したGVDBマスターデータを取り込み、進捗はローカルSQLiteへ保存します。取り込み後の通常利用はオフラインで行えます。
+『大航海時代 Online』のクエスト・発見物の進捗を、プロフィールごとにPC上で管理するWindows向けデスクトップアプリケーションです。ユーザーが手動取得した大航海時代データベースのマスターデータを取り込み、進捗はローカルSQLiteへ保存します。取り込み後の通常利用はオフラインで行えます。
 
 本プロジェクトは当面、実行ファイルもソースコードも一般公開しません。Windows x64での個人利用を前提とし、GitHubのPrivateリポジトリは開発とバックアップのために継続します。インストーラーを使わず、アプリのフォルダーをコピー・移動して利用できます。
 
-本プロジェクトは非公式のfan utilityです。ゲームの開発元・販売元・運営元による公式toolではなく、それらの組織やGVDBとの提携・公認を示すものでもありません。ゲーム名、製品名、商標などの権利は各権利者に帰属します。
+本プロジェクトは非公式のfan utilityです。ゲームの開発元・販売元・運営元による公式toolではなく、それらの組織や大航海時代データベースとの提携・公認を示すものでもありません。ゲーム名、製品名、商標などの権利は各権利者に帰属します。
 
 ## 主な機能
 
 - Profileごとのクエスト・発見物進捗とメモの管理
 - Quest一覧の検索、達成状態・前提状態・必要スキル／Rank・オファー方法／都市による絞り込みと並べ替え
 - Discovery一覧の検索、分類・発見／報告状態・カード所有状態による絞り込み。報告状態とカード所有状態は独立して管理（レリックは報告・カード対象外）
-- クエスト・発見物の名前セルから、GVDBマスターの説明／備考をポップアップで参照（プロフィールごとのメモとは別）
+- クエスト・発見物の名前セルから、大航海時代データベースのマスターデータの説明／備考をポップアップで参照（プロフィールごとのメモとは別）
 - Overviewでの進捗集計、Adventure Merit表示、分類からDiscovery一覧への移動
 - Master Data画面での手動import、更新結果・警告・取り込み履歴の表示
 - バックアップ／復元、標準保存場所とカスタム保存場所の切り替え
@@ -42,13 +42,13 @@ VC++ Runtime DLLが不足していると、WindowsローダーがRustのentry po
 
 [Microsoft公式WebView2ページ](https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section)からEvergreen Runtimeを導入し、その後にDOL Progress Managerを起動し直してください。アプリはRuntimeを自動でダウンロード・インストール・更新せず、案内時にブラウザーも自動で開きません。アプリを削除するときにRuntimeを削除する必要はありません。
 
-## GVDBマスターデータの取得と取り込み
+## 大航海時代データベースからのマスターデータ取得と取り込み
 
-raw CSVはこのrepositoryや配布対象のsourceに同梱しません。[大航海時代データベース（GVDB）](https://gvdb.mydns.jp/db/)から必要なファイルをユーザー自身が手動取得し、Master Data（マスターデータ）画面でローカルファイルを選択・確認してimportします。
+raw CSVはこのrepositoryや配布対象のsourceに同梱しません。[大航海時代データベース](https://gvdb.mydns.jp/db/)から必要なファイルをユーザー自身が手動取得し、Master Data（マスターデータ）画面でローカルファイルを選択・確認してimportします。
 
 クエスト用は`quests.csv`、発見物用は`discovery_items.csv`です。拡張子は`.csv`ですが内容はTAB区切り、文字コードはCP932／Windows-31J互換です。importはheaderと行を検証し、マスター・関連・履歴をtransactionで更新します。ユーザーのプロフィールと進捗は保持します。仕様は[データ取り込み](docs/data-import.md)を参照してください。
 
-アプリはGVDBの自動download、scraping、background更新、GVDBへの書き込みを行いません。telemetry、進捗の外部送信、自動updaterも実装していません。GVDBサイトを開く操作は、固定URLを既定のsystem browserで開きます。開発時のVite serverや依存関係の取得は、通常アプリのオフライン利用とは別です。
+アプリは大航海時代データベースの自動download、scraping、background更新、大航海時代データベースへの書き込みを行いません。telemetry、進捗の外部送信、自動updaterも実装していません。大航海時代データベースを開く操作は、固定URLを既定のsystem browserで開きます。開発時のVite serverや依存関係の取得は、通常アプリのオフライン利用とは別です。
 
 ## データと設定の保存場所
 
@@ -163,7 +163,7 @@ cargo check --locked --manifest-path src-tauri/Cargo.toml
 cargo fmt --check --manifest-path src-tauri/Cargo.toml
 ```
 
-通常suiteは小さなsynthetic fixtureを使用し、実GVDBファイルやインターネットへのアクセスを必要としません。実データを使う任意のacceptanceは既定でignoredです。raw filesは同梱せず、特定snapshotのID・名称・件数を期待値に保持しません。手動配置と明示実行の条件は[データ取り込み](docs/data-import.md)を参照してください。Cargoの依存関係をcache済みなら、`--offline`を追加して検証できます。
+通常suiteは小さなsynthetic fixtureを使用し、大航海時代データベースの実ファイルやインターネットへのアクセスを必要としません。実データを使う任意のacceptanceは既定でignoredです。raw filesは同梱せず、特定snapshotのID・名称・件数を期待値に保持しません。手動配置と明示実行の条件は[データ取り込み](docs/data-import.md)を参照してください。Cargoの依存関係をcache済みなら、`--offline`を追加して検証できます。
 
 ## Windows build
 
@@ -185,18 +185,18 @@ application iconは本プロジェクト用に新規作成したvectorから生�
 
 ## 謝辞
 
-[GVDB](https://gvdb.mydns.jp/db/)の運営者、編集者、情報提供者をはじめ、データを収集・整理・更新・公開してくださるコミュニティの皆さまに感謝します。この謝辞は提携・公認を意味しません。raw datasetはrepositoryに含めず、GVDBデータの再配布許諾があると主張するものでもありません。
+[大航海時代データベース](https://gvdb.mydns.jp/db/)の運営者、編集者、情報提供者をはじめ、データを収集・整理・更新・公開してくださるコミュニティの皆さまに感謝します。この謝辞は提携・公認を意味しません。raw datasetはrepositoryに含めず、大航海時代データベースのデータの再配布許諾があると主張するものでもありません。
 
 ## License
 
 本プロジェクト用に作成したsource code、documentation、synthetic tests／fixtures、独自iconのSVG sourceと生成assetには[MIT License](LICENSE)を適用します。
 
-第三者libraryと外部依存関係には各licenseが適用されます。GVDBのデータ・名称・service、『大航海時代 Online』、製品名・商標、ユーザーが外部からimportしたデータについて、第三者の権利を本プロジェクトのMIT Licenseで再licenseするものではありません。[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)に現行Windows x64 Releaseの第三者原文・表示を収録しています。配布時はEXEと同じ配布経路でこの通知を提供します。現在はユーザーレビュー待ちで、一般公開の承認や正式license clearanceの完了を意味しません。詳細は[third-party license方針](docs/third-party-licenses.md)を参照してください。
+第三者libraryと外部依存関係には各licenseが適用されます。大航海時代データベースのデータ・名称・service、『大航海時代 Online』、製品名・商標、ユーザーが外部からimportしたデータについて、第三者の権利を本プロジェクトのMIT Licenseで再licenseするものではありません。[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)に現行Windows x64 Releaseの第三者原文・表示を収録しています。配布時はEXEと同じ配布経路でこの通知を提供します。現在はユーザーレビュー待ちで、一般公開の承認や正式license clearanceの完了を意味しません。詳細は[third-party license方針](docs/third-party-licenses.md)を参照してください。
 
 ## 仕様書
 
 - [機能要件](docs/requirements.md)
 - [SQLite schemaと永続化](docs/database-design.md)
-- [GVDBデータ取り込み](docs/data-import.md)
+- [大航海時代データベースのデータ取り込み](docs/data-import.md)
 - [Backup / Restore](docs/backup-restore.md)
 - [Data Root](docs/data-root.md)

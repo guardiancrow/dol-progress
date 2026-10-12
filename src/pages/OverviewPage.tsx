@@ -149,7 +149,7 @@ function AdventureMeritCard({ merit }: { merit: ProgressStats["adventureMerit"] 
       <h3>冒険勲功値（判明分）</h3>
       <p className="overview-value">{formatNumber(merit.knownMerit)}</p>
       <p className="overview-detail">報告済み発見物 {formatNumber(merit.reportedCount)}件・経験値判明 {formatNumber(merit.knownExperienceCount)}件・経験値不明 {formatNumber(merit.unknownExperienceCount)}件</p>
-      <p className="overview-detail">報告済み発見物のGVDB経験値から算出した参考値です。</p>
+      <p className="overview-detail">大航海時代データベースに記載された報告済み発見物の経験値から算出した参考値です。</p>
       {merit.unknownExperienceCount > 0 && (
         <p className="overview-detail">経験値未登録の発見物は合計に含まれていません。</p>
       )}

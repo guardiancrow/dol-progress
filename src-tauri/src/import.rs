@@ -155,7 +155,7 @@ pub fn select_import_file(app: AppHandle) -> Result<Option<SelectedFile>, Import
     let selected = app
         .dialog()
         .file()
-        .add_filter("GVDB CSV", &["csv"])
+        .add_filter("大航海時代データベース CSV", &["csv"])
         .blocking_pick_file();
     let Some(selected) = selected else {
         return Ok(None);
@@ -747,7 +747,9 @@ fn add_dependency(
 fn warn_missing(warnings: &mut Vec<ImportWarning>, code: &str, gvdb_id: i64) {
     warnings.push(ImportWarning {
         code: code.to_owned(),
-        message: format!("関連先GVDB IDが存在しないためスキップしました: {gvdb_id}"),
+        message: format!(
+            "大航海時代データベースの関連先IDが存在しないためスキップしました: {gvdb_id}"
+        ),
         row_number: None,
     });
 }
@@ -1385,6 +1387,11 @@ mod tests {
             .warnings
             .iter()
             .any(|warning| warning.code == "MissingQuest"));
+        assert!(result.warnings.iter().any(|warning| {
+            warning.code == "MissingQuest"
+                && warning.message
+                    == "大航海時代データベースの関連先IDが存在しないためスキップしました: 999"
+        }));
     }
 
     #[tokio::test]

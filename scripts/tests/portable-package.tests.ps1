@@ -101,6 +101,7 @@ Case 'README BOM CRLF complete section and external URL retention' {
     $text=Get-PortableText $readme; Assert-PortableReadme $text
     Expect ($text -notmatch '(?<!\r)\n' -and $text -notmatch '## 開発と検証|## Windows build|## 仕様書')
     Expect ($text.Contains('https://gvdb.mydns.jp/db/') -and $text.Contains('https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section'))
+    Expect ($text.Contains('大航海時代データベースからのマスターデータ取得と取り込み') -and $text -cnotmatch 'GVDB')
     Expect ($text.Contains('Microsoft Visual C++ Redistributable x64') -and $text.Contains('https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist'))
     Expect ($text.Contains('LICENSE.txt') -and $text.Contains('THIRD-PARTY-NOTICES.txt') -and $text.Contains('data/configを削除・上書きしない'))
 }
