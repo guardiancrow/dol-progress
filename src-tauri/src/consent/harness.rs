@@ -1,4 +1,4 @@
-//! 明示feature専用。実行時TEMPの独立namespaceを使い、旧fixtureは探索しない。
+//! 明示feature専用。自動fixtureはTEMP、手動fixtureは専用永続root。旧fixtureは探索しない。
 use super::storage::{pin_directory, read_regular, validate_root};
 use std::{
     fs::{self, File, OpenOptions},
@@ -8,6 +8,104 @@ use std::{
 
 const NAMESPACE: &str = "DOL-Consent-Test-Only-v1";
 const MARKER: &str = "TEST_ONLY.fixture";
+
+/// 手動検証専用。自動fixtureとはmarkerと階層を分離する。
+pub struct ManualFixture {
+    base: PathBuf,
+    fixture: Fixture,
+    created_mode: String,
+}
+impl ManualFixture {
+    pub fn default_root() -> Result<PathBuf, String> {
+        let executable = std::env::current_exe().map_err(|e| format!("EXE path取得: {e}"))?;
+        Ok(executable
+            .parent()
+            .ok_or("EXE親directoryがありません")?
+            .join("manual-fixtures"))
+    }
+    pub fn open(base: &Path, id: Option<&str>, mode: &str) -> Result<Self, String> {
+        if !matches!(mode, "Normal" | "Recovery") {
+            return Err("手動mode不一致".into());
+        }
+        if let Some(id) = id {
+            validate_id(id)?;
+        }
+        validate_root(base).map_err(|e| format!("manual root path検証: {e}"))?;
+        let owner = format!("DOL-Consent-Manual-TEST-ONLY-v1\n{}\n", namespace()?);
+        let mut pins = Vec::new();
+        // resumeは欠損rootを作らない。既存rootは空でもmarkerなしでは採用しない。
+        for directory in base.ancestors().collect::<Vec<_>>().into_iter().rev() {
+            match fs::symlink_metadata(directory) {
+                Ok(_) => pins.push(
+                    pin_directory(directory).map_err(|e| format!("manual directory pin: {e}"))?,
+                ),
+                Err(e) if e.kind() == io::ErrorKind::NotFound && id.is_none() => {
+                    if !create_dir(directory, "manual directory作成")? {
+                        return Err("manual directory作成競合。内容を採用せず停止します".into());
+                    }
+                    pins.push(
+                        pin_directory(directory)
+                            .map_err(|e| format!("manual directory pin: {e}"))?,
+                    );
+                    if directory == base {
+                        write_marker(&base.join(MARKER), owner.as_bytes())?;
+                    }
+                }
+                Err(e) => return Err(format!("manual directory確認: {e}")),
+            }
+        }
+        check_marker(&base.join(MARKER), owner.as_bytes())?;
+        let collection = base.join("fixtures");
+        if id.is_some() {
+            pins.push(pin_directory(&collection).map_err(|e| format!("manual fixtures pin: {e}"))?);
+        } else {
+            ensure_dir(&collection, &mut pins)?;
+        }
+        let fresh = id.is_none();
+        let id = id
+            .map(str::to_owned)
+            .unwrap_or_else(crate::portable_paths::unique_suffix);
+        let root = collection.join(&id);
+        if fresh && !create_dir(&root, "manual fixture作成")? {
+            return Err("manual fixture ID衝突".into());
+        }
+        pins.push(pin_directory(&root).map_err(|e| format!("manual fixture pin: {e}"))?);
+        if fresh {
+            write_marker(
+                &root.join(MARKER),
+                format!("DOL-Consent-Manual-gate-v1\n{mode}\n").as_bytes(),
+            )?;
+        }
+        let bytes = read_regular(&root.join(MARKER))
+            .map_err(|e| format!("manual fixture marker検証: {e}"))?;
+        let created_mode = match bytes.as_deref() {
+            Some(b"DOL-Consent-Manual-gate-v1\nNormal\n") => "Normal",
+            Some(b"DOL-Consent-Manual-gate-v1\nRecovery\n") => "Recovery",
+            _ => return Err("手動fixture marker不一致".into()),
+        };
+        Ok(Self {
+            base: base.to_owned(),
+            fixture: Fixture {
+                root,
+                id,
+                _pins: pins,
+            },
+            created_mode: created_mode.to_owned(),
+        })
+    }
+    pub fn base(&self) -> &Path {
+        &self.base
+    }
+    pub fn root(&self) -> &Path {
+        self.fixture.root()
+    }
+    pub fn id(&self) -> &str {
+        self.fixture.id()
+    }
+    pub fn created_mode(&self) -> &str {
+        &self.created_mode
+    }
+}
 
 pub struct Fixture {
     root: PathBuf,
@@ -267,6 +365,80 @@ mod tests {
         fs::write(fixture.root().join(MARKER), b"wrong kind").unwrap();
         assert!(Fixture::resume("gate", fixture.id()).is_err());
         assert!(!fixture.root().join("config").exists());
+    }
+    #[cfg(windows)]
+    #[test]
+    fn manual_new_resume_modes_and_missing_resume_are_isolated() {
+        let owner = Fixture::new("gate").unwrap();
+        let base = owner.root().join("日本語 manual root");
+        let first = ManualFixture::open(&base, None, "Normal").unwrap();
+        let second = ManualFixture::open(&base, None, "Recovery").unwrap();
+        assert_ne!(first.id(), second.id());
+        let resumed = ManualFixture::open(&base, Some(first.id()), "Recovery").unwrap();
+        assert_eq!(first.root(), resumed.root());
+        assert_eq!(resumed.created_mode(), "Normal");
+        let missing = owner.root().join("missing");
+        assert!(ManualFixture::open(&missing, Some(first.id()), "Normal").is_err());
+        assert!(!missing.exists());
+        assert!(ManualFixture::open(&base, Some("1-2-3"), "Normal").is_err());
+        assert!(!base.join("fixtures/1-2-3").exists());
+        assert_eq!(
+            ManualFixture::default_root().unwrap(),
+            std::env::current_exe()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("manual-fixtures")
+        );
+    }
+    #[cfg(windows)]
+    #[test]
+    fn manual_rejects_unmarked_foreign_and_bad_fixture_without_writes() {
+        let owner = Fixture::new("gate").unwrap();
+        let untouched = owner.root().join("application data");
+        fs::create_dir(&untouched).unwrap();
+        fs::write(untouched.join("db.sqlite"), b"sentinel").unwrap();
+        assert!(ManualFixture::open(&untouched, None, "Normal").is_err());
+        assert_eq!(fs::read(untouched.join("db.sqlite")).unwrap(), b"sentinel");
+        assert_eq!(fs::read_dir(&untouched).unwrap().count(), 1);
+        let base = owner.root().join("manual");
+        let fixture = ManualFixture::open(&base, None, "Normal").unwrap();
+        for id in ["..", "../1-2-3", "C:\\outside", "1-2-3/child", "1-2"] {
+            assert!(ManualFixture::open(&base, Some(id), "Normal").is_err());
+        }
+        fs::write(base.join(MARKER), b"different Windows owner").unwrap();
+        assert!(ManualFixture::open(&base, None, "Normal").is_err());
+        assert!(ManualFixture::open(&base, Some(fixture.id()), "Normal").is_err());
+        assert_eq!(fs::read_dir(base.join("fixtures")).unwrap().count(), 1);
+    }
+    #[cfg(windows)]
+    #[test]
+    fn manual_concurrent_new_ids_and_marker_integrity() {
+        let owner = Fixture::new("gate").unwrap();
+        let base = owner.root().join("manual");
+        let first = ManualFixture::open(&base, None, "Normal").unwrap();
+        let joins = (0..8)
+            .map(|_| {
+                let base = base.clone();
+                std::thread::spawn(move || {
+                    ManualFixture::open(&base, None, "Recovery")
+                        .unwrap()
+                        .id()
+                        .to_owned()
+                })
+            })
+            .collect::<Vec<_>>();
+        let mut ids = joins
+            .into_iter()
+            .map(|j| j.join().unwrap())
+            .collect::<Vec<_>>();
+        ids.push(first.id().to_owned());
+        ids.sort();
+        ids.dedup();
+        assert_eq!(ids.len(), 9);
+        fs::write(first.root().join(MARKER), b"wrong fixture kind").unwrap();
+        assert!(ManualFixture::open(&base, Some(first.id()), "Normal").is_err());
+        assert!(!first.root().join("config").exists());
     }
 }
 #[cfg(windows)]
