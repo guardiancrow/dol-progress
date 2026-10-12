@@ -21,14 +21,34 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let (paths, plan) = runtime_preflight::before_portable_startup(|| {
+    let paths = runtime_preflight::before_portable_startup(|| {
         let paths = portable_paths::PortablePaths::current()
             .unwrap_or_else(|detail| portable_paths::exit_with_filesystem_error(&detail));
-        let plan = data_root::prepare_startup(paths.clone())
-            .unwrap_or_else(|detail| portable_paths::exit_with_filesystem_error(&detail));
-        (paths, plan)
+        paths
     })
     .unwrap_or_else(|failure| native_error::exit_with_native_error(&failure.message()));
+    let terms = consent::first_run::approved_terms().unwrap_or_else(|_| {
+        native_error::exit_with_native_error(
+            "承認済みの使用許諾本文を確認できないため、起動を中止しました。",
+        )
+    });
+    let guard = match terms {
+        None => None,
+        Some(terms) => match consent::first_run::authorize(&paths.executable_root, &terms) {
+            Ok(guard) => Some(guard),
+            Err(consent::gate::GateStop::Declined(_)) => return,
+            Err(stop) => {
+                native_error::exit_with_native_error(&consent::first_run::error_message(&stop))
+            }
+        },
+    };
+    let plan = match data_root::prepare_startup(paths.clone()) {
+        Ok(plan) => plan,
+        Err(detail) => {
+            drop(guard);
+            portable_paths::exit_with_filesystem_error(&detail);
+        }
+    };
     tauri::Builder::default()
         .manage(paths)
         .manage(backup_restore::RestoreSelectionState::default())
@@ -48,8 +68,12 @@ pub fn run() {
                     )));
                 }
                 Err(StartupFailure::Filesystem(detail)) => {
+                    drop(guard);
                     portable_paths::exit_with_filesystem_error(&detail);
                 }
+            }
+            if let Some(guard) = guard {
+                guard.finish();
             }
             Ok(())
         })

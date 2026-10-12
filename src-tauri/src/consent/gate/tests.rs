@@ -698,10 +698,10 @@ fn synthetic_database_config_and_external_sentinel_never_change() {
     assert_eq!(fs::read_dir(outside.root).unwrap().count(), 2);
 }
 #[test]
-fn production_run_has_no_gate_or_synthetic_terms() {
+fn production_run_has_no_synthetic_terms() {
     let lib = include_str!("../../lib.rs");
     let run = &lib[lib.find("#[cfg_attr").unwrap()..];
-    assert!(!run.contains("consent"));
+    assert!(!run.contains("TEST ONLY"));
     assert!(!run.contains("900003"));
     assert!(run.contains("runtime_preflight::before_portable_startup"));
     assert!(run.contains("data_root::prepare_startup"));

@@ -530,8 +530,7 @@ fn fixture_sentinels_are_unchanged_and_no_real_startup_is_called() {
     );
     let lib = include_str!("../../lib.rs");
     let run = &lib[lib.find("#[cfg_attr").unwrap()..];
-    assert!(!run.contains("consent"));
-    assert!(!run.contains("authorize_for_startup"));
+    assert!(!run.contains("TEST ONLY"));
     assert!(!run.contains("900004"));
 }
 

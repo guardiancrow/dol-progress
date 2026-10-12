@@ -1,7 +1,8 @@
-//! 同意記録の独立基盤。通常起動・UI・DBへは接続しない。
+//! 同意記録と初回起動確認。承認済み本文が設定されるまで通常起動では無効。
 //!
 //! 保存APIの呼出し元が明示同意を確認する。記録の整合性は本人性を証明しない。
 
+pub(crate) mod first_run;
 pub mod gate;
 #[cfg(feature = "consent-gate-harness")]
 pub mod harness;
