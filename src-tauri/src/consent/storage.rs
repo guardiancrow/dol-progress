@@ -308,7 +308,7 @@ fn step(
     before(stage).map_err(|e| StorageError::io(stage, e))
 }
 
-fn validate_root(root: &Path) -> Result<(), StorageError> {
+pub(super) fn validate_root(root: &Path) -> Result<(), StorageError> {
     let invalid = || StorageError::new(SaveStage::PathValidation, StorageErrorKind::InvalidPath);
     if !root.is_absolute() || root.parent().is_none() || root.file_name().is_none() {
         return Err(invalid());
@@ -435,7 +435,7 @@ fn check_reparse(metadata: &Metadata) -> Result<(), StorageError> {
     Ok(())
 }
 
-fn pin_directory(path: &Path) -> Result<File, StorageError> {
+pub(super) fn pin_directory(path: &Path) -> Result<File, StorageError> {
     check_directory(
         &fs::symlink_metadata(path).map_err(|e| StorageError::io(SaveStage::PathValidation, e))?,
     )?;
@@ -462,7 +462,7 @@ fn pin_directory(path: &Path) -> Result<File, StorageError> {
     Ok(file)
 }
 
-fn check_regular_handle(file: &File) -> Result<(), StorageError> {
+pub(super) fn check_regular_handle(file: &File) -> Result<(), StorageError> {
     let metadata = file
         .metadata()
         .map_err(|e| StorageError::io(SaveStage::ReadRecord, e))?;
@@ -496,7 +496,7 @@ fn check_regular_handle(file: &File) -> Result<(), StorageError> {
     Ok(())
 }
 
-fn read_regular(path: &Path) -> Result<Option<Vec<u8>>, StorageError> {
+pub(super) fn read_regular(path: &Path) -> Result<Option<Vec<u8>>, StorageError> {
     match fs::symlink_metadata(path) {
         Ok(metadata) => {
             check_reparse(&metadata)?;

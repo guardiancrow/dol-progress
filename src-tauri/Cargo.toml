@@ -1,5 +1,6 @@
 [package]
 name = "dol-progress-manager"
+default-run = "dol-progress-manager"
 version = "0.3.0"
 description = "Local progress manager for Uncharted Waters Online"
 authors = ["guardiancrow"]
@@ -30,9 +31,10 @@ tokio = { version = "1", features = ["sync"] }
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_WindowsProgramming", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_System_LibraryLoader", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_KeyboardAndMouse"] }
 
 [features]
-# 明示指定した隔離exampleだけに使用し、通常起動には接続しない。
+# 明示指定した隔離harnessだけに使用し、通常起動には接続しない。
 consent-ui-harness = []
 consent-gate-harness = []
+consent-startup-harness = ["consent-gate-harness"]
 
 [[example]]
 name = "consent_native"
@@ -41,6 +43,11 @@ required-features = ["consent-ui-harness"]
 [[example]]
 name = "consent_gate"
 required-features = ["consent-gate-harness"]
+
+[[bin]]
+name = "consent_startup"
+path = "src/bin/consent_startup.rs"
+required-features = ["consent-startup-harness"]
 
 [dev-dependencies]
 encoding_rs = "0.8"

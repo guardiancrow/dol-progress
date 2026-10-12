@@ -13,6 +13,8 @@ mod portable_paths;
 mod progress_link;
 mod quest_facets;
 mod runtime_preflight;
+#[cfg(all(windows, feature = "consent-startup-harness"))]
+pub mod startup_harness;
 
 use data_root::{StartupFailure, StartupPresentation, StartupState};
 use tauri::Manager;

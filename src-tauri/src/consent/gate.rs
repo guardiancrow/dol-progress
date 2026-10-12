@@ -80,7 +80,7 @@ pub(crate) enum PermitBindingError {
     TermsMismatch,
 }
 
-/// setup相当の完了まで所有する。実Tauriへは未接続。
+/// setup完了まで所有する。通常runへの接続は未有効化。
 #[must_use = "setup完了時にfinishするか、エラー時にDropする"]
 pub(crate) struct StartupGuard {
     permit: OwnedPermit,
