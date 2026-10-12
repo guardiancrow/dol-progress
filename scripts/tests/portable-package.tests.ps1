@@ -15,6 +15,20 @@ function Case([string]$Name,[scriptblock]$Action) {
     catch { $script:failed++; Write-Output ("FAIL $Name : "+(Protect-ReleaseText $_.Exception.Message ([ordered]@{Fixture=$fixtures;Repository=$repo}))) }
 }
 function New-TestPath([string]$Suffix) { $script:counter++; return Join-Path $fixtures ('TEST_ONLY_'+$script:counter+$Suffix) }
+function New-PublicNoticeFixture {
+    param([switch]$MissingInventory)
+    $root=New-TestPath '.entry-root'
+    New-Item -ItemType Directory -Path (Join-Path $root 'scripts'),(Join-Path $root 'release/notices') | Out-Null
+    foreach ($name in @('build-portable-package.ps1','verify-portable-package.ps1','portable-package-safety.ps1','release-safety.ps1')) {
+        Write-PortableBytes $root (Join-Path $root ('scripts/'+$name)) (Read-PortableBytes (Join-Path $repo ('scripts/'+$name)))
+    }
+    foreach ($name in @('manifest.json','inventory.json','review.json','source.json')) {
+        if ($MissingInventory -and $name -ceq 'inventory.json') { continue }
+        Write-ReleaseNewText (Join-Path $root ('release/notices/'+$name)) '{"schema":1,"status":"PENDING","test_only":true}'
+    }
+    Write-ReleaseNewText (Join-Path $root 'THIRD-PARTY-NOTICES.txt') 'TEST_ONLY synthetic notice; never distribution input.'
+    return $root
+}
 function Put16([byte[]]$Bytes,[int]$Offset,[uint16]$Value) { [BitConverter]::GetBytes($Value).CopyTo($Bytes,$Offset) }
 function Put32([byte[]]$Bytes,[int]$Offset,[uint32]$Value) { [BitConverter]::GetBytes($Value).CopyTo($Bytes,$Offset) }
 function Fixture-Pe {
@@ -180,7 +194,48 @@ Case 'Wrong PE architecture' { $b=[byte[]]$payload['dol-progress-manager.exe'].C
 Case 'PE missing version resource' { $b=[byte[]]$payload['dol-progress-manager.exe'].Clone(); Put32 $b 280 0; Reject { [PortableZipVerifier]::Pe($b,'0.3.0') } }
 Case 'Privacy leak in payload returns failure' { $leaky=[ordered]@{}; foreach ($key in $payload.Keys) { $leaky[$key]=$payload[$key] }; $leaky['THIRD-PARTY-NOTICES.txt']=[Text.Encoding]::Unicode.GetBytes($prefixes.CargoHome); $stage=New-TestPath '.staging'; $h=New-PortableStaging $stage $leaky; $path=New-TestPath '.zip'; Write-PortableZip $stage $path; Reject { Test-PortableArchive $path '' (New-TestPath '.verify') $h '0.3.0' $leaky $prefixes } }
 Case 'Unknown UNC requires privacy failure' { $file=New-TestPath '.bin'; Write-PortableBytes $fixtures $file ([Text.Encoding]::UTF8.GetBytes('\\UnknownHost\PrivateShare\data')); Reject { Assert-ReleasePrivacy (Test-PrivacyArtifact $file $prefixes 'test') } }
-Case 'Unresolved notice availability fails with no genuine inputs' { Reject { Assert-PortableNoticeAvailability $repo } }
+Case 'Unresolved notice availability fails with no genuine inputs' { Reject { Assert-PortableNoticeAvailability (New-TestPath '.missing-notices') } }
+Case 'Canonical notice inputs preserve review and source gates TEST_ONLY' {
+    $root=New-TestPath '.canonical-notices'; $folder=Join-Path $root 'release/notices'
+    New-Item -ItemType Directory -Path (Join-Path $folder 'texts') -Force | Out-Null
+    $original='Copyright (c) Example contributors. Permission and disclaimer.'
+    $originalPath='release/notices/texts/example.txt'
+    Write-ReleaseNewText (Join-Path $root $originalPath) $original
+    Write-ReleaseNewText (Join-Path $root 'THIRD-PARTY-NOTICES.txt') $original
+    $textHash=Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $root 'THIRD-PARTY-NOTICES.txt'))
+    $components=@(); $coverage=@()
+    foreach ($group in @('rust','frontend','native','toolchain','assets')) {
+        $components+=@{id=$group;version='1.0.0';group=$group;included=$true}
+        $coverage+=@{id=$group;included=$true;obligations_completed=$true;provenance_completed=$true;evidence=@($originalPath);selected_license='MIT';required_texts=@(@{path=$originalPath;sha256=$textHash});copyrights=@('Copyright (c) Example contributors.');source_provision='NOT_REQUIRED'}
+    }
+    $source=@{schema=1;purpose='PACKAGE_NOTICE_SOURCE';version='0.3.0';target='x86_64-pc-windows-msvc';canonical_file='THIRD-PARTY-NOTICES.txt';sha256=$textHash;source_commit=('a'*40);formal_review_state='REVIEWED';cargo_lock_sha256=('b'*64);npm_lock_sha256=('c'*64)}
+    $review=@{schema=1;status='REVIEWED';version='0.3.0';test_only=$false;reviewer='TEST FIXTURE';reviewed_at='2000-01-01T00:00:00Z';unresolved=@();coverage=$coverage}
+    $inventory=@{schema=1;version='0.3.0';target='x86_64-pc-windows-msvc';components=$components}
+    foreach ($pair in @(@('source.json',$source),@('review.json',$review),@('inventory.json',$inventory))) {
+        Write-ReleaseNewText (Join-Path $folder $pair[0]) (($pair[1] | ConvertTo-Json -Depth 12)+"`n")
+    }
+    $manifest=@{schema=1;status='REVIEWED';scope='DISTRIBUTION';test_only=$false;version='0.3.0';unresolved=@();cargo_lock_sha256=('b'*64);npm_lock_sha256=('c'*64);notices_sha256=$textHash}
+    foreach ($name in @('source','review','inventory')) { $manifest[$name+'_sha256']=Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $folder ($name+'.json'))) }
+    Write-ReleaseNewText (Join-Path $folder 'manifest.json') (($manifest | ConvertTo-Json -Depth 12)+"`n")
+    $map=[ordered]@{'src-tauri/Cargo.lock'= ('b'*64);'package-lock.json'= ('c'*64);'THIRD-PARTY-NOTICES.txt'=$textHash}
+    foreach ($name in @('manifest.json','inventory.json','review.json','source.json','texts/example.txt')) { $map['release/notices/'+$name]=Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $folder $name)) }
+    $actual=Read-PortableNotices $root '0.3.0' $map
+    Expect ((Get-ReleaseSHA256 $actual) -ceq $textHash)
+    $noOwner=@{copyrights=@();evidence=@($originalPath);copyright_review=@{state='NO_SEPARATE_NOTICE_IN_REVIEWED_SOURCES';reason='Synthetic no-owner mapping test only';source_evidence=@(@{path=$originalPath;sha256=$textHash})}}
+    Assert-PortableCopyrightMapping $root $noOwner $map $original
+    $noOwner.copyright_review.state='PENDING_USER_APPROVAL'
+    Reject { Assert-PortableCopyrightMapping $root $noOwner $map $original }
+    $noOwner.copyright_review.state='NO_SEPARATE_NOTICE_IN_REVIEWED_SOURCES'
+    $noOwner.copyright_review.source_evidence[0].sha256='e'*64
+    Reject { Assert-PortableCopyrightMapping $root $noOwner $map $original }
+    $source.formal_review_state='PENDING'
+    [IO.File]::WriteAllText((Join-Path $folder 'source.json'),($source | ConvertTo-Json),[Text.UTF8Encoding]::new($false))
+    Reject { Read-PortableNotices $root '0.3.0' $map }
+    $source.formal_review_state='REVIEWED'; $source.sha256='d'*64
+    [IO.File]::WriteAllText((Join-Path $folder 'source.json'),($source | ConvertTo-Json),[Text.UTF8Encoding]::new($false))
+    Reject { Read-PortableNotices $root '0.3.0' $map }
+    $map.Remove('THIRD-PARTY-NOTICES.txt'); Reject { Read-PortableNotices $root '0.3.0' $map }
+}
 Case 'Incomplete notice metadata fails closed' {
     $root=New-TestPath '.notice-root'; $folder=Join-Path $root 'release/notices'; New-Item -ItemType Directory -Path $folder | Out-Null
     foreach ($name in @('manifest.json','inventory.json','review.json')) { Write-ReleaseNewText (Join-Path $folder $name) '{"schema":1,"status":"UNRESOLVED","test_only":true}' }
@@ -224,14 +279,26 @@ Case 'Reparse extraction ancestor rejected before writes' {
 }
 Case 'Missing ZIP' { Reject { Read-PortableBytes (New-TestPath '.zip') } }
 Case 'Public package entrypoint refuses notices before creating a run' {
-    $publicScript=Join-Path $repo 'scripts/build-portable-package.ps1'
+    $root=New-PublicNoticeFixture
+    $publicScript=Join-Path $root 'scripts/build-portable-package.ps1'
     $preference=$ErrorActionPreference
     try { $ErrorActionPreference='Continue'; $lines=@(& powershell -NoProfile -ExecutionPolicy Bypass -File $publicScript -ExpectedSourceHead ('a'*40) -CompileRunId ('a'*32) 2>&1); $code=$LASTEXITCODE }
     finally { $ErrorActionPreference=$preference }
     Expect ($code -ne 0 -and ($lines -join ' ').Contains('Gate=Notices') -and -not ($lines -join ' ').Contains($repo))
+    Expect (-not [IO.Directory]::Exists((Join-Path $root 'tmp/portable-release')))
+    # Availability may succeed, but a synthetic root has no valid signed source checkpoint.
+    foreach ($name in @('manifest.json','review.json')) {
+        [IO.File]::WriteAllText((Join-Path $root ('release/notices/'+$name)), '{"schema":1,"status":"REVIEWED","test_only":true}', [Text.UTF8Encoding]::new($false))
+    }
+    Assert-PortableNoticeAvailability $root
+    try { $ErrorActionPreference='Continue'; $lines=@(& powershell -NoProfile -ExecutionPolicy Bypass -File $publicScript -ExpectedSourceHead ('a'*40) -CompileRunId ('a'*32) 2>&1); $code=$LASTEXITCODE }
+    finally { $ErrorActionPreference=$preference }
+    Expect ($code -ne 0 -and ($lines -join ' ').Contains('Gate=Source') -and -not ($lines -join ' ').Contains($repo))
+    Expect (-not [IO.Directory]::Exists((Join-Path $root 'tmp/portable-release')))
 }
 Case 'Public verifier refuses unavailable notice evidence' {
-    $publicScript=Join-Path $repo 'scripts/verify-portable-package.ps1'
+    $root=New-PublicNoticeFixture -MissingInventory
+    $publicScript=Join-Path $root 'scripts/verify-portable-package.ps1'
     $preference=$ErrorActionPreference
     try { $ErrorActionPreference='Continue'; $lines=@(& powershell -NoProfile -ExecutionPolicy Bypass -File $publicScript -ExpectedSourceHead ('a'*40) -CompileRunId ('a'*32) -PackageRunId ('b'*32) 2>&1); $code=$LASTEXITCODE }
     finally { $ErrorActionPreference=$preference }

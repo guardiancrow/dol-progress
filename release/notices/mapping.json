@@ -1,0 +1,4308 @@
+{
+  "schema": 1,
+  "purpose": "NOTICE_REVIEW_EVIDENCE",
+  "source_head": "4396ff971bbb4b543ead88dd51ae7a077d7cb69f",
+  "notice_source_commit": "9fa2ba9b3e2da5abdcec9de3b27a218a4e228627",
+  "notice_sha256": "37e763e27a6fd410324b3617d6e55ba0bb058d0086949dac776dc073c0c282a1",
+  "cargo_lock_sha256": "05c112cb5269dba19ac792bbbb33d200a29ede4074d219c384b0f5faff4095e8",
+  "npm_lock_sha256": "e54ce7518f50b7d2ec8252d0b715b415f0056f30436f7c9ce72f78e4a39c6466",
+  "coverage": {
+    "notice_records": 201,
+    "raw_texts": 148,
+    "text_references": 357,
+    "crate_original_files_matched": 323
+  },
+  "records": [
+    {
+      "name": "aho-corasick",
+      "version": "1.1.5",
+      "group": "Rust",
+      "license": "Unlicense OR MIT",
+      "hashes": [
+        "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+        "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f"
+      ],
+      "owners": [
+        "Copyright (c) 2015 Andrew Gallant"
+      ],
+      "archive_checksum": "c982642fa9e8606056828ee9a8505737230110bb1099153c79efe865c59d12ba"
+    },
+    {
+      "name": "alloc-no-stdlib",
+      "version": "3.0.0",
+      "group": "Rust",
+      "license": "BSD-3-Clause",
+      "hashes": [
+        "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae"
+      ],
+      "owners": [],
+      "archive_checksum": "c2fb6cfd47bf496ff64095c20eaba0c201404ee38714d4142fcfa1dc334fcc7a"
+    },
+    {
+      "name": "alloc-stdlib",
+      "version": "0.3.0",
+      "group": "Rust",
+      "license": "BSD-3-Clause",
+      "hashes": [
+        "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae"
+      ],
+      "owners": [],
+      "archive_checksum": "0b5c1865780388bfa186411ab5f247819487fc4864c6e9c3106611fa347586e1"
+    },
+    {
+      "name": "allocator-api2",
+      "version": "0.2.21",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "20fe7b00e904ed690e3b9fd6073784d3fc428141dbd10b81c01fd143d0797f58",
+        "36516aefdc84c5d5a1e7485425913a22dbda69eb1930c5e84d6ae4972b5194b9"
+      ],
+      "owners": [],
+      "archive_checksum": "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
+    },
+    {
+      "name": "anyhow",
+      "version": "1.0.104",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
+    },
+    {
+      "name": "atoi",
+      "version": "2.0.0",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "afb11426e09da40a1ae4f8fa17ddcc6b6a52d14df04c29bc5bcd06eb8730624d"
+      ],
+      "owners": [
+        "Copyright (c) 2017"
+      ],
+      "archive_checksum": "f28d99ec8bfea296261ca1af174f24225171fea9664ba9003cbebee704810528"
+    },
+    {
+      "name": "base64",
+      "version": "0.22.1",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "0dd882e53de11566d50f8e8e2d5a651bcf3fabee4987d70f306233cf39094ba7"
+      ],
+      "owners": [
+        "Copyright (c) 2015 Alice Maz"
+      ],
+      "archive_checksum": "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+    },
+    {
+      "name": "bitflags",
+      "version": "2.13.1",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb"
+      ],
+      "owners": [
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "archive_checksum": "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
+    },
+    {
+      "name": "block-buffer",
+      "version": "0.10.4",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+        "d5c22aa3118d240e877ad41c5d9fa232f9c77d757d4aac0c2f943afc0a95e0ef"
+      ],
+      "owners": [
+        "Copyright (c) 2018-2019 The RustCrypto Project Developers"
+      ],
+      "archive_checksum": "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
+    },
+    {
+      "name": "brotli-decompressor",
+      "version": "6.0.1",
+      "group": "Rust",
+      "license": "BSD-3-Clause/MIT",
+      "hashes": [
+        "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae"
+      ],
+      "owners": [],
+      "archive_checksum": "941cd9bd4ddab83cb46fa5a2d428f1c857b24ac78cb876cf7beb710840934bd7"
+    },
+    {
+      "name": "brotli",
+      "version": "9.0.0",
+      "group": "Rust",
+      "license": "BSD-3-Clause AND MIT",
+      "hashes": [
+        "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae",
+        "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94"
+      ],
+      "owners": [],
+      "archive_checksum": "f8b851b75c23ca7873623d612fe49bd1989aeb03d08fb9432187eb253d3d4c6b"
+    },
+    {
+      "name": "bytes",
+      "version": "1.12.1",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "45f522cacecb1023856e46df79ca625dfc550c94910078bd8aec6e02880b3d42"
+      ],
+      "owners": [
+        "Copyright (c) 2018 Carl Lerche"
+      ],
+      "archive_checksum": "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
+    },
+    {
+      "name": "cfb",
+      "version": "0.14.0",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "ebaac853b53fec0ed475796f533ce676912a4df9ad9d8a621fa76d5060591e10"
+      ],
+      "owners": [],
+      "archive_checksum": "a347dcabdae9c31b0825fd6a8bed285ec9c2acb89c47827126d52fa4f59cece3"
+    },
+    {
+      "name": "cfg-if",
+      "version": "1.0.4",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397"
+      ],
+      "owners": [
+        "Copyright (c) 2014 Alex Crichton"
+      ],
+      "archive_checksum": "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
+    },
+    {
+      "name": "cookie",
+      "version": "0.18.2",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "2773e20df8f4c52a026b5b578c7f2457341f5aa3fb6612fd87e1d2e1bd8f48ad",
+        "f28420c1906af38be726cd7842798f0194b27c41d6051c0d1e9ee348b8a4a0ea"
+      ],
+      "owners": [
+        "Copyright 2017 Sergio Benitez",
+        "Copyright 2014 Alex Chricton",
+        "Copyright (c) 2017 Sergio Benitez",
+        "Copyright (c) 2014 Alex Crichton"
+      ],
+      "archive_checksum": "1a373e3602691c3cdea496d2f0ee5935151e6168fe87739483c463db1b2f2f87"
+    },
+    {
+      "name": "cpufeatures",
+      "version": "0.2.17",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+        "ae9baa7beea910273c2f384c2a6b721fb7bd02bda3436074a1072e4ee689f985"
+      ],
+      "owners": [
+        "Copyright (c) 2020-2025 The RustCrypto Project Developers"
+      ],
+      "archive_checksum": "59ed5838eebb26a2bb2e58f6d5b5316989ae9d08bab10e0e6d103e656d1b0280"
+    },
+    {
+      "name": "crc-catalog",
+      "version": "2.5.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "5ef8fcfb6cccec8fcae043c834099a60c8b7406408db576e026d2b7e67dc5cf5",
+        "d3cdb764b98283ee7c3a3cea8d374e2a2957322374378d1f3263f4d512741fc3"
+      ],
+      "owners": [
+        "Copyright (c) 2019 Akhil Velagapudi",
+        "Copyright 2019 Akhil Velagapudi"
+      ],
+      "archive_checksum": "217698eaf96b4a3f0bc4f3662aaa55bdf913cd54d7204591faa790070c6d0853"
+    },
+    {
+      "name": "crc",
+      "version": "3.4.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "470355a7eed93fcc4281ec2e0f82ca3b94e7af1e4d83629f91de8cfac34d750e",
+        "3488679340a49ecc34d342c4009d2dabf76f4a21f12aec2ca99b15805d656544"
+      ],
+      "owners": [
+        "Copyright (c) 2017 crc-rs Developers"
+      ],
+      "archive_checksum": "5eb8a2a1cd12ab0d987a5d5e825195d372001a4094a0376319d5a0ad71c1ba0d"
+    },
+    {
+      "name": "crossbeam-channel",
+      "version": "0.5.16",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "5734ed989dfca1f625b40281ee9f4530f91b2411ec01cb748223e7eb87e201ab",
+        "b16db96b93b1d7cf7bea533f572091ec6bca3234fbe0a83038be772ff391a44c"
+      ],
+      "owners": [
+        "Copyright (c) 2019 The Crossbeam Project Developers",
+        "Copyright (c) 2009 The Go Authors. All rights reserved."
+      ],
+      "archive_checksum": "d85363c37faeca707aef026efa9f3b34d077bce547e48f770770625c6013679e"
+    },
+    {
+      "name": "crossbeam-queue",
+      "version": "0.3.13",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "5734ed989dfca1f625b40281ee9f4530f91b2411ec01cb748223e7eb87e201ab"
+      ],
+      "owners": [
+        "Copyright (c) 2019 The Crossbeam Project Developers"
+      ],
+      "archive_checksum": "803d13fb3b09d88be9f4dbc29062c66b19bf7170867ceb746d2a8689bf6c7a26"
+    },
+    {
+      "name": "crossbeam-utils",
+      "version": "0.8.22",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "5734ed989dfca1f625b40281ee9f4530f91b2411ec01cb748223e7eb87e201ab"
+      ],
+      "owners": [
+        "Copyright (c) 2019 The Crossbeam Project Developers"
+      ],
+      "archive_checksum": "61803da095bee82a81bb1a452ecc25d3b2f1416d1897eb86430c6159ef717c17"
+    },
+    {
+      "name": "crypto-common",
+      "version": "0.1.7",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+        "3521672491a3479422d5fe1aca6645dd2984090f85da6e5205abfb18fb7a6897"
+      ],
+      "owners": [
+        "Copyright (c) 2021 RustCrypto Developers"
+      ],
+      "archive_checksum": "78c8292055d1c1df0cce5d180393dc8cce0abec0a7102adb6c7b1eef6016d60a"
+    },
+    {
+      "name": "ctor",
+      "version": "1.0.13",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "a8ad31b1c3f40dca5a84119351b8fa8ddc868edd77fad8a8ebf6d8f2d16fa4ae",
+        "bccaa8b6c09f94e81f06696e179dbe058464bbdfbc823b6d49cada1d71e84ac3"
+      ],
+      "owners": [],
+      "archive_checksum": "914a755b7c2d4af2bdcff7ce1739e2db9a1b81a9b07123d8015786ae03c0980d"
+    },
+    {
+      "name": "deranged",
+      "version": "0.5.8",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "edd65bdd88957a205c47d53fa499eed8865a70320f0f03f6391668cb304ea376",
+        "231c837c45eb53f108fb48929e488965bc4fcc14e9ea21d35f50e6b99d98685b"
+      ],
+      "owners": [
+        "Copyright 2024 Jacob Pratt et al.",
+        "Copyright (c) 2024 Jacob Pratt et al."
+      ],
+      "archive_checksum": "7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c"
+    },
+    {
+      "name": "digest",
+      "version": "0.10.7",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+        "9e0dfd2dd4173a530e238cb6adb37aa78c34c6bc7444e0e10c1ab5d8881f63ba"
+      ],
+      "owners": [
+        "Copyright (c) 2017 Artyom Pavlov"
+      ],
+      "archive_checksum": "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
+    },
+    {
+      "name": "dirs-sys",
+      "version": "0.5.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "d3174ad63e721d4c9dccb8ad4320848992d314369bc46319720b5802c9153fe9",
+        "6a2e0ade09a7d5f816f11566fee2b151b32235a7fad52b41d49cce96f833c1a9"
+      ],
+      "owners": [
+        "Copyright (c) 2018-2019 dirs-rs contributors"
+      ],
+      "archive_checksum": "e01a3366d27ee9890022452ee61b2b63a67e6f13f58900b651ff5665f0bb1fab"
+    },
+    {
+      "name": "dirs",
+      "version": "6.0.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "d3174ad63e721d4c9dccb8ad4320848992d314369bc46319720b5802c9153fe9",
+        "6a2e0ade09a7d5f816f11566fee2b151b32235a7fad52b41d49cce96f833c1a9"
+      ],
+      "owners": [
+        "Copyright (c) 2018-2019 dirs-rs contributors"
+      ],
+      "archive_checksum": "c3e8aa94d75141228480295a7d0e7feb620b1a5ad9f12bc40be62411e38cce4e"
+    },
+    {
+      "name": "dpi",
+      "version": "0.1.2",
+      "group": "Rust",
+      "license": "Apache-2.0 AND MIT",
+      "hashes": [
+        "6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a",
+        "9eff396a99bafd208e7126602420d6864f6066c08b84485a5b032320a9c01997"
+      ],
+      "owners": [
+        "Copyright (c) 2018 Jorge Aparicio",
+        "Copyright © 2005-2020 Rich Felker, et al.",
+        "Copyright © 1993,2004 Sun Microsystems or",
+        "Copyright © 2003-2011 David Schultz or",
+        "Copyright © 2003-2009 Steven G. Kargl or",
+        "Copyright © 2003-2009 Bruce D. Evans or",
+        "Copyright © 2008 Stephen L. Moshier or",
+        "Copyright © 2017-2018 Arm Limited"
+      ],
+      "archive_checksum": "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
+    },
+    {
+      "name": "dunce",
+      "version": "1.0.5",
+      "group": "Rust",
+      "license": "CC0-1.0 OR MIT-0 OR Apache-2.0",
+      "hashes": [
+        "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+      ],
+      "owners": [],
+      "archive_checksum": "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
+    },
+    {
+      "name": "either",
+      "version": "1.17.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "7576269ea71f767b99297934c0b2367532690f8c4badc695edf8e04ab6a1e545"
+      ],
+      "owners": [
+        "Copyright (c) 2015"
+      ],
+      "archive_checksum": "9e5e8f6c15a24b9a3ee5efec809ccd006d3b30e8b3bb63c39af737c7f87daa1d"
+    },
+    {
+      "name": "equivalent",
+      "version": "1.0.2",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "7365cc8878a1d7ce155a58c4ca09c3d7a6be413efa5334a80ea842912b669349"
+      ],
+      "owners": [
+        "Copyright (c) 2016--2023"
+      ],
+      "archive_checksum": "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
+    },
+    {
+      "name": "erased-serde",
+      "version": "0.4.10",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "d2add8a07dd6a8d93ff627029c51de145e12686fbc36ecb298ac22e74cf02dec"
+    },
+    {
+      "name": "event-listener",
+      "version": "5.4.2",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "5a23add41df1562121a9393cb065eab5146a1242410f23a644851e90cfd669d2"
+    },
+    {
+      "name": "flume",
+      "version": "0.11.1",
+      "group": "Rust",
+      "license": "Apache-2.0/MIT",
+      "hashes": [
+        "d8621ec2eee5b9ca3c65f8492505f3590de8574fac0fdf5132a77232dba47abc",
+        "30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652"
+      ],
+      "owners": [],
+      "archive_checksum": "da0e4dd2a88388a1f4ccc7c9ce104604dab68d9f408dc34cd45823d5a9069095"
+    },
+    {
+      "name": "fnv",
+      "version": "1.0.7",
+      "group": "Rust",
+      "license": "Apache-2.0 / MIT",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "65fdb6c76cd61612070c066eec9ecdb30ee74fb27859d0d9af58b9f499fd0c3e"
+      ],
+      "owners": [
+        "Copyright (c) 2017 Contributors"
+      ],
+      "archive_checksum": "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+    },
+    {
+      "name": "foldhash",
+      "version": "0.1.5",
+      "group": "Rust",
+      "license": "Zlib",
+      "hashes": [
+        "b1181a40b2a7b25cf66fd01481713bc1005df082c53ef73e851e55071b102744"
+      ],
+      "owners": [
+        "Copyright (c) 2024 Orson Peters"
+      ],
+      "archive_checksum": "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
+    },
+    {
+      "name": "form_urlencoded",
+      "version": "1.2.2",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "20c7855c364d57ea4c97889a5e8d98470a9952dade37bd9248b9a54431670e5e"
+      ],
+      "owners": [
+        "Copyright (c) 2013-2016 The rust-url developers"
+      ],
+      "archive_checksum": "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
+    },
+    {
+      "name": "futures-channel",
+      "version": "0.3.34",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "275c491d6d1160553c32fd6127061d7f9606c3ea25abfad6ca3f6ed088785427",
+        "6652c868f35dfe5e8ef636810a4e576b9d663f3a17fb0f5613ad73583e1b88fd"
+      ],
+      "owners": [
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors",
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors"
+      ],
+      "archive_checksum": "b1f9e3d69d39e4862ffed03ed071a76f9a13ba1d9109d355b0f0aa6b15e393c4"
+    },
+    {
+      "name": "futures-core",
+      "version": "0.3.34",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "275c491d6d1160553c32fd6127061d7f9606c3ea25abfad6ca3f6ed088785427",
+        "6652c868f35dfe5e8ef636810a4e576b9d663f3a17fb0f5613ad73583e1b88fd"
+      ],
+      "owners": [
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors",
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors"
+      ],
+      "archive_checksum": "92d699e522242e69e3003b94ecc1f960f3a5e015aa7c5d7486e65ad01dd94f5e"
+    },
+    {
+      "name": "futures-executor",
+      "version": "0.3.34",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "275c491d6d1160553c32fd6127061d7f9606c3ea25abfad6ca3f6ed088785427",
+        "6652c868f35dfe5e8ef636810a4e576b9d663f3a17fb0f5613ad73583e1b88fd"
+      ],
+      "owners": [
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors",
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors"
+      ],
+      "archive_checksum": "031b47cf1a3c6cc8bc2fc76cd437f521619387907d469316e7c0bc278f1f5432"
+    },
+    {
+      "name": "futures-intrusive",
+      "version": "0.5.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "4618209e13998293f82505724827ea83d927070af1c038b11e7a2ff6fd12d911",
+        "161c4bcb09e94e97cf5d917129bbd78574ca2238704d602465cd54ebb9e570d6"
+      ],
+      "owners": [
+        "Copyright (c) 2019 Matthias Einwag",
+        "Copyright (c) 2019 Matthias Einwag"
+      ],
+      "archive_checksum": "1d930c203dd0b6ff06e0201a4a2fe9149b43c684fd4420555b26d21b1a02956f"
+    },
+    {
+      "name": "futures-io",
+      "version": "0.3.34",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "275c491d6d1160553c32fd6127061d7f9606c3ea25abfad6ca3f6ed088785427",
+        "6652c868f35dfe5e8ef636810a4e576b9d663f3a17fb0f5613ad73583e1b88fd"
+      ],
+      "owners": [
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors",
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors"
+      ],
+      "archive_checksum": "53c0fa8157de1303bfffdaa1cc2a673bfffb60102f76b0ef4441659124373fed"
+    },
+    {
+      "name": "futures-sink",
+      "version": "0.3.34",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "275c491d6d1160553c32fd6127061d7f9606c3ea25abfad6ca3f6ed088785427",
+        "6652c868f35dfe5e8ef636810a4e576b9d663f3a17fb0f5613ad73583e1b88fd"
+      ],
+      "owners": [
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors",
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors"
+      ],
+      "archive_checksum": "1944426bf7d03f1d14f708785e4b33efd750b36d48a157b836b3efc15ede8e1d"
+    },
+    {
+      "name": "futures-task",
+      "version": "0.3.34",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "275c491d6d1160553c32fd6127061d7f9606c3ea25abfad6ca3f6ed088785427",
+        "6652c868f35dfe5e8ef636810a4e576b9d663f3a17fb0f5613ad73583e1b88fd"
+      ],
+      "owners": [
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors",
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors"
+      ],
+      "archive_checksum": "cd417de3d1d015fc3bfd2b1ea46dfc7bab72ef86f1cc7cc9c78e728b34a6d1fd"
+    },
+    {
+      "name": "futures-util",
+      "version": "0.3.34",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "275c491d6d1160553c32fd6127061d7f9606c3ea25abfad6ca3f6ed088785427",
+        "6652c868f35dfe5e8ef636810a4e576b9d663f3a17fb0f5613ad73583e1b88fd"
+      ],
+      "owners": [
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors",
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors"
+      ],
+      "archive_checksum": "0d50a92467f8ba5dd6e3ee5d4bd04d73ab2e4e1c44474a0674821dfce14b79bc"
+    },
+    {
+      "name": "generic-array",
+      "version": "0.14.7",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "c09aae9d3c77b531f56351a9947bc7446511d6b025b3255312d3e3442a9a7583"
+      ],
+      "owners": [
+        "Copyright (c) 2015 Bartłomiej Kamiński"
+      ],
+      "archive_checksum": "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a"
+    },
+    {
+      "name": "getrandom",
+      "version": "0.3.4",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "aaff376532ea30a0cd5330b9502ad4a4c8bf769c539c87ffe78819d188a18ebf",
+        "29e9fe5074bd27e0e5d5d110394fbbcd841baee2651a3c4b4560a632702cede4"
+      ],
+      "owners": [
+        "Copyright (c) 2018-2025 The rust-random Project Developers",
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "archive_checksum": "899def5c37c4fd7b2664648c28120ecec138e4d395b459e5ca34f9cce2dd77fd"
+    },
+    {
+      "name": "glob",
+      "version": "0.3.4",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb"
+      ],
+      "owners": [
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "archive_checksum": "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
+    },
+    {
+      "name": "hashbrown",
+      "version": "0.15.5",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2"
+      ],
+      "owners": [
+        "Copyright (c) 2016 Amanieu d'Antras"
+      ],
+      "archive_checksum": "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
+    },
+    {
+      "name": "hashbrown",
+      "version": "0.17.1",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2"
+      ],
+      "owners": [
+        "Copyright (c) 2016 Amanieu d'Antras"
+      ],
+      "archive_checksum": "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
+    },
+    {
+      "name": "hashlink",
+      "version": "0.10.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c144680885b29e4719e2a51f0aab5439a1e02d980692b5aaf086cae12727f28b",
+        "e915669a595b11a200873df8286561881b0e04932f6412a585db6297ba0bc97c"
+      ],
+      "owners": [
+        "This work is derived in part from the `linked-hash-map` crate, Copyright (c)\n2015 The Rust Project Developers"
+      ],
+      "archive_checksum": "7382cf6263419f2d8df38c55d7da83da5c18aef87fc7a7fc1fb1e344edfe14c1"
+    },
+    {
+      "name": "heck",
+      "version": "0.5.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "7b63ecd5f1902af1b63729947373683c32745c16a10e8e6292e2e2dcd7e90ae0"
+      ],
+      "owners": [
+        "Copyright (c) 2015 The Rust Project Developers"
+      ],
+      "archive_checksum": "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
+    },
+    {
+      "name": "http",
+      "version": "1.5.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "8bb1b50b0e5c9399ae33bd35fab2769010fa6c14e8860c729a52295d84896b7a",
+        "dc91f8200e4b2a1f9261035d4c18c33c246911a6c0f7b543d75347e61b249cff"
+      ],
+      "owners": [
+        "Copyright 2017 http-rs authors",
+        "Copyright (c) 2017 http-rs authors"
+      ],
+      "archive_checksum": "918d3568bebf352712bc2ef3d46a8bcf1a75b373be6539de198e9105cbbf9ce0"
+    },
+    {
+      "name": "icu_collections",
+      "version": "2.2.0",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "2984d1cd16c883d7935b9e07e44071dca8d917fd52ecc02c04d5fa0b5a3f191c"
+    },
+    {
+      "name": "icu_locale_core",
+      "version": "2.2.0",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "92219b62b3e2b4d88ac5119f8904c10f8f61bf7e95b640d25ba3075e6cac2c29"
+    },
+    {
+      "name": "icu_normalizer_data",
+      "version": "2.2.0",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "da3be0ae77ea334f4da67c12f149704f19f81d1adf7c51cf482943e84a2bad38"
+    },
+    {
+      "name": "icu_normalizer",
+      "version": "2.2.0",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "c56e5ee99d6e3d33bd91c5d85458b6005a22140021cc324cea84dd0e72cff3b4"
+    },
+    {
+      "name": "icu_properties_data",
+      "version": "2.2.0",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "8e2bbb201e0c04f7b4b3e14382af113e17ba4f63e2c9d2ee626b720cbce54a14"
+    },
+    {
+      "name": "icu_properties",
+      "version": "2.2.0",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "bee3b67d0ea5c2cca5003417989af8996f8604e34fb9ddf96208a033901e70de"
+    },
+    {
+      "name": "icu_provider",
+      "version": "2.2.0",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "139c4cf31c8b5f33d7e199446eff9c1e02decfc2f0eec2c8d71f65befa45b421"
+    },
+    {
+      "name": "idna_adapter",
+      "version": "1.2.2",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "8b43ce8accd61e9d370b5ca9e9c4f953279b5c239926c62315b40e24df51b726"
+      ],
+      "owners": [
+        "Copyright (c) The rust-url developers"
+      ],
+      "archive_checksum": "cb68373c0d6620ef8105e855e7745e18b0d00d3bdb07fb532e434244cdb9a714"
+    },
+    {
+      "name": "idna",
+      "version": "1.1.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "b38f11f6096706e6de553dabe2a7ed142d59b6fa8c97e290c67496154745cdd5"
+      ],
+      "owners": [
+        "Copyright (c) 2013-2025 The rust-url developers"
+      ],
+      "archive_checksum": "3b0875f23caa03898994f6ddc501886a45c7d3d62d04d2d90788d47be1b1e4de"
+    },
+    {
+      "name": "indexmap",
+      "version": "2.14.0",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "ecc269ef87fd38a1d98e30bfac9ba964a9dbd9315c3770fed98d4d7cb5882055"
+      ],
+      "owners": [
+        "Copyright (c) 2016--2017"
+      ],
+      "archive_checksum": "d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9"
+    },
+    {
+      "name": "infer",
+      "version": "0.22.0",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "270b0d81891aa44c7e8726cf9432dade9556a01c848bacd2f3ef839c9c1a1859"
+      ],
+      "owners": [],
+      "archive_checksum": "f4200d433cbd5178df7797c9c2e75b348b728e39631cf14520d1e2fc424201f4"
+    },
+    {
+      "name": "itoa",
+      "version": "1.0.18",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
+    },
+    {
+      "name": "json-patch",
+      "version": "4.2.0",
+      "group": "Rust",
+      "license": "MIT/Apache-2.0",
+      "hashes": [
+        "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+        "87f7527b1066337751f7f4d717089bf514ff8f7ee7d66c4c5b891b09e744ec11"
+      ],
+      "owners": [],
+      "archive_checksum": "7421438de105a0827e44fadd05377727847d717c80ce29a229f85fd04c427b72"
+    },
+    {
+      "name": "jsonptr",
+      "version": "0.7.1",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "2cf31f2ae7f3feba667d50fc1d4d21ecf217703c04c3068b83c9a73b6dde723a",
+        "2bc107bdc18a74263d20bdefdb8073e17bc1a01b6b374dc5835683a33ee5ba7d"
+      ],
+      "owners": [],
+      "archive_checksum": "a5a3cc660ba5d72bce0b3bb295bf20847ccbb40fd423f3f05b61273672e561fe"
+    },
+    {
+      "name": "keyboard-types",
+      "version": "0.7.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "769f80b5bcb42ed0af4e4d2fd74e1ac9bf843cb80c5a29219d1ef3544428a6bb",
+        "31dbbab009f1b2e59a1622d5955dfafc38ebe834000215b49d954c6f85fe927c"
+      ],
+      "owners": [
+        "Copyright (c) 2017 Pyfisch"
+      ],
+      "archive_checksum": "b750dcadc39a09dbadd74e118f6dd6598df77fa01df0cfcdc52c28dece74528a"
+    },
+    {
+      "name": "libc",
+      "version": "0.2.189",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "123a331b5dbf04c30097fa43b8f858bc85df671fe776de498d01f3d6b7c1f69e"
+      ],
+      "owners": [
+        "Copyright (c) The Rust Project Developers"
+      ],
+      "archive_checksum": "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
+    },
+    {
+      "name": "libsqlite3-sys",
+      "version": "0.30.1",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "f59ba65550f2a5adff98ec6478d783402c8e0a3eb515025c0b3438f3d30dc39e",
+        "ea4fcb309f14a22065e1ea45362d494d320012249ed865fe9c7c0946db754131"
+      ],
+      "owners": [
+        "Copyright (c) 2014-2021 The rusqlite developers",
+        "Copyright (c) 2008-2020 Zetetic LLC"
+      ],
+      "archive_checksum": "2e99fb7a497b1e3339bc746195567ed8d3e24945ecd636e3619d20b9de9e9149"
+    },
+    {
+      "name": "litemap",
+      "version": "0.8.2",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
+    },
+    {
+      "name": "lock_api",
+      "version": "0.4.14",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "c9a75f18b9ab2927829a208fc6aa2cf4e63b8420887ba29cdb265d6619ae82d5"
+      ],
+      "owners": [
+        "Copyright (c) 2016 The Rust Project Developers"
+      ],
+      "archive_checksum": "224399e74b87b5f3557511d98dff8b14089b3dadafcab6bb93eab67d3aace965"
+    },
+    {
+      "name": "log",
+      "version": "0.4.33",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb"
+      ],
+      "owners": [
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "archive_checksum": "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
+    },
+    {
+      "name": "memchr",
+      "version": "2.8.3",
+      "group": "Rust",
+      "license": "Unlicense OR MIT",
+      "hashes": [
+        "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+        "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f"
+      ],
+      "owners": [
+        "Copyright (c) 2015 Andrew Gallant"
+      ],
+      "archive_checksum": "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
+    },
+    {
+      "name": "mime",
+      "version": "0.3.17",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "df9cfd06d8a44d9a671eadd39ffd97f166481da015a30f45dfd27886209c5922"
+      ],
+      "owners": [
+        "Copyright (c) 2014 Sean McArthur"
+      ],
+      "archive_checksum": "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
+    },
+    {
+      "name": "mio",
+      "version": "1.2.2",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "07919255c7e04793d8ea760d6c2ce32d19f9ff02bdbdde3ce90b1e1880929a9b"
+      ],
+      "owners": [
+        "Copyright (c) 2014 Carl Lerche and other MIO contributors"
+      ],
+      "archive_checksum": "30d65c71f1ce40ab09135ce117d742b9f8a19ff91a41a8b57ed50bc2de59c427"
+    },
+    {
+      "name": "muda",
+      "version": "0.19.3",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "2ab5537b8c0cb1d475e2145b6a7994b04e7c71e6e5bd836f7f9c47c221a5ad9a",
+        "b99f9d43803f2ac979c50949df630bd8eeaf2fcd1b9fdb9093710d70f5dfb63d"
+      ],
+      "owners": [
+        "Copyright (c) 2022-2022 Tauri Programme within The Commons Conservancy"
+      ],
+      "archive_checksum": "1dd04e60bc0b07438a6771710ee1698f98f6ebbc7f89b61264af1563b8aeb878"
+    },
+    {
+      "name": "num-conv",
+      "version": "0.2.2",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "e2e245f2b566d0bfafb0f6a04c16b82d710c4e6e7d799e39bb4ef6e541b85b98"
+      ],
+      "owners": [
+        "Copyright (c) Jacob Pratt"
+      ],
+      "archive_checksum": "521739c6d2bac4aa25192232afe6841231376b2b26d4d9fae5ecf8ca5772e441"
+    },
+    {
+      "name": "num-traits",
+      "version": "0.2.19",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb"
+      ],
+      "owners": [
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "archive_checksum": "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
+    },
+    {
+      "name": "once_cell",
+      "version": "1.21.4",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
+    },
+    {
+      "name": "parking_lot_core",
+      "version": "0.9.12",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "c9a75f18b9ab2927829a208fc6aa2cf4e63b8420887ba29cdb265d6619ae82d5"
+      ],
+      "owners": [
+        "Copyright (c) 2016 The Rust Project Developers"
+      ],
+      "archive_checksum": "2621685985a2ebf1c516881c026032ac7deafcda1a2c9b7850dc81e3dfcb64c1"
+    },
+    {
+      "name": "parking_lot",
+      "version": "0.12.5",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "c9a75f18b9ab2927829a208fc6aa2cf4e63b8420887ba29cdb265d6619ae82d5"
+      ],
+      "owners": [
+        "Copyright (c) 2016 The Rust Project Developers"
+      ],
+      "archive_checksum": "93857453250e3077bd71ff98b6a65ea6621a19bb0f559a85248955ac12c45a1a"
+    },
+    {
+      "name": "parking",
+      "version": "2.2.1",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+        "9a6d7a3c1b8edcc706c4b6c37f8dae9a77f02c7f9051df603f975db136b55419"
+      ],
+      "owners": [
+        "Copyright 2014-2020 The Rust Project Developers"
+      ],
+      "archive_checksum": "f38d5652c16fde515bb1ecef450ab0f6a219d619a7274976324d5e377f7dceba"
+    },
+    {
+      "name": "percent-encoding",
+      "version": "2.3.2",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "b38f11f6096706e6de553dabe2a7ed142d59b6fa8c97e290c67496154745cdd5"
+      ],
+      "owners": [
+        "Copyright (c) 2013-2025 The rust-url developers"
+      ],
+      "archive_checksum": "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
+    },
+    {
+      "name": "phf_shared",
+      "version": "0.13.1",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "0ab4d106b6faac07fb6a051815fd1b4d862d730895e2d7d7358c2f13565e7a38"
+      ],
+      "owners": [
+        "Copyright (c) 2014-2022 Steven Fackler, Yuki Okushi"
+      ],
+      "archive_checksum": "e57fef6bc5981e38c2ce2d63bfa546861309f875b8a75f092d1d54ae2d64f266"
+    },
+    {
+      "name": "phf",
+      "version": "0.13.1",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "0ab4d106b6faac07fb6a051815fd1b4d862d730895e2d7d7358c2f13565e7a38"
+      ],
+      "owners": [
+        "Copyright (c) 2014-2022 Steven Fackler, Yuki Okushi"
+      ],
+      "archive_checksum": "c1562dc717473dbaa4c1f85a36410e03c047b2e7df7f45ee938fbef64ae7fadf"
+    },
+    {
+      "name": "pin-project-lite",
+      "version": "0.2.17",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
+    },
+    {
+      "name": "plist",
+      "version": "1.10.0",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "5b0ae40d1a35f7ae6591a28e44771240e6a88cb03a66c9189a45b9681639b466"
+      ],
+      "owners": [
+        "Copyright (c) 2015 Edward Barnard"
+      ],
+      "archive_checksum": "7da1d65da6dd5d1e44199ac0f58712d241c0f439f80adea8924d832384087f85"
+    },
+    {
+      "name": "potential_utf",
+      "version": "0.1.5",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "0103b1cef7ec0cf76490e969665504990193874ea05c85ff9bab8b911d0a0564"
+    },
+    {
+      "name": "powerfmt",
+      "version": "0.2.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "155420c6403d4e0fca34105e3c03fdd6939b64c393c7ec6f95f5b72c5474eab0",
+        "070dbc7dda03a29296f2d58bdb9b7331af90f2abc9f31df22875d1eabaf29852"
+      ],
+      "owners": [
+        "Copyright 2023 Jacob Pratt et al.",
+        "Copyright (c) 2023 Jacob Pratt et al."
+      ],
+      "archive_checksum": "439ee305def115ba05938db6eb1644ff94165c5ab5e9420d1c1bcedbba909391"
+    },
+    {
+      "name": "quick-xml",
+      "version": "0.41.0",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "5b2c207dcf571267ebe0bbdd5bf321f561ddc22ff597e7b363e96f4539507a29"
+      ],
+      "owners": [
+        "Copyright (c) 2016 Johann Tuffe"
+      ],
+      "archive_checksum": "e660451e55124f798a69a5af3f49ccfbefbd41910eefd25caf2393e1f3473ec1"
+    },
+    {
+      "name": "raw-window-handle",
+      "version": "0.6.2",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0 OR Zlib",
+      "hashes": [
+        "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "9c5a80639a57c1c945570e7ebbca0706305849ce3c098021325cca9db2f7acc4",
+        "ae895c8576e682f310fb70d93d9f99b1dd82872094c54a8f6cdfe2ca5c2d6ecb"
+      ],
+      "owners": [
+        "Copyright (c) 2019 Osspial",
+        "Copyright (c) 2020 Osspial"
+      ],
+      "archive_checksum": "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
+    },
+    {
+      "name": "regex-automata",
+      "version": "0.4.18",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb"
+      ],
+      "owners": [
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "archive_checksum": "ad8553b9b26413251cbf30e620595c7a41b3887f03da04579c0e6b0d6a06b4b2"
+    },
+    {
+      "name": "regex-syntax",
+      "version": "0.8.11",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb",
+        "74db5baf44a41b1000312c673544b3374e4198af5605c7f9080a402cec42cfa3"
+      ],
+      "owners": [
+        "Copyright (c) 2014 The Rust Project Developers",
+        "Copyright © 1991-2018 Unicode, Inc. All rights reserved."
+      ],
+      "archive_checksum": "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
+    },
+    {
+      "name": "regex",
+      "version": "1.13.1",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb"
+      ],
+      "owners": [
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "archive_checksum": "f020237b6c8eed93db2e2cb53c00c60a8e1bc73da7d073199a1180401450218d"
+    },
+    {
+      "name": "rfd",
+      "version": "0.16.0",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "65fc947f4bac882a2cd104ef73c246b1b037059df9f2b3a58b7f77f0b9e56071"
+      ],
+      "owners": [
+        "Copyright (c) 2022 Bartłomiej Maryńczak"
+      ],
+      "archive_checksum": "a15ad77d9e70a92437d8f74c35d99b4e4691128df018833e99f90bcd36152672"
+    },
+    {
+      "name": "ryu",
+      "version": "1.0.23",
+      "group": "Rust",
+      "license": "Apache-2.0 OR BSL-1.0",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+      ],
+      "owners": [
+        "Copyright 2018 Ulf Adams"
+      ],
+      "archive_checksum": "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
+    },
+    {
+      "name": "same-file",
+      "version": "1.0.6",
+      "group": "Rust",
+      "license": "Unlicense/MIT",
+      "hashes": [
+        "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+        "cb3c929a05e6cbc9de9ab06a4c57eeb60ca8c724bef6c138c87d3a577e27aa14"
+      ],
+      "owners": [
+        "Copyright (c) 2017 Andrew Gallant"
+      ],
+      "archive_checksum": "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
+    },
+    {
+      "name": "scopeguard",
+      "version": "1.2.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "fb77f0a9c53e473abe5103c8632ef9f0f2874d4fb3f17cb2d8c661aab9cee9d7"
+      ],
+      "owners": [
+        "Copyright (c) 2016-2019 Ulrik Sverdrup \"bluss\" and scopeguard developers"
+      ],
+      "archive_checksum": "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
+    },
+    {
+      "name": "semver",
+      "version": "1.0.28",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
+    },
+    {
+      "name": "serde_core",
+      "version": "1.0.229",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "67dca2c9c51e58a4791a4b1ed58308b39c64224d349a935ab5039aa360942a48"
+    },
+    {
+      "name": "serde_json",
+      "version": "1.0.151",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "c841b55ecdae098c80dcae9cf767f6f8a0c2cdb3416bbef72181df4d0fe73f14"
+    },
+    {
+      "name": "serde_spanned",
+      "version": "1.1.1",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+        "6efb0476a1cc085077ed49357026d8c173bf33017278ef440f222fb9cbcb66e6"
+      ],
+      "owners": [
+        "Copyright (c) Individual contributors"
+      ],
+      "archive_checksum": "6662b5879511e06e8999a8a235d848113e942c9124f211511b16466ee2995f26"
+    },
+    {
+      "name": "serde_urlencoded",
+      "version": "0.7.1",
+      "group": "Rust",
+      "license": "MIT/Apache-2.0",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "b9eb266294324f672cbe945fe8f2e32f85024f0d61a1a7d14382cdde0ac44769"
+      ],
+      "owners": [
+        "Copyright (c) 2016 Anthony Ramine"
+      ],
+      "archive_checksum": "d3491c14715ca2294c4d6a88f15e84739788c1d030eed8c110436aafdaa2f3fd"
+    },
+    {
+      "name": "serde_with",
+      "version": "3.22.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "7576269ea71f767b99297934c0b2367532690f8c4badc695edf8e04ab6a1e545"
+      ],
+      "owners": [
+        "Copyright (c) 2015"
+      ],
+      "archive_checksum": "ee78f1fbe43ac4a0e47aadb3dbd357b69eb0d3793e948624cd03dd2750ab1c0a"
+    },
+    {
+      "name": "serde-untagged",
+      "version": "0.1.9",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "f9faf48a4a2d2693be24c6289dbe26552776eb7737074e6722891fadbe6c5058"
+    },
+    {
+      "name": "serde",
+      "version": "1.0.229",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "4148590afebada386688f18773da617792bf2ef03ffc1e4cbd2b1d45b023e0ba"
+    },
+    {
+      "name": "serialize-to-javascript",
+      "version": "0.1.2",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+        "e53a7165e8bc3ced5e5628404b3d2d28ecc14ad720f1c09ba28385d5151ecf93"
+      ],
+      "owners": [
+        "Copyright (c) 2021 Chip Reed"
+      ],
+      "archive_checksum": "04f3666a07a197cdb77cdf306c32be9b7f598d7060d50cfd4d5aa04bfd92f6c5"
+    },
+    {
+      "name": "sha2",
+      "version": "0.10.9",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+        "b4eb00df6e2a4d22518fcaa6a2b4646f249b3a3c9814509b22bd2091f1392ff1"
+      ],
+      "owners": [
+        "Copyright (c) 2006-2009 Graydon Hoare",
+        "Copyright (c) 2009-2013 Mozilla Foundation",
+        "Copyright (c) 2016 Artyom Pavlov"
+      ],
+      "archive_checksum": "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"
+    },
+    {
+      "name": "siphasher",
+      "version": "1.0.3",
+      "group": "Rust",
+      "license": "MIT/Apache-2.0",
+      "hashes": [
+        "c962ee4d1d05ddc138b202b2540219ebc57893fcf97b364852094a9a94ce1365"
+      ],
+      "owners": [
+        "Copyright 2012-2016 The Rust Project Developers.",
+        "Copyright 2016-2026 Frank Denis."
+      ],
+      "archive_checksum": "8ee5873ec9cce0195efcb7a4e9507a04cd49aec9c83d0389df45b1ef7ba2e649"
+    },
+    {
+      "name": "slab",
+      "version": "0.4.12",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "8ce0830173fdac609dfb4ea603fdc002c2f4af0dc9b1a005653f5da9cf534b18"
+      ],
+      "owners": [
+        "Copyright (c) 2019 Carl Lerche"
+      ],
+      "archive_checksum": "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
+    },
+    {
+      "name": "smallvec",
+      "version": "1.15.2",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "0b28172679e0009b655da42797c03fd163a3379d5cfa67ba1f1655e974a2a1a9"
+      ],
+      "owners": [
+        "Copyright (c) 2018 The Servo Project Developers"
+      ],
+      "archive_checksum": "8ed6a63f02c8539c91a8685a86f4099661ba3da017932f6ebbea6de3f0fa7c90"
+    },
+    {
+      "name": "socket2",
+      "version": "0.6.5",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397"
+      ],
+      "owners": [
+        "Copyright (c) 2014 Alex Crichton"
+      ],
+      "archive_checksum": "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
+    },
+    {
+      "name": "softbuffer",
+      "version": "0.4.8",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a4445427440043e8ce6fadf7a43fb906cb0d7f6c573a560a9f142cf9f9bf8ff4",
+        "0463bfa47d6d763d8c824333efb0e6d6df3946c13c3b077c78ed9f23ca50d0f2"
+      ],
+      "owners": [
+        "Copyright 2022 Kirill Chibisov",
+        "Copyright 2022 Kirill Chibisov"
+      ],
+      "archive_checksum": "aac18da81ebbf05109ab275b157c22a653bb3c12cf884450179942f81bcbf6c3"
+    },
+    {
+      "name": "spin",
+      "version": "0.9.9",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "6ac8711fb340c62ce0a4ecd463342d3fa0e8e70de697c863a2e1c0c53006003c"
+      ],
+      "owners": [
+        "Copyright (c) 2014 Mathijs van de Nes"
+      ],
+      "archive_checksum": "3763264f6b73151db08c50ff20d7d8a0b8796e021cdea7ceedad07b80155fa0e"
+    },
+    {
+      "name": "sqlx-core",
+      "version": "0.8.6",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "9be39331309bc958aab10457c1a8459c038ae95662f26dfcf6c9088e2b3d653f",
+        "44b1600a26039a75b28e1ce154a5dd163b16549f50e34fa577d9efe9c1bae179"
+      ],
+      "owners": [
+        "Copyright 2020 LaunchBadge, LLC",
+        "Copyright (c) 2020 LaunchBadge, LLC"
+      ],
+      "archive_checksum": "ee6798b1838b6a0f69c007c133b8df5866302197e404e8b6ee8ed3e3a5e68dc6"
+    },
+    {
+      "name": "sqlx-sqlite",
+      "version": "0.8.6",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "9be39331309bc958aab10457c1a8459c038ae95662f26dfcf6c9088e2b3d653f",
+        "44b1600a26039a75b28e1ce154a5dd163b16549f50e34fa577d9efe9c1bae179"
+      ],
+      "owners": [
+        "Copyright 2020 LaunchBadge, LLC",
+        "Copyright (c) 2020 LaunchBadge, LLC"
+      ],
+      "archive_checksum": "c2d12fe70b2c1b4401038055f90f151b78208de1f9f89a7dbfd41587a10c3eea"
+    },
+    {
+      "name": "sqlx",
+      "version": "0.8.6",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "9be39331309bc958aab10457c1a8459c038ae95662f26dfcf6c9088e2b3d653f",
+        "44b1600a26039a75b28e1ce154a5dd163b16549f50e34fa577d9efe9c1bae179"
+      ],
+      "owners": [
+        "Copyright 2020 LaunchBadge, LLC",
+        "Copyright (c) 2020 LaunchBadge, LLC"
+      ],
+      "archive_checksum": "1fefb893899429669dcdd979aff487bd78f4064e5e7907e4269081e0ef7d97dc"
+    },
+    {
+      "name": "stable_deref_trait",
+      "version": "1.2.1",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "5e05b024f653a5ce199e77cbbbd42fb5553562ec714b819421ed0c3e552a75d7"
+      ],
+      "owners": [
+        "Copyright (c) 2017 Robert Grosse"
+      ],
+      "archive_checksum": "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
+    },
+    {
+      "name": "tao",
+      "version": "0.35.3",
+      "group": "Rust",
+      "license": "Apache-2.0",
+      "hashes": [
+        "6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a",
+        "02b6448337b757772d90e5f31caaa0f9e6afaad2221c01771d0a3deaa4d4196c",
+        "3f7eedf574718eefa8657bb5720d4fe59fcf9e97d304f3289d3abc775ef5a7e4"
+      ],
+      "owners": [
+        "Copyright 2014-2021 The winit contributors",
+        "Copyright 2021-2023 Tauri Programme within The Commons Conservancy",
+        "Copyright © 2017 W3C® (MIT, ERCIM, Keio, Beihang).",
+        "Copyright © 2021 World Wide Web Consortium, (Massachusetts Institute of Technology, European",
+        "Copyright 2014-2021 The tao contributors"
+      ],
+      "archive_checksum": "d1c93047acf68669466a34690ac58cca7010bd1b201e1ec86f1fd0a75d3dd4a9"
+    },
+    {
+      "name": "tauri-plugin-dialog",
+      "version": "2.7.2",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "eb8a6c84630461b352badcab1dbe5d0168c56d377358b2b8c86b51003272d5ef",
+        "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9",
+        "89ff9689dcf9dd53968785d05a26f7898bb169dbfcada8d032b3e68cf0d55607"
+      ],
+      "owners": [
+        "Copyright (c) 2017 - Present Tauri Apps Contributors"
+      ],
+      "archive_checksum": "b2d3c1dbe38037e7f590cdf2492594d5ceebe031e7bc7e827509b22a999d2940"
+    },
+    {
+      "name": "tauri-plugin-fs",
+      "version": "2.5.1",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "eb8a6c84630461b352badcab1dbe5d0168c56d377358b2b8c86b51003272d5ef",
+        "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9",
+        "89ff9689dcf9dd53968785d05a26f7898bb169dbfcada8d032b3e68cf0d55607"
+      ],
+      "owners": [
+        "Copyright (c) 2017 - Present Tauri Apps Contributors"
+      ],
+      "archive_checksum": "b7ecc274121aca0c036a2b42d1cbe83d368d348f54e0bb8a735c2b1548e8f371"
+    },
+    {
+      "name": "tauri-runtime-wry",
+      "version": "2.11.4",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d"
+      ],
+      "owners": [
+        "Copyright (c) 2017 - Present Tauri Apps Contributors"
+      ],
+      "archive_checksum": "4e6fac707727b7a2f48e4ded90976324267371073edbb415ffb73bb0458d203f"
+    },
+    {
+      "name": "tauri-runtime",
+      "version": "2.11.3",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d"
+      ],
+      "owners": [
+        "Copyright (c) 2017 - Present Tauri Apps Contributors"
+      ],
+      "archive_checksum": "b0b4bc95aed361b0019067d189a1174a603d460d0f6c72606512d59fc9c12ec8"
+    },
+    {
+      "name": "tauri-utils",
+      "version": "2.10.0",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d"
+      ],
+      "owners": [],
+      "archive_checksum": "4dd257082deff79550de3409ed146104aeaf86fe38649615b04a304144939677"
+    },
+    {
+      "name": "tauri",
+      "version": "2.11.5",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d"
+      ],
+      "owners": [
+        "Copyright (c) 2017 - Present Tauri Apps Contributors"
+      ],
+      "archive_checksum": "667b20e2726d572dea2de7370da16e188eb06008faf9a92fab7cdc46791190b5"
+    },
+    {
+      "name": "thiserror",
+      "version": "2.0.20",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "ec86235f5fcc2a73650310756d2ac5b138a5780bbbdfae3eeccec992c435ba4f"
+    },
+    {
+      "name": "time-core",
+      "version": "0.1.9",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "2537228d9a1b44a5dc595241349cae7090b326c8de165aaf89bfddef4a00d0fc"
+      ],
+      "owners": [
+        "Copyright (c) Jacob Pratt et al."
+      ],
+      "archive_checksum": "9e1c906769ad99c88eaa54e728060edef082f8e358ff32030cb7c7d315e81109"
+    },
+    {
+      "name": "time",
+      "version": "0.3.55",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "2537228d9a1b44a5dc595241349cae7090b326c8de165aaf89bfddef4a00d0fc"
+      ],
+      "owners": [
+        "Copyright (c) Jacob Pratt et al."
+      ],
+      "archive_checksum": "cdb87b95ec50ddfa440816d227a17b2ccbdda963a316a727fda0fc4334f7d134"
+    },
+    {
+      "name": "tinystr",
+      "version": "0.8.3",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "c8323304221c2a851516f22236c5722a72eaa19749016521d6dff0824447d96d"
+    },
+    {
+      "name": "tokio-stream",
+      "version": "0.1.19",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "253cd04c6714889df2d32f3f64d669179a1c95c76ac43c40882c52eb06bc3552"
+      ],
+      "owners": [
+        "Copyright (c) Tokio Contributors"
+      ],
+      "archive_checksum": "a3d06f0b082ba57c26b79407372e57cf2a1e28124f78e9479fe80322cf53420b"
+    },
+    {
+      "name": "tokio",
+      "version": "1.53.1",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "253cd04c6714889df2d32f3f64d669179a1c95c76ac43c40882c52eb06bc3552"
+      ],
+      "owners": [
+        "Copyright (c) Tokio Contributors"
+      ],
+      "archive_checksum": "202caea871b69668250d242070849eb495be178ed697a3e98aebce5bc81a0bed"
+    },
+    {
+      "name": "toml_datetime",
+      "version": "0.7.5+spec-1.1.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+        "6efb0476a1cc085077ed49357026d8c173bf33017278ef440f222fb9cbcb66e6"
+      ],
+      "owners": [],
+      "archive_checksum": "92e1cfed4a3038bc5a127e35a2d360f145e1f4b971b551a2ba5fd7aedf7e1347"
+    },
+    {
+      "name": "toml_parser",
+      "version": "1.1.3+spec-1.1.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+        "6efb0476a1cc085077ed49357026d8c173bf33017278ef440f222fb9cbcb66e6"
+      ],
+      "owners": [
+        "Copyright (c) Individual contributors"
+      ],
+      "archive_checksum": "1d38ac1cf9b95face32296c0a3ede1fdc270627c9d9c02a7274dd6d960dc4d56"
+    },
+    {
+      "name": "toml_writer",
+      "version": "1.1.2+spec-1.1.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+        "6efb0476a1cc085077ed49357026d8c173bf33017278ef440f222fb9cbcb66e6"
+      ],
+      "owners": [
+        "Copyright (c) Individual contributors"
+      ],
+      "archive_checksum": "7d56353a2a665ad0f41a421187180aab746c8c325620617ad883a99a1cbe66d2"
+    },
+    {
+      "name": "toml",
+      "version": "0.9.12+spec-1.1.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+        "6efb0476a1cc085077ed49357026d8c173bf33017278ef440f222fb9cbcb66e6"
+      ],
+      "owners": [],
+      "archive_checksum": "cf92845e79fc2e2def6a5d828f0801e29a2f8acc037becc5ab08595c7d5e9863"
+    },
+    {
+      "name": "tracing-core",
+      "version": "0.1.36",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "898b1ae9821e98daf8964c8d6c7f61641f5f5aa78ad500020771c0939ee0dea1",
+        "58545fed1565e42d687aecec6897d35c6d37ccb71479a137c0deb2203e125c79"
+      ],
+      "owners": [
+        "Copyright (c) 2019 Tokio Contributors",
+        "Copyright (c) 2014 Mathijs van de Nes"
+      ],
+      "archive_checksum": "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
+    },
+    {
+      "name": "tracing",
+      "version": "0.1.44",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "898b1ae9821e98daf8964c8d6c7f61641f5f5aa78ad500020771c0939ee0dea1"
+      ],
+      "owners": [
+        "Copyright (c) 2019 Tokio Contributors"
+      ],
+      "archive_checksum": "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
+    },
+    {
+      "name": "typeid",
+      "version": "1.0.3",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "bc7d623258602320d5c55d1bc22793b57daff0ec7efc270ea7d55ce1d5f5471c"
+    },
+    {
+      "name": "typenum",
+      "version": "1.20.1",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "db11fec9946737df39ca3898d9cd8c10ec6f6c3a884a6802b0ad0b81b4e8f23a",
+        "516b24e051bf5630880ebbd55c40a25ce9552ebaf8970a53e8976eb70e522406",
+        "a825bd853ab71619a4923d7b4311221427848070ff44d990da39b0b274c1683f"
+      ],
+      "owners": [
+        "Copyright 2014 Paho Lurie-Gregg",
+        "Copyright (c) 2014 Paho Lurie-Gregg"
+      ],
+      "archive_checksum": "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"
+    },
+    {
+      "name": "unicode-segmentation",
+      "version": "1.13.3",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "23860c2a7b5d96b21569afedf033469bab9fe14a1b24a35068b8641c578ce24d",
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "7b63ecd5f1902af1b63729947373683c32745c16a10e8e6292e2e2dcd7e90ae0"
+      ],
+      "owners": [
+        "Copyright (c) 2015 The Rust Project Developers"
+      ],
+      "archive_checksum": "c6f5d3c3b1bf09027a88a6bc961fc00497d651009560b5463668dc81b0fa87a8"
+    },
+    {
+      "name": "url",
+      "version": "2.5.8",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "b38f11f6096706e6de553dabe2a7ed142d59b6fa8c97e290c67496154745cdd5"
+      ],
+      "owners": [
+        "Copyright (c) 2013-2025 The rust-url developers"
+      ],
+      "archive_checksum": "ff67a8a4397373c3ef660812acab3268222035010ab8680ec4215f38ba3d0eed"
+    },
+    {
+      "name": "urlpattern",
+      "version": "0.6.0",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "5cf1c9dc617e4cad7fa03181ff893601ad5243aa3be527ef39034e1cd6377676"
+      ],
+      "owners": [],
+      "archive_checksum": "df16f50ef4cc145211879a3867ba757076b25dfee812040dcb0658bd9ae7904b"
+    },
+    {
+      "name": "utf8_iter",
+      "version": "1.0.4",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "c30152c94a6d75e021adbc52b3a52470366a46edb917e17deae3259251af244c",
+        "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "3fa4ca83dcc9237839b1bdeb2e6d16bdfb5ec0c5ce42b24694d8bbf0dcbef72c"
+      ],
+      "owners": [
+        "Copyright Mozilla Foundation"
+      ],
+      "archive_checksum": "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
+    },
+    {
+      "name": "uuid",
+      "version": "1.24.0",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "436bc5a105d8e57dcd8778730f3754f7bf39c14d2f530e4cde4bd2d17a83ec3d"
+      ],
+      "owners": [
+        "Copyright (c) 2014 The Rust Project Developers",
+        "Copyright (c) 2018 Ashley Mannix, Christopher Armstrong, Dylan DPC, Hunar Roop Kahlon"
+      ],
+      "archive_checksum": "bf3923a6f5c4c6382e0b653c4117f48d631ea17f38ed86e2a828e6f7412f5239"
+    },
+    {
+      "name": "walkdir",
+      "version": "2.5.0",
+      "group": "Rust",
+      "license": "Unlicense/MIT",
+      "hashes": [
+        "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+        "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f"
+      ],
+      "owners": [
+        "Copyright (c) 2015 Andrew Gallant"
+      ],
+      "archive_checksum": "29790946404f91d9c5d06f9874efddea1dc06c5efe94541a7d6863108e3a5e4b"
+    },
+    {
+      "name": "web-time",
+      "version": "1.1.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "54a744942eb3fa63a74d8d359989ed6962c04f3f10ff20cfa08ff8aa7efbe4e6",
+        "f428305bbf2e70fbd807af0f3c7ac1b7acfb95311640f451e9d2e48db6d7e96b"
+      ],
+      "owners": [],
+      "archive_checksum": "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
+    },
+    {
+      "name": "webview2-com-sys",
+      "version": "0.38.2",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73"
+      ],
+      "owners": [
+        "Copyright (c) 2021 Bill Avery"
+      ],
+      "archive_checksum": "381336cfffd772377d291702245447a5251a2ffa5bad679c99e61bc48bacbf9c"
+    },
+    {
+      "name": "webview2-com",
+      "version": "0.38.2",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73"
+      ],
+      "owners": [
+        "Copyright (c) 2021 Bill Avery"
+      ],
+      "archive_checksum": "7130243a7a5b33c54a444e54842e6a9e133de08b5ad7b5861cd8ed9a6a5bc96a"
+    },
+    {
+      "name": "winapi-util",
+      "version": "0.1.11",
+      "group": "Rust",
+      "license": "Unlicense OR MIT",
+      "hashes": [
+        "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+        "cb3c929a05e6cbc9de9ab06a4c57eeb60ca8c724bef6c138c87d3a577e27aa14"
+      ],
+      "owners": [
+        "Copyright (c) 2017 Andrew Gallant"
+      ],
+      "archive_checksum": "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
+    },
+    {
+      "name": "window-vibrancy",
+      "version": "0.6.0",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "617b85f62a4f1b6a62d3d9f28f6d7003b7f68a70b7675a8174bbcc68401ac62d",
+        "7ccef0d35e8507fa02d7e904a5277d62723f9ec576d52f6a865cab7b4dbf12ad"
+      ],
+      "owners": [
+        "Copyright (c) 2020-2022 Tauri Programme within The Commons Conservancy"
+      ],
+      "archive_checksum": "d9bec5a31f3f9362f2258fd0e9c9dd61a9ca432e7306cc78c444258f0dce9a9c"
+    },
+    {
+      "name": "windows_x86_64_msvc",
+      "version": "0.48.5",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [],
+      "archive_checksum": "ed94fce61571a4006852b7389a063ab983c02eb1bb37b47f8272ce92d06d9538"
+    },
+    {
+      "name": "windows_x86_64_msvc",
+      "version": "0.52.6",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
+    },
+    {
+      "name": "windows_x86_64_msvc",
+      "version": "0.53.1",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "d6bbff5f0aada427a1e5a6da5f1f98158182f26556f345ac9e04d36d0ebed650"
+    },
+    {
+      "name": "windows-collections",
+      "version": "0.2.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "3beeceb5e5cfd9eb1d76b381630e82c4241ccd0d27f1a39ed41b2760b255c5e8"
+    },
+    {
+      "name": "windows-core",
+      "version": "0.61.2",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "c0fdd3ddb90610c7638aa2b3a3ab2904fb9e5cdbecc643ddb3647212781c4ae3"
+    },
+    {
+      "name": "windows-future",
+      "version": "0.2.1",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "fc6a41e98427b19fe4b73c550f060b59fa592d7d686537eebf9385621bfbad8e"
+    },
+    {
+      "name": "windows-link",
+      "version": "0.1.3",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "5e6ad25900d524eaabdbbb96d20b4311e1e7ae1699af4fb28c17ae66c80d798a"
+    },
+    {
+      "name": "windows-link",
+      "version": "0.2.1",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
+    },
+    {
+      "name": "windows-numerics",
+      "version": "0.2.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "9150af68066c4c5c07ddc0ce30421554771e528bde427614c61038bc2c92c2b1"
+    },
+    {
+      "name": "windows-result",
+      "version": "0.3.4",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "56f42bd332cc6c8eac5af113fc0c1fd6a8fd2aa08a0119358686e5160d0586c6"
+    },
+    {
+      "name": "windows-strings",
+      "version": "0.4.2",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "56e6c93f3a0c3b36176cb1327a4958a0353d5d166c2a35cb268ace15e91d3b57"
+    },
+    {
+      "name": "windows-sys",
+      "version": "0.48.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [],
+      "archive_checksum": "677d2418bec65e3338edb076e806bc1ec15693c5d0104683f2efe857f61056a9"
+    },
+    {
+      "name": "windows-sys",
+      "version": "0.59.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "1e38bc4d79ed67fd075bcc251a1c39b32a1776bbe92e5bef1f0bf1f8c531853b"
+    },
+    {
+      "name": "windows-sys",
+      "version": "0.60.2",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "f2f500e4d28234f72040990ec9d39e3a6b950f9f22d3dba18416c35882612bcb"
+    },
+    {
+      "name": "windows-sys",
+      "version": "0.61.2",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
+    },
+    {
+      "name": "windows-targets",
+      "version": "0.48.5",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [],
+      "archive_checksum": "9a2fa6e2155d7247be68c096456083145c183cbbbc2764150dda45a87197940c"
+    },
+    {
+      "name": "windows-targets",
+      "version": "0.52.6",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "9b724f72796e036ab90c1021d4780d4d3d648aca59e491e6b98e725b84e99973"
+    },
+    {
+      "name": "windows-targets",
+      "version": "0.53.5",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "4945f9f551b88e0d65f3db0bc25c33b8acea4d9e41163edf90dcd0b19f9069f3"
+    },
+    {
+      "name": "windows-threading",
+      "version": "0.1.0",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "b66463ad2e0ea3bbf808b7f1d371311c80e115c0b71d60efc142cafbcfb057a6"
+    },
+    {
+      "name": "windows-version",
+      "version": "0.1.7",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "e4060a1da109b9d0326b7262c8e12c84df67cc0dbc9e33cf49e01ccc2eb63631"
+    },
+    {
+      "name": "windows",
+      "version": "0.61.3",
+      "group": "Rust",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+        "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      ],
+      "owners": [
+        "Copyright (c) Microsoft Corporation.",
+        "Copyright (c) Microsoft Corporation."
+      ],
+      "archive_checksum": "9babd3a767a4c1aef6900409f85f5d53ce2544ccdfaa86dad48c91782c6d6893"
+    },
+    {
+      "name": "winnow",
+      "version": "0.7.15",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "cb5aedb296c5246d1f22e9099f925a65146f9f0d6b4eebba97fd27a6cdbbab2d"
+      ],
+      "owners": [],
+      "archive_checksum": "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
+    },
+    {
+      "name": "winnow",
+      "version": "1.0.4",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "cb5aedb296c5246d1f22e9099f925a65146f9f0d6b4eebba97fd27a6cdbbab2d"
+      ],
+      "owners": [],
+      "archive_checksum": "23b97319f7b8343df12cc98938e5c3eb436064524c8d2b4e30a1d3a36eecdf81"
+    },
+    {
+      "name": "writeable",
+      "version": "0.6.3",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "1ffae5123b2d3fc086436f8834ae3ab053a283cfac8fe0a0b8eaae044768a4c4"
+    },
+    {
+      "name": "wry",
+      "version": "0.55.1",
+      "group": "Rust",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "ef88893533af22ffbb68ceef0724ba1389518df26165a34f3c99ad30b884df4f",
+        "26235c41e314fb0da35b33b2bb5bcbc4dd523839f8eeca52efcd43586f441fb5"
+      ],
+      "owners": [
+        "Copyright (c) 2020-2023 Ngo Iok Ui & Tauri Programme within The Commons Conservancy"
+      ],
+      "archive_checksum": "186f9871daa55fd9c016578b810d149de58367113db7fb72b462d2323ce19514"
+    },
+    {
+      "name": "yoke",
+      "version": "0.8.3",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "709fe23a0424b6a435d82152b1bd3fdfb0833487d5fa90d05d42762a9891fef5"
+    },
+    {
+      "name": "zerofrom",
+      "version": "0.1.8",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "0ec05a11813ea801ff6d75110ad09cd0824ddba17dfe17128ea0d5f68e6c5272"
+    },
+    {
+      "name": "zerotrie",
+      "version": "0.2.4",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "0f9152d31db0792fa83f70fb2f83148effb5c1f5b8c7686c3459e361d9bc20bf"
+    },
+    {
+      "name": "zerovec",
+      "version": "0.11.6",
+      "group": "Rust",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2"
+      ],
+      "owners": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "archive_checksum": "90f911cbc359ab6af17377d242225f4d75119aec87ea711a880987b18cd7b239"
+    },
+    {
+      "name": "zmij",
+      "version": "1.0.23",
+      "group": "Rust",
+      "license": "MIT",
+      "hashes": [
+        "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      ],
+      "owners": [],
+      "archive_checksum": "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
+    },
+    {
+      "name": "@tanstack/react-store",
+      "version": "0.11.1",
+      "group": "Frontend",
+      "license": "MIT",
+      "hashes": [
+        "cb4a7917af22bd56340e877f10a5c5aa4fded7af2459162630ff7fcb48bb45c7"
+      ],
+      "owners": []
+    },
+    {
+      "name": "@tanstack/react-table",
+      "version": "9.1.2",
+      "group": "Frontend",
+      "license": "MIT",
+      "hashes": [
+        "9db3f8ddd7031ab264b99bec49c221155d0c8649b53dd4aa007f2041d36cdf5f"
+      ],
+      "owners": []
+    },
+    {
+      "name": "@tanstack/store",
+      "version": "0.11.1",
+      "group": "Frontend",
+      "license": "MIT",
+      "hashes": [
+        "cb4a7917af22bd56340e877f10a5c5aa4fded7af2459162630ff7fcb48bb45c7"
+      ],
+      "owners": []
+    },
+    {
+      "name": "@tanstack/table-core",
+      "version": "9.1.2",
+      "group": "Frontend",
+      "license": "MIT",
+      "hashes": [
+        "9db3f8ddd7031ab264b99bec49c221155d0c8649b53dd4aa007f2041d36cdf5f"
+      ],
+      "owners": []
+    },
+    {
+      "name": "@tauri-apps/api",
+      "version": "2.11.1",
+      "group": "Frontend",
+      "license": "Apache-2.0 OR MIT",
+      "hashes": [
+        "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d"
+      ],
+      "owners": []
+    },
+    {
+      "name": "react",
+      "version": "19.2.8",
+      "group": "Frontend",
+      "license": "MIT",
+      "hashes": [
+        "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+      ],
+      "owners": []
+    },
+    {
+      "name": "react-dom",
+      "version": "19.2.8",
+      "group": "Frontend",
+      "license": "MIT",
+      "hashes": [
+        "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+      ],
+      "owners": []
+    },
+    {
+      "name": "scheduler",
+      "version": "0.27.0",
+      "group": "Frontend",
+      "license": "MIT",
+      "hashes": [
+        "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+      ],
+      "owners": []
+    },
+    {
+      "name": "use-sync-external-store",
+      "version": "1.6.0",
+      "group": "Frontend",
+      "license": "MIT",
+      "hashes": [
+        "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+      ],
+      "owners": []
+    },
+    {
+      "name": "vite",
+      "version": "7.3.6",
+      "group": "Frontend生成helper（tool本体は非同梱）",
+      "license": "MIT",
+      "hashes": [
+        "a77a1c089806b39ad339535bdf3677f636c91d96693e8ad7b11fe733f650ea64"
+      ],
+      "owners": []
+    },
+    {
+      "name": "rollup",
+      "version": "4.62.4",
+      "group": "Frontend生成helper（tool本体は非同梱）",
+      "license": "MIT",
+      "hashes": [
+        "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8"
+      ],
+      "owners": []
+    },
+    {
+      "name": "esbuild",
+      "version": "0.28.2",
+      "group": "Frontend生成helper（tool本体は非同梱）",
+      "license": "MIT",
+      "hashes": [
+        "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681"
+      ],
+      "owners": []
+    },
+    {
+      "name": "Microsoft.Web.WebView2 SDK / static native Loader",
+      "version": "1.0.3650.58",
+      "group": "Native",
+      "license": "SDK LICENSE (BSD-3-Clause) + package NOTICE",
+      "hashes": [
+        "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55",
+        "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90"
+      ],
+      "owners": []
+    },
+    {
+      "name": "SQLite amalgamation",
+      "version": "3.46.0 (libsqlite3-sys 0.30.1)",
+      "group": "Native",
+      "license": "Public domain",
+      "hashes": [
+        "cc65d76f325d884dd49e319acf3764d5513920f34ad18e34347b8dedc6ddd2ec"
+      ],
+      "owners": []
+    },
+    {
+      "name": "Rust core Unicode tables",
+      "version": "rustc 1.98.0; copyright 1991-2024",
+      "group": "Rust runtime",
+      "license": "Unicode-3.0",
+      "hashes": [
+        "f5062c9a188d81dfe66b56db4182dcf9e4b17c0d9b0d311a8e20b3a1b075c443"
+      ],
+      "owners": [
+        "Copyright © 1991-2024 Unicode, Inc."
+      ]
+    },
+    {
+      "name": "Rust std/compiler builtins LLVM exception contributions",
+      "version": "compiler_builtins source 0.1.160 / Rust 1.98.0 (個別objectの包含範囲を示すものではありません)",
+      "group": "Rust runtime",
+      "license": "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)",
+      "hashes": [
+        "ab6eec6caf0fa5775e411c7a8bc6a45c4ef2956b0980b157ab74fc5cd62a928b"
+      ],
+      "owners": [
+        "Copyright (c) 2009-2016 by the contributors listed in CREDITS.TXT"
+      ]
+    },
+    {
+      "name": "Rust std/alloc/core/panic runtime source license",
+      "version": "Rust 1.98.0 / 88d9e12ae178fab0fb5cc050a94da85685d449ea",
+      "group": "Rust runtime",
+      "license": "MIT OR Apache-2.0 plus file-level exceptions",
+      "hashes": [
+        "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "b71bd43a069ca0641a9ecfe585ca7b3c53b5cc1608f8b68321168698e28b5ea1"
+      ],
+      "owners": [
+        "The Rust Project Developers (see https://thanks.rust-lang.org)",
+        "2014 Alex Crichton"
+      ]
+    },
+    {
+      "name": "hashbrown",
+      "version": "0.17.1",
+      "group": "Rust標準ライブラリの依存",
+      "license": "MIT OR Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2"
+      ],
+      "owners": [],
+      "archive_checksum": "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
+    },
+    {
+      "name": "rustc-demangle",
+      "version": "0.1.27",
+      "group": "Rust標準ライブラリの依存",
+      "license": "MIT/Apache-2.0",
+      "hashes": [
+        "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397"
+      ],
+      "owners": [],
+      "archive_checksum": "b50b8869d9fc858ce7266cce0194bd74df58b9d0e3f6df3a9fc8eb470d95c09d"
+    },
+    {
+      "name": "Rust standard-library provider notices (package scope)",
+      "version": "Rust 1.98.0 / 88d9e12ae178fab0fb5cc050a94da85685d449ea",
+      "group": "Rust runtime / provider NOTICE",
+      "license": "Per-file and package licenses as reproduced in original; not all listed packages are shipped",
+      "hashes": [
+        "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+      ],
+      "owners": []
+    }
+  ],
+  "texts": [
+    {
+      "sha256": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+      "bytes": 126,
+      "sources": [
+        "aho-corasick@1.1.5/COPYING",
+        "aho-corasick 1.1.5: aho-corasick-1.1.5/COPYING",
+        "memchr@2.8.3/COPYING",
+        "memchr 2.8.3: memchr-2.8.3/COPYING",
+        "same-file@1.0.6/COPYING",
+        "same-file 1.0.6: same-file-1.0.6/COPYING",
+        "walkdir@2.5.0/COPYING",
+        "walkdir 2.5.0: walkdir-2.5.0/COPYING",
+        "winapi-util@0.1.11/COPYING",
+        "winapi-util 0.1.11: winapi-util-0.1.11/COPYING"
+      ]
+    },
+    {
+      "sha256": "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f",
+      "bytes": 1081,
+      "sources": [
+        "aho-corasick@1.1.5/LICENSE-MIT",
+        "aho-corasick 1.1.5: aho-corasick-1.1.5/LICENSE-MIT",
+        "memchr@2.8.3/LICENSE-MIT",
+        "memchr 2.8.3: memchr-2.8.3/LICENSE-MIT",
+        "walkdir@2.5.0/LICENSE-MIT",
+        "walkdir 2.5.0: walkdir-2.5.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae",
+      "bytes": 1483,
+      "sources": [
+        "alloc-no-stdlib@3.0.0/LICENSE",
+        "alloc-stdlib 0.3.0 / repository root LICENSE at 0a81fd6928ea3b33c8cd484aa4575d50ffb98012",
+        "brotli-decompressor@6.0.1/LICENSE",
+        "brotli@9.0.0/LICENSE.BSD-3-Clause"
+      ]
+    },
+    {
+      "sha256": "20fe7b00e904ed690e3b9fd6073784d3fc428141dbd10b81c01fd143d0797f58",
+      "bytes": 9899,
+      "sources": [
+        "allocator-api2@0.2.21/LICENSE-APACHE",
+        "allocator-api2 0.2.21: allocator-api2-0.2.21/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "36516aefdc84c5d5a1e7485425913a22dbda69eb1930c5e84d6ae4972b5194b9",
+      "bytes": 1046,
+      "sources": [
+        "allocator-api2@0.2.21/LICENSE-MIT",
+        "allocator-api2 0.2.21: allocator-api2-0.2.21/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+      "bytes": 9723,
+      "sources": [
+        "anyhow@1.0.104/LICENSE-APACHE",
+        "anyhow 1.0.104: anyhow-1.0.104/LICENSE-APACHE",
+        "erased-serde@0.4.10/LICENSE-APACHE",
+        "erased-serde 0.4.10: erased-serde-0.4.10/LICENSE-APACHE",
+        "itoa@1.0.18/LICENSE-APACHE",
+        "itoa 1.0.18: itoa-1.0.18/LICENSE-APACHE",
+        "libc@0.2.189/LICENSE-APACHE",
+        "libc 0.2.189: libc-0.2.189/LICENSE-APACHE",
+        "ryu@1.0.23/LICENSE-APACHE",
+        "ryu 1.0.23: ryu-1.0.23/LICENSE-APACHE",
+        "semver@1.0.28/LICENSE-APACHE",
+        "semver 1.0.28: semver-1.0.28/LICENSE-APACHE",
+        "serde_core@1.0.229/LICENSE-APACHE",
+        "serde_core 1.0.229: serde_core-1.0.229/LICENSE-APACHE",
+        "serde_json@1.0.151/LICENSE-APACHE",
+        "serde_json 1.0.151: serde_json-1.0.151/LICENSE-APACHE",
+        "serde_urlencoded@0.7.1/LICENSE-APACHE",
+        "serde_urlencoded 0.7.1: serde_urlencoded-0.7.1/LICENSE-APACHE",
+        "serde-untagged@0.1.9/LICENSE-APACHE",
+        "serde-untagged 0.1.9: serde-untagged-0.1.9/LICENSE-APACHE",
+        "serde@1.0.229/LICENSE-APACHE",
+        "serde 1.0.229: serde-1.0.229/LICENSE-APACHE",
+        "thiserror@2.0.20/LICENSE-APACHE",
+        "thiserror 2.0.20: thiserror-2.0.20/LICENSE-APACHE",
+        "typeid@1.0.3/LICENSE-APACHE",
+        "typeid 1.0.3: typeid-1.0.3/LICENSE-APACHE",
+        "Rust std/alloc/core/panic runtime source license Rust 1.98.0 / 88d9e12ae178fab0fb5cc050a94da85685d449ea: upstream/rust-1.98.0-LICENSE-APACHE.txt"
+      ]
+    },
+    {
+      "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+      "bytes": 1023,
+      "sources": [
+        "anyhow@1.0.104/LICENSE-MIT",
+        "anyhow 1.0.104: anyhow-1.0.104/LICENSE-MIT",
+        "erased-serde@0.4.10/LICENSE-MIT",
+        "erased-serde 0.4.10: erased-serde-0.4.10/LICENSE-MIT",
+        "event-listener@5.4.2/LICENSE-MIT",
+        "event-listener 5.4.2: event-listener-5.4.2/LICENSE-MIT",
+        "itoa@1.0.18/LICENSE-MIT",
+        "itoa 1.0.18: itoa-1.0.18/LICENSE-MIT",
+        "once_cell@1.21.4/LICENSE-MIT",
+        "once_cell 1.21.4: once_cell-1.21.4/LICENSE-MIT",
+        "parking@2.2.1/LICENSE-MIT",
+        "parking 2.2.1: parking-2.2.1/LICENSE-MIT",
+        "pin-project-lite@0.2.17/LICENSE-MIT",
+        "pin-project-lite 0.2.17: pin-project-lite-0.2.17/LICENSE-MIT",
+        "semver@1.0.28/LICENSE-MIT",
+        "semver 1.0.28: semver-1.0.28/LICENSE-MIT",
+        "serde_core@1.0.229/LICENSE-MIT",
+        "serde_core 1.0.229: serde_core-1.0.229/LICENSE-MIT",
+        "serde_json@1.0.151/LICENSE-MIT",
+        "serde_json 1.0.151: serde_json-1.0.151/LICENSE-MIT",
+        "serde-untagged@0.1.9/LICENSE-MIT",
+        "serde-untagged 0.1.9: serde-untagged-0.1.9/LICENSE-MIT",
+        "serde@1.0.229/LICENSE-MIT",
+        "serde 1.0.229: serde-1.0.229/LICENSE-MIT",
+        "thiserror@2.0.20/LICENSE-MIT",
+        "thiserror 2.0.20: thiserror-2.0.20/LICENSE-MIT",
+        "typeid@1.0.3/LICENSE-MIT",
+        "typeid 1.0.3: typeid-1.0.3/LICENSE-MIT",
+        "zmij@1.0.23/LICENSE-MIT",
+        "zmij 1.0.23: zmij-1.0.23/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "afb11426e09da40a1ae4f8fa17ddcc6b6a52d14df04c29bc5bcd06eb8730624d",
+      "bytes": 1057,
+      "sources": [
+        "atoi@2.0.0/LICENSE",
+        "atoi 2.0.0: atoi-2.0.0/LICENSE"
+      ]
+    },
+    {
+      "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+      "bytes": 10847,
+      "sources": [
+        "base64@0.22.1/LICENSE-APACHE",
+        "base64 0.22.1: base64-0.22.1/LICENSE-APACHE",
+        "bitflags@2.13.1/LICENSE-APACHE",
+        "bitflags 2.13.1: bitflags-2.13.1/LICENSE-APACHE",
+        "cfg-if@1.0.4/LICENSE-APACHE",
+        "cfg-if 1.0.4: cfg-if-1.0.4/LICENSE-APACHE",
+        "crossbeam-channel@0.5.16/LICENSE-APACHE",
+        "crossbeam-channel 0.5.16: crossbeam-channel-0.5.16/LICENSE-APACHE",
+        "crossbeam-queue@0.3.13/LICENSE-APACHE",
+        "crossbeam-queue 0.3.13: crossbeam-queue-0.3.13/LICENSE-APACHE",
+        "crossbeam-utils@0.8.22/LICENSE-APACHE",
+        "crossbeam-utils 0.8.22: crossbeam-utils-0.8.22/LICENSE-APACHE",
+        "either@1.17.0/LICENSE-APACHE",
+        "either 1.17.0: either-1.17.0/LICENSE-APACHE",
+        "equivalent@1.0.2/LICENSE-APACHE",
+        "equivalent 1.0.2: equivalent-1.0.2/LICENSE-APACHE",
+        "event-listener@5.4.2/LICENSE-APACHE",
+        "event-listener 5.4.2: event-listener-5.4.2/LICENSE-APACHE",
+        "fnv@1.0.7/LICENSE-APACHE",
+        "fnv 1.0.7: fnv-1.0.7/LICENSE-APACHE",
+        "form_urlencoded@1.2.2/LICENSE-APACHE",
+        "form_urlencoded 1.2.2: form_urlencoded-1.2.2/LICENSE-APACHE",
+        "glob@0.3.4/LICENSE-APACHE",
+        "glob 0.3.4: glob-0.3.4/LICENSE-APACHE",
+        "hashbrown@0.15.5/LICENSE-APACHE",
+        "hashbrown 0.15.5: hashbrown-0.15.5/LICENSE-APACHE",
+        "hashbrown@0.17.1/LICENSE-APACHE",
+        "hashbrown 0.17.1: hashbrown-0.17.1/LICENSE-APACHE",
+        "heck@0.5.0/LICENSE-APACHE",
+        "heck 0.5.0: heck-0.5.0/LICENSE-APACHE",
+        "idna_adapter@1.2.2/LICENSE-APACHE",
+        "idna_adapter 1.2.2: idna_adapter-1.2.2/LICENSE-APACHE",
+        "idna@1.1.0/LICENSE-APACHE",
+        "idna 1.1.0: idna-1.1.0/LICENSE-APACHE",
+        "indexmap@2.14.0/LICENSE-APACHE",
+        "indexmap 2.14.0: indexmap-2.14.0/LICENSE-APACHE",
+        "lock_api@0.4.14/LICENSE-APACHE",
+        "lock_api 0.4.14: lock_api-0.4.14/LICENSE-APACHE",
+        "log@0.4.33/LICENSE-APACHE",
+        "log 0.4.33: log-0.4.33/LICENSE-APACHE",
+        "mime@0.3.17/LICENSE-APACHE",
+        "mime 0.3.17: mime-0.3.17/LICENSE-APACHE",
+        "muda@0.19.3/LICENSE-APACHE",
+        "muda 0.19.3: muda-0.19.3/LICENSE-APACHE",
+        "num-traits@0.2.19/LICENSE-APACHE",
+        "num-traits 0.2.19: num-traits-0.2.19/LICENSE-APACHE",
+        "once_cell@1.21.4/LICENSE-APACHE",
+        "once_cell 1.21.4: once_cell-1.21.4/LICENSE-APACHE",
+        "parking_lot_core@0.9.12/LICENSE-APACHE",
+        "parking_lot_core 0.9.12: parking_lot_core-0.9.12/LICENSE-APACHE",
+        "parking_lot@0.12.5/LICENSE-APACHE",
+        "parking_lot 0.12.5: parking_lot-0.12.5/LICENSE-APACHE",
+        "parking@2.2.1/LICENSE-APACHE",
+        "parking 2.2.1: parking-2.2.1/LICENSE-APACHE",
+        "percent-encoding@2.3.2/LICENSE-APACHE",
+        "percent-encoding 2.3.2: percent-encoding-2.3.2/LICENSE-APACHE",
+        "regex-automata@0.4.18/LICENSE-APACHE",
+        "regex-automata 0.4.18: regex-automata-0.4.18/LICENSE-APACHE",
+        "regex-syntax@0.8.11/LICENSE-APACHE",
+        "regex-syntax 0.8.11: regex-syntax-0.8.11/LICENSE-APACHE",
+        "regex@1.13.1/LICENSE-APACHE",
+        "regex 1.13.1: regex-1.13.1/LICENSE-APACHE",
+        "scopeguard@1.2.0/LICENSE-APACHE",
+        "scopeguard 1.2.0: scopeguard-1.2.0/LICENSE-APACHE",
+        "serde_with@3.22.0/LICENSE-APACHE",
+        "serde_with 3.22.0: serde_with-3.22.0/LICENSE-APACHE",
+        "smallvec@1.15.2/LICENSE-APACHE",
+        "smallvec 1.15.2: smallvec-1.15.2/LICENSE-APACHE",
+        "socket2@0.6.5/LICENSE-APACHE",
+        "socket2 0.6.5: socket2-0.6.5/LICENSE-APACHE",
+        "stable_deref_trait@1.2.1/LICENSE-APACHE",
+        "stable_deref_trait 1.2.1: stable_deref_trait-1.2.1/LICENSE-APACHE",
+        "unicode-segmentation@1.13.3/LICENSE-APACHE",
+        "unicode-segmentation 1.13.3: unicode-segmentation-1.13.3/LICENSE-APACHE",
+        "url@2.5.8/LICENSE-APACHE",
+        "url 2.5.8: url-2.5.8/LICENSE-APACHE",
+        "uuid@1.24.0/LICENSE-APACHE",
+        "uuid 1.24.0: uuid-1.24.0/LICENSE-APACHE",
+        "window-vibrancy@0.6.0/LICENSE-APACHE",
+        "window-vibrancy 0.6.0: window-vibrancy-0.6.0/LICENSE-APACHE",
+        "wry@0.55.1/LICENSE-APACHE",
+        "wry 0.55.1: wry-0.55.1/LICENSE-APACHE",
+        "Rust 1.98.0 vendor/hashbrown-0.17.1/LICENSE-APACHE",
+        "Rust 1.98.0 vendor/rustc-demangle-0.1.27/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "0dd882e53de11566d50f8e8e2d5a651bcf3fabee4987d70f306233cf39094ba7",
+      "bytes": 1076,
+      "sources": [
+        "base64@0.22.1/LICENSE-MIT",
+        "base64 0.22.1: base64-0.22.1/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb",
+      "bytes": 1071,
+      "sources": [
+        "bitflags@2.13.1/LICENSE-MIT",
+        "bitflags 2.13.1: bitflags-2.13.1/LICENSE-MIT",
+        "glob@0.3.4/LICENSE-MIT",
+        "glob 0.3.4: glob-0.3.4/LICENSE-MIT",
+        "log@0.4.33/LICENSE-MIT",
+        "log 0.4.33: log-0.4.33/LICENSE-MIT",
+        "num-traits@0.2.19/LICENSE-MIT",
+        "num-traits 0.2.19: num-traits-0.2.19/LICENSE-MIT",
+        "regex-automata@0.4.18/LICENSE-MIT",
+        "regex-automata 0.4.18: regex-automata-0.4.18/LICENSE-MIT",
+        "regex-syntax@0.8.11/LICENSE-MIT",
+        "regex-syntax 0.8.11: regex-syntax-0.8.11/LICENSE-MIT",
+        "regex@1.13.1/LICENSE-MIT",
+        "regex 1.13.1: regex-1.13.1/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+      "bytes": 10849,
+      "sources": [
+        "block-buffer@0.10.4/LICENSE-APACHE",
+        "block-buffer 0.10.4: block-buffer-0.10.4/LICENSE-APACHE",
+        "cpufeatures@0.2.17/LICENSE-APACHE",
+        "cpufeatures 0.2.17: cpufeatures-0.2.17/LICENSE-APACHE",
+        "crypto-common@0.1.7/LICENSE-APACHE",
+        "crypto-common 0.1.7: crypto-common-0.1.7/LICENSE-APACHE",
+        "digest@0.10.7/LICENSE-APACHE",
+        "digest 0.10.7: digest-0.10.7/LICENSE-APACHE",
+        "sha2@0.10.9/LICENSE-APACHE",
+        "sha2 0.10.9: sha2-0.10.9/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "d5c22aa3118d240e877ad41c5d9fa232f9c77d757d4aac0c2f943afc0a95e0ef",
+      "bytes": 1082,
+      "sources": [
+        "block-buffer@0.10.4/LICENSE-MIT",
+        "block-buffer 0.10.4: block-buffer-0.10.4/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94",
+      "bytes": 1084,
+      "sources": [
+        "brotli@9.0.0/LICENSE.MIT"
+      ]
+    },
+    {
+      "sha256": "45f522cacecb1023856e46df79ca625dfc550c94910078bd8aec6e02880b3d42",
+      "bytes": 1055,
+      "sources": [
+        "bytes@1.12.1/LICENSE",
+        "bytes 1.12.1: bytes-1.12.1/LICENSE"
+      ]
+    },
+    {
+      "sha256": "ebaac853b53fec0ed475796f533ce676912a4df9ad9d8a621fa76d5060591e10",
+      "bytes": 1074,
+      "sources": [
+        "cfb@0.14.0/LICENSE"
+      ]
+    },
+    {
+      "sha256": "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397",
+      "bytes": 1057,
+      "sources": [
+        "cfg-if@1.0.4/LICENSE-MIT",
+        "cfg-if 1.0.4: cfg-if-1.0.4/LICENSE-MIT",
+        "socket2@0.6.5/LICENSE-MIT",
+        "socket2 0.6.5: socket2-0.6.5/LICENSE-MIT",
+        "Rust 1.98.0 vendor/rustc-demangle-0.1.27/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "2773e20df8f4c52a026b5b578c7f2457341f5aa3fb6612fd87e1d2e1bd8f48ad",
+      "bytes": 10863,
+      "sources": [
+        "cookie@0.18.2/LICENSE-APACHE",
+        "cookie 0.18.2: cookie-0.18.2/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "f28420c1906af38be726cd7842798f0194b27c41d6051c0d1e9ee348b8a4a0ea",
+      "bytes": 1091,
+      "sources": [
+        "cookie@0.18.2/LICENSE-MIT",
+        "cookie 0.18.2: cookie-0.18.2/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "ae9baa7beea910273c2f384c2a6b721fb7bd02bda3436074a1072e4ee689f985",
+      "bytes": 1082,
+      "sources": [
+        "cpufeatures@0.2.17/LICENSE-MIT",
+        "cpufeatures 0.2.17: cpufeatures-0.2.17/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "5ef8fcfb6cccec8fcae043c834099a60c8b7406408db576e026d2b7e67dc5cf5",
+      "bytes": 1073,
+      "sources": [
+        "crc-catalog 2.5.0: upstream/followup-0.txt"
+      ]
+    },
+    {
+      "sha256": "d3cdb764b98283ee7c3a3cea8d374e2a2957322374378d1f3263f4d512741fc3",
+      "bytes": 11346,
+      "sources": [
+        "crc-catalog 2.5.0: upstream/followup-1.txt"
+      ]
+    },
+    {
+      "sha256": "470355a7eed93fcc4281ec2e0f82ca3b94e7af1e4d83629f91de8cfac34d750e",
+      "bytes": 10846,
+      "sources": [
+        "crc@3.4.0/LICENSE-APACHE",
+        "crc 3.4.0: crc-3.4.0/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "3488679340a49ecc34d342c4009d2dabf76f4a21f12aec2ca99b15805d656544",
+      "bytes": 1074,
+      "sources": [
+        "crc@3.4.0/LICENSE-MIT",
+        "crc 3.4.0: crc-3.4.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "5734ed989dfca1f625b40281ee9f4530f91b2411ec01cb748223e7eb87e201ab",
+      "bytes": 1099,
+      "sources": [
+        "crossbeam-channel@0.5.16/LICENSE-MIT",
+        "crossbeam-channel 0.5.16: crossbeam-channel-0.5.16/LICENSE-MIT",
+        "crossbeam-queue@0.3.13/LICENSE-MIT",
+        "crossbeam-queue 0.3.13: crossbeam-queue-0.3.13/LICENSE-MIT",
+        "crossbeam-utils@0.8.22/LICENSE-MIT",
+        "crossbeam-utils 0.8.22: crossbeam-utils-0.8.22/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "b16db96b93b1d7cf7bea533f572091ec6bca3234fbe0a83038be772ff391a44c",
+      "bytes": 33447,
+      "sources": [
+        "crossbeam-channel@0.5.16/LICENSE-THIRD-PARTY",
+        "crossbeam-channel 0.5.16: crossbeam-channel-0.5.16/LICENSE-THIRD-PARTY"
+      ]
+    },
+    {
+      "sha256": "3521672491a3479422d5fe1aca6645dd2984090f85da6e5205abfb18fb7a6897",
+      "bytes": 1065,
+      "sources": [
+        "crypto-common@0.1.7/LICENSE-MIT",
+        "crypto-common 0.1.7: crypto-common-0.1.7/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "a8ad31b1c3f40dca5a84119351b8fa8ddc868edd77fad8a8ebf6d8f2d16fa4ae",
+      "bytes": 11324,
+      "sources": [
+        "ctor@1.0.13/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "bccaa8b6c09f94e81f06696e179dbe058464bbdfbc823b6d49cada1d71e84ac3",
+      "bytes": 1022,
+      "sources": [
+        "ctor@1.0.13/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "edd65bdd88957a205c47d53fa499eed8865a70320f0f03f6391668cb304ea376",
+      "bytes": 11349,
+      "sources": [
+        "deranged@0.5.8/LICENSE-Apache",
+        "deranged 0.5.8: deranged-0.5.8/LICENSE-Apache"
+      ]
+    },
+    {
+      "sha256": "231c837c45eb53f108fb48929e488965bc4fcc14e9ea21d35f50e6b99d98685b",
+      "bytes": 1062,
+      "sources": [
+        "deranged@0.5.8/LICENSE-MIT",
+        "deranged 0.5.8: deranged-0.5.8/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "9e0dfd2dd4173a530e238cb6adb37aa78c34c6bc7444e0e10c1ab5d8881f63ba",
+      "bytes": 1057,
+      "sources": [
+        "digest@0.10.7/LICENSE-MIT",
+        "digest 0.10.7: digest-0.10.7/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "d3174ad63e721d4c9dccb8ad4320848992d314369bc46319720b5802c9153fe9",
+      "bytes": 9694,
+      "sources": [
+        "dirs-sys@0.5.0/LICENSE-APACHE",
+        "dirs-sys 0.5.0: dirs-sys-0.5.0/LICENSE-APACHE",
+        "dirs@6.0.0/LICENSE-APACHE",
+        "dirs 6.0.0: dirs-6.0.0/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "6a2e0ade09a7d5f816f11566fee2b151b32235a7fad52b41d49cce96f833c1a9",
+      "bytes": 1069,
+      "sources": [
+        "dirs-sys@0.5.0/LICENSE-MIT",
+        "dirs-sys 0.5.0: dirs-sys-0.5.0/LICENSE-MIT",
+        "dirs@6.0.0/LICENSE-MIT",
+        "dirs 6.0.0: dirs-6.0.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a",
+      "bytes": 11323,
+      "sources": [
+        "dpi@0.1.2/LICENSE",
+        "dpi 0.1.2: dpi-0.1.2/LICENSE",
+        "tao@0.35.3/LICENSE",
+        "tao 0.35.3: tao-0.35.3/LICENSE"
+      ]
+    },
+    {
+      "sha256": "9eff396a99bafd208e7126602420d6864f6066c08b84485a5b032320a9c01997",
+      "bytes": 2444,
+      "sources": [
+        "dpi@0.1.2/LICENSE-LIBM-MIT",
+        "dpi 0.1.2: dpi-0.1.2/LICENSE-LIBM-MIT"
+      ]
+    },
+    {
+      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "bytes": 7048,
+      "sources": [
+        "dunce@1.0.5/LICENSE",
+        "dunce 1.0.5: dunce-1.0.5/LICENSE"
+      ]
+    },
+    {
+      "sha256": "7576269ea71f767b99297934c0b2367532690f8c4badc695edf8e04ab6a1e545",
+      "bytes": 1043,
+      "sources": [
+        "either@1.17.0/LICENSE-MIT",
+        "either 1.17.0: either-1.17.0/LICENSE-MIT",
+        "serde_with@3.22.0/LICENSE-MIT",
+        "serde_with 3.22.0: serde_with-3.22.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "7365cc8878a1d7ce155a58c4ca09c3d7a6be413efa5334a80ea842912b669349",
+      "bytes": 1049,
+      "sources": [
+        "equivalent@1.0.2/LICENSE-MIT",
+        "equivalent 1.0.2: equivalent-1.0.2/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "d8621ec2eee5b9ca3c65f8492505f3590de8574fac0fdf5132a77232dba47abc",
+      "bytes": 11326,
+      "sources": [
+        "flume@0.11.1/LICENSE-APACHE",
+        "flume 0.11.1: flume-0.11.1/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652",
+      "bytes": 1022,
+      "sources": [
+        "flume@0.11.1/LICENSE-MIT",
+        "flume 0.11.1: flume-0.11.1/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "65fdb6c76cd61612070c066eec9ecdb30ee74fb27859d0d9af58b9f499fd0c3e",
+      "bytes": 1056,
+      "sources": [
+        "fnv@1.0.7/LICENSE-MIT",
+        "fnv 1.0.7: fnv-1.0.7/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "b1181a40b2a7b25cf66fd01481713bc1005df082c53ef73e851e55071b102744",
+      "bytes": 856,
+      "sources": [
+        "foldhash@0.1.5/LICENSE",
+        "foldhash 0.1.5: foldhash-0.1.5/LICENSE"
+      ]
+    },
+    {
+      "sha256": "20c7855c364d57ea4c97889a5e8d98470a9952dade37bd9248b9a54431670e5e",
+      "bytes": 1072,
+      "sources": [
+        "form_urlencoded@1.2.2/LICENSE-MIT",
+        "form_urlencoded 1.2.2: form_urlencoded-1.2.2/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "275c491d6d1160553c32fd6127061d7f9606c3ea25abfad6ca3f6ed088785427",
+      "bytes": 10874,
+      "sources": [
+        "futures-channel@0.3.34/LICENSE-APACHE",
+        "futures-channel 0.3.34: futures-channel-0.3.34/LICENSE-APACHE",
+        "futures-core@0.3.34/LICENSE-APACHE",
+        "futures-core 0.3.34: futures-core-0.3.34/LICENSE-APACHE",
+        "futures-executor@0.3.34/LICENSE-APACHE",
+        "futures-executor 0.3.34: futures-executor-0.3.34/LICENSE-APACHE",
+        "futures-io@0.3.34/LICENSE-APACHE",
+        "futures-io 0.3.34: futures-io-0.3.34/LICENSE-APACHE",
+        "futures-sink@0.3.34/LICENSE-APACHE",
+        "futures-sink 0.3.34: futures-sink-0.3.34/LICENSE-APACHE",
+        "futures-task@0.3.34/LICENSE-APACHE",
+        "futures-task 0.3.34: futures-task-0.3.34/LICENSE-APACHE",
+        "futures-util@0.3.34/LICENSE-APACHE",
+        "futures-util 0.3.34: futures-util-0.3.34/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "6652c868f35dfe5e8ef636810a4e576b9d663f3a17fb0f5613ad73583e1b88fd",
+      "bytes": 1094,
+      "sources": [
+        "futures-channel@0.3.34/LICENSE-MIT",
+        "futures-channel 0.3.34: futures-channel-0.3.34/LICENSE-MIT",
+        "futures-core@0.3.34/LICENSE-MIT",
+        "futures-core 0.3.34: futures-core-0.3.34/LICENSE-MIT",
+        "futures-executor@0.3.34/LICENSE-MIT",
+        "futures-executor 0.3.34: futures-executor-0.3.34/LICENSE-MIT",
+        "futures-io@0.3.34/LICENSE-MIT",
+        "futures-io 0.3.34: futures-io-0.3.34/LICENSE-MIT",
+        "futures-sink@0.3.34/LICENSE-MIT",
+        "futures-sink 0.3.34: futures-sink-0.3.34/LICENSE-MIT",
+        "futures-task@0.3.34/LICENSE-MIT",
+        "futures-task 0.3.34: futures-task-0.3.34/LICENSE-MIT",
+        "futures-util@0.3.34/LICENSE-MIT",
+        "futures-util 0.3.34: futures-util-0.3.34/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "4618209e13998293f82505724827ea83d927070af1c038b11e7a2ff6fd12d911",
+      "bytes": 10839,
+      "sources": [
+        "futures-intrusive@0.5.0/LICENSE-APACHE",
+        "futures-intrusive 0.5.0: futures-intrusive-0.5.0/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "161c4bcb09e94e97cf5d917129bbd78574ca2238704d602465cd54ebb9e570d6",
+      "bytes": 1059,
+      "sources": [
+        "futures-intrusive@0.5.0/LICENSE-MIT",
+        "futures-intrusive 0.5.0: futures-intrusive-0.5.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "c09aae9d3c77b531f56351a9947bc7446511d6b025b3255312d3e3442a9a7583",
+      "bytes": 1107,
+      "sources": [
+        "generic-array@0.14.7/LICENSE",
+        "generic-array 0.14.7: generic-array-0.14.7/LICENSE"
+      ]
+    },
+    {
+      "sha256": "aaff376532ea30a0cd5330b9502ad4a4c8bf769c539c87ffe78819d188a18ebf",
+      "bytes": 10849,
+      "sources": [
+        "getrandom@0.3.4/LICENSE-APACHE",
+        "getrandom 0.3.4: getrandom-0.3.4/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "29e9fe5074bd27e0e5d5d110394fbbcd841baee2651a3c4b4560a632702cede4",
+      "bytes": 1130,
+      "sources": [
+        "getrandom@0.3.4/LICENSE-MIT",
+        "getrandom 0.3.4: getrandom-0.3.4/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2",
+      "bytes": 1060,
+      "sources": [
+        "hashbrown@0.15.5/LICENSE-MIT",
+        "hashbrown 0.15.5: hashbrown-0.15.5/LICENSE-MIT",
+        "hashbrown@0.17.1/LICENSE-MIT",
+        "hashbrown 0.17.1: hashbrown-0.17.1/LICENSE-MIT",
+        "Rust 1.98.0 vendor/hashbrown-0.17.1/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "c144680885b29e4719e2a51f0aab5439a1e02d980692b5aaf086cae12727f28b",
+      "bytes": 10849,
+      "sources": [
+        "hashlink@0.10.0/LICENSE-APACHE",
+        "hashlink 0.10.0: hashlink-0.10.0/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "e915669a595b11a200873df8286561881b0e04932f6412a585db6297ba0bc97c",
+      "bytes": 1133,
+      "sources": [
+        "hashlink@0.10.0/LICENSE-MIT",
+        "hashlink 0.10.0: hashlink-0.10.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "7b63ecd5f1902af1b63729947373683c32745c16a10e8e6292e2e2dcd7e90ae0",
+      "bytes": 1071,
+      "sources": [
+        "heck@0.5.0/LICENSE-MIT",
+        "heck 0.5.0: heck-0.5.0/LICENSE-MIT",
+        "unicode-segmentation@1.13.3/LICENSE-MIT",
+        "unicode-segmentation 1.13.3: unicode-segmentation-1.13.3/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "8bb1b50b0e5c9399ae33bd35fab2769010fa6c14e8860c729a52295d84896b7a",
+      "bytes": 10835,
+      "sources": [
+        "http@1.5.0/LICENSE-APACHE",
+        "http 1.5.0: http-1.5.0/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "dc91f8200e4b2a1f9261035d4c18c33c246911a6c0f7b543d75347e61b249cff",
+      "bytes": 1059,
+      "sources": [
+        "http@1.5.0/LICENSE-MIT",
+        "http 1.5.0: http-1.5.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+      "bytes": 2195,
+      "sources": [
+        "icu_collections@2.2.0/LICENSE",
+        "icu_collections 2.2.0: icu_collections-2.2.0/LICENSE",
+        "icu_locale_core@2.2.0/LICENSE",
+        "icu_locale_core 2.2.0: icu_locale_core-2.2.0/LICENSE",
+        "icu_normalizer_data@2.2.0/LICENSE",
+        "icu_normalizer_data 2.2.0: icu_normalizer_data-2.2.0/LICENSE",
+        "icu_normalizer@2.2.0/LICENSE",
+        "icu_normalizer 2.2.0: icu_normalizer-2.2.0/LICENSE",
+        "icu_properties_data@2.2.0/LICENSE",
+        "icu_properties_data 2.2.0: icu_properties_data-2.2.0/LICENSE",
+        "icu_properties@2.2.0/LICENSE",
+        "icu_properties 2.2.0: icu_properties-2.2.0/LICENSE",
+        "icu_provider@2.2.0/LICENSE",
+        "icu_provider 2.2.0: icu_provider-2.2.0/LICENSE",
+        "litemap@0.8.2/LICENSE",
+        "litemap 0.8.2: litemap-0.8.2/LICENSE",
+        "potential_utf@0.1.5/LICENSE",
+        "potential_utf 0.1.5: potential_utf-0.1.5/LICENSE",
+        "tinystr@0.8.3/LICENSE",
+        "tinystr 0.8.3: tinystr-0.8.3/LICENSE",
+        "writeable@0.6.3/LICENSE",
+        "writeable 0.6.3: writeable-0.6.3/LICENSE",
+        "yoke@0.8.3/LICENSE",
+        "yoke 0.8.3: yoke-0.8.3/LICENSE",
+        "zerofrom@0.1.8/LICENSE",
+        "zerofrom 0.1.8: zerofrom-0.1.8/LICENSE",
+        "zerotrie@0.2.4/LICENSE",
+        "zerotrie 0.2.4: zerotrie-0.2.4/LICENSE",
+        "zerovec@0.11.6/LICENSE",
+        "zerovec 0.11.6: zerovec-0.11.6/LICENSE"
+      ]
+    },
+    {
+      "sha256": "8b43ce8accd61e9d370b5ca9e9c4f953279b5c239926c62315b40e24df51b726",
+      "bytes": 1062,
+      "sources": [
+        "idna_adapter@1.2.2/LICENSE-MIT",
+        "idna_adapter 1.2.2: idna_adapter-1.2.2/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "b38f11f6096706e6de553dabe2a7ed142d59b6fa8c97e290c67496154745cdd5",
+      "bytes": 1072,
+      "sources": [
+        "idna@1.1.0/LICENSE-MIT",
+        "idna 1.1.0: idna-1.1.0/LICENSE-MIT",
+        "percent-encoding@2.3.2/LICENSE-MIT",
+        "percent-encoding 2.3.2: percent-encoding-2.3.2/LICENSE-MIT",
+        "url@2.5.8/LICENSE-MIT",
+        "url 2.5.8: url-2.5.8/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "ecc269ef87fd38a1d98e30bfac9ba964a9dbd9315c3770fed98d4d7cb5882055",
+      "bytes": 1049,
+      "sources": [
+        "indexmap@2.14.0/LICENSE-MIT",
+        "indexmap 2.14.0: indexmap-2.14.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "270b0d81891aa44c7e8726cf9432dade9556a01c848bacd2f3ef839c9c1a1859",
+      "bytes": 1062,
+      "sources": [
+        "infer@0.22.0/LICENSE"
+      ]
+    },
+    {
+      "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+      "bytes": 11357,
+      "sources": [
+        "json-patch@4.2.0/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "87f7527b1066337751f7f4d717089bf514ff8f7ee7d66c4c5b891b09e744ec11",
+      "bytes": 1068,
+      "sources": [
+        "json-patch@4.2.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "2cf31f2ae7f3feba667d50fc1d4d21ecf217703c04c3068b83c9a73b6dde723a",
+      "bytes": 10867,
+      "sources": [
+        "jsonptr@0.7.1/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "2bc107bdc18a74263d20bdefdb8073e17bc1a01b6b374dc5835683a33ee5ba7d",
+      "bytes": 1071,
+      "sources": [
+        "jsonptr@0.7.1/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "769f80b5bcb42ed0af4e4d2fd74e1ac9bf843cb80c5a29219d1ef3544428a6bb",
+      "bytes": 10846,
+      "sources": [
+        "keyboard-types@0.7.0/LICENSE-APACHE",
+        "keyboard-types 0.7.0: keyboard-types-0.7.0/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "31dbbab009f1b2e59a1622d5955dfafc38ebe834000215b49d954c6f85fe927c",
+      "bytes": 1050,
+      "sources": [
+        "keyboard-types@0.7.0/LICENSE-MIT",
+        "keyboard-types 0.7.0: keyboard-types-0.7.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "123a331b5dbf04c30097fa43b8f858bc85df671fe776de498d01f3d6b7c1f69e",
+      "bytes": 1066,
+      "sources": [
+        "libc@0.2.189/LICENSE-MIT",
+        "libc 0.2.189: libc-0.2.189/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "f59ba65550f2a5adff98ec6478d783402c8e0a3eb515025c0b3438f3d30dc39e",
+      "bytes": 1072,
+      "sources": [
+        "libsqlite3-sys@0.30.1/LICENSE",
+        "libsqlite3-sys 0.30.1: libsqlite3-sys-0.30.1/LICENSE"
+      ]
+    },
+    {
+      "sha256": "ea4fcb309f14a22065e1ea45362d494d320012249ed865fe9c7c0946db754131",
+      "bytes": 1467,
+      "sources": [
+        "libsqlite3-sys 0.30.1: libsqlite3-sys-0.30.1/sqlcipher/LICENSE"
+      ]
+    },
+    {
+      "sha256": "c9a75f18b9ab2927829a208fc6aa2cf4e63b8420887ba29cdb265d6619ae82d5",
+      "bytes": 1071,
+      "sources": [
+        "lock_api@0.4.14/LICENSE-MIT",
+        "lock_api 0.4.14: lock_api-0.4.14/LICENSE-MIT",
+        "parking_lot_core@0.9.12/LICENSE-MIT",
+        "parking_lot_core 0.9.12: parking_lot_core-0.9.12/LICENSE-MIT",
+        "parking_lot@0.12.5/LICENSE-MIT",
+        "parking_lot 0.12.5: parking_lot-0.12.5/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "df9cfd06d8a44d9a671eadd39ffd97f166481da015a30f45dfd27886209c5922",
+      "bytes": 1058,
+      "sources": [
+        "mime@0.3.17/LICENSE-MIT",
+        "mime 0.3.17: mime-0.3.17/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "07919255c7e04793d8ea760d6c2ce32d19f9ff02bdbdde3ce90b1e1880929a9b",
+      "bytes": 1082,
+      "sources": [
+        "mio@1.2.2/LICENSE",
+        "mio 1.2.2: mio-1.2.2/LICENSE"
+      ]
+    },
+    {
+      "sha256": "2ab5537b8c0cb1d475e2145b6a7994b04e7c71e6e5bd836f7f9c47c221a5ad9a",
+      "bytes": 1108,
+      "sources": [
+        "muda@0.19.3/LICENSE-MIT",
+        "muda 0.19.3: muda-0.19.3/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "b99f9d43803f2ac979c50949df630bd8eeaf2fcd1b9fdb9093710d70f5dfb63d",
+      "bytes": 809,
+      "sources": [
+        "muda@0.19.3/LICENSE.spdx",
+        "muda 0.19.3: muda-0.19.3/LICENSE.spdx"
+      ]
+    },
+    {
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "bytes": 10174,
+      "sources": [
+        "num-conv@0.2.2/LICENSE-Apache",
+        "num-conv 0.2.2: num-conv-0.2.2/LICENSE-Apache",
+        "pin-project-lite@0.2.17/LICENSE-APACHE",
+        "pin-project-lite 0.2.17: pin-project-lite-0.2.17/LICENSE-APACHE",
+        "raw-window-handle@0.6.2/LICENSE-APACHE.md",
+        "raw-window-handle 0.6.2: raw-window-handle-0.6.2/LICENSE-APACHE.md",
+        "tauri-runtime-wry@2.11.4/LICENSE_APACHE-2.0",
+        "tauri-runtime-wry 2.11.4: tauri-runtime-wry-2.11.4/LICENSE_APACHE-2.0",
+        "tauri-runtime@2.11.3/LICENSE_APACHE-2.0",
+        "tauri-runtime 2.11.3: tauri-runtime-2.11.3/LICENSE_APACHE-2.0",
+        "tauri-utils@2.10.0/LICENSE-APACHE-2.0",
+        "tauri@2.11.5/LICENSE_APACHE-2.0",
+        "tauri 2.11.5: tauri-2.11.5/LICENSE_APACHE-2.0",
+        "time-core@0.1.9/LICENSE-Apache",
+        "time-core 0.1.9: time-core-0.1.9/LICENSE-Apache",
+        "time@0.3.55/LICENSE-Apache",
+        "time 0.3.55: time-0.3.55/LICENSE-Apache",
+        "@tauri-apps/api@2.11.1/LICENSE_APACHE-2.0"
+      ]
+    },
+    {
+      "sha256": "e2e245f2b566d0bfafb0f6a04c16b82d710c4e6e7d799e39bb4ef6e541b85b98",
+      "bytes": 1050,
+      "sources": [
+        "num-conv@0.2.2/LICENSE-MIT",
+        "num-conv 0.2.2: num-conv-0.2.2/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "9a6d7a3c1b8edcc706c4b6c37f8dae9a77f02c7f9051df603f975db136b55419",
+      "bytes": 451,
+      "sources": [
+        "parking@2.2.1/LICENSE-THIRD-PARTY",
+        "parking 2.2.1: parking-2.2.1/LICENSE-THIRD-PARTY"
+      ]
+    },
+    {
+      "sha256": "0ab4d106b6faac07fb6a051815fd1b4d862d730895e2d7d7358c2f13565e7a38",
+      "bytes": 1099,
+      "sources": [
+        "phf_shared@0.13.1/LICENSE",
+        "phf_shared 0.13.1: phf_shared-0.13.1/LICENSE",
+        "phf@0.13.1/LICENSE",
+        "phf 0.13.1: phf-0.13.1/LICENSE"
+      ]
+    },
+    {
+      "sha256": "5b0ae40d1a35f7ae6591a28e44771240e6a88cb03a66c9189a45b9681639b466",
+      "bytes": 1057,
+      "sources": [
+        "plist@1.10.0/LICENCE",
+        "plist 1.10.0: plist-1.10.0/LICENCE"
+      ]
+    },
+    {
+      "sha256": "155420c6403d4e0fca34105e3c03fdd6939b64c393c7ec6f95f5b72c5474eab0",
+      "bytes": 11349,
+      "sources": [
+        "powerfmt@0.2.0/LICENSE-Apache",
+        "powerfmt 0.2.0: powerfmt-0.2.0/LICENSE-Apache"
+      ]
+    },
+    {
+      "sha256": "070dbc7dda03a29296f2d58bdb9b7331af90f2abc9f31df22875d1eabaf29852",
+      "bytes": 1062,
+      "sources": [
+        "powerfmt@0.2.0/LICENSE-MIT",
+        "powerfmt 0.2.0: powerfmt-0.2.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "5b2c207dcf571267ebe0bbdd5bf321f561ddc22ff597e7b363e96f4539507a29",
+      "bytes": 1105,
+      "sources": [
+        "quick-xml@0.41.0/LICENSE-MIT.md",
+        "quick-xml 0.41.0: quick-xml-0.41.0/LICENSE-MIT.md"
+      ]
+    },
+    {
+      "sha256": "9c5a80639a57c1c945570e7ebbca0706305849ce3c098021325cca9db2f7acc4",
+      "bytes": 1064,
+      "sources": [
+        "raw-window-handle@0.6.2/LICENSE-MIT.md",
+        "raw-window-handle 0.6.2: raw-window-handle-0.6.2/LICENSE-MIT.md"
+      ]
+    },
+    {
+      "sha256": "ae895c8576e682f310fb70d93d9f99b1dd82872094c54a8f6cdfe2ca5c2d6ecb",
+      "bytes": 836,
+      "sources": [
+        "raw-window-handle@0.6.2/LICENSE-ZLIB.md",
+        "raw-window-handle 0.6.2: raw-window-handle-0.6.2/LICENSE-ZLIB.md"
+      ]
+    },
+    {
+      "sha256": "74db5baf44a41b1000312c673544b3374e4198af5605c7f9080a402cec42cfa3",
+      "bytes": 2847,
+      "sources": [
+        "regex-syntax 0.8.11: regex-syntax-0.8.11/src/unicode_tables/LICENSE-UNICODE"
+      ]
+    },
+    {
+      "sha256": "65fc947f4bac882a2cd104ef73c246b1b037059df9f2b3a58b7f77f0b9e56071",
+      "bytes": 1079,
+      "sources": [
+        "rfd@0.16.0/LICENSE",
+        "rfd 0.16.0: rfd-0.16.0/LICENSE"
+      ]
+    },
+    {
+      "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+      "bytes": 1338,
+      "sources": [
+        "ryu@1.0.23/LICENSE-BOOST",
+        "ryu 1.0.23: ryu-1.0.23/LICENSE-BOOST"
+      ]
+    },
+    {
+      "sha256": "cb3c929a05e6cbc9de9ab06a4c57eeb60ca8c724bef6c138c87d3a577e27aa14",
+      "bytes": 1081,
+      "sources": [
+        "same-file@1.0.6/LICENSE-MIT",
+        "same-file 1.0.6: same-file-1.0.6/LICENSE-MIT",
+        "winapi-util@0.1.11/LICENSE-MIT",
+        "winapi-util 0.1.11: winapi-util-0.1.11/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "fb77f0a9c53e473abe5103c8632ef9f0f2874d4fb3f17cb2d8c661aab9cee9d7",
+      "bytes": 1097,
+      "sources": [
+        "scopeguard@1.2.0/LICENSE-MIT",
+        "scopeguard 1.2.0: scopeguard-1.2.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+      "bytes": 11358,
+      "sources": [
+        "serde_spanned@1.1.1/LICENSE-APACHE",
+        "serde_spanned 1.1.1: serde_spanned-1.1.1/LICENSE-APACHE",
+        "toml_datetime@0.7.5+spec-1.1.0/LICENSE-APACHE",
+        "toml_parser@1.1.3+spec-1.1.0/LICENSE-APACHE",
+        "toml_parser 1.1.3+spec-1.1.0: toml_parser-1.1.3+spec-1.1.0/LICENSE-APACHE",
+        "toml_writer@1.1.2+spec-1.1.0/LICENSE-APACHE",
+        "toml_writer 1.1.2+spec-1.1.0: toml_writer-1.1.2+spec-1.1.0/LICENSE-APACHE",
+        "toml@0.9.12+spec-1.1.0/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "6efb0476a1cc085077ed49357026d8c173bf33017278ef440f222fb9cbcb66e6",
+      "bytes": 1062,
+      "sources": [
+        "serde_spanned@1.1.1/LICENSE-MIT",
+        "serde_spanned 1.1.1: serde_spanned-1.1.1/LICENSE-MIT",
+        "toml_datetime@0.7.5+spec-1.1.0/LICENSE-MIT",
+        "toml_parser@1.1.3+spec-1.1.0/LICENSE-MIT",
+        "toml_parser 1.1.3+spec-1.1.0: toml_parser-1.1.3+spec-1.1.0/LICENSE-MIT",
+        "toml_writer@1.1.2+spec-1.1.0/LICENSE-MIT",
+        "toml_writer 1.1.2+spec-1.1.0: toml_writer-1.1.2+spec-1.1.0/LICENSE-MIT",
+        "toml@0.9.12+spec-1.1.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "b9eb266294324f672cbe945fe8f2e32f85024f0d61a1a7d14382cdde0ac44769",
+      "bytes": 1058,
+      "sources": [
+        "serde_urlencoded@0.7.1/LICENSE-MIT",
+        "serde_urlencoded 0.7.1: serde_urlencoded-0.7.1/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357,
+      "sources": [
+        "serialize-to-javascript@0.1.2/LICENSE-APACHE",
+        "serialize-to-javascript 0.1.2: serialize-to-javascript-0.1.2/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "e53a7165e8bc3ced5e5628404b3d2d28ecc14ad720f1c09ba28385d5151ecf93",
+      "bytes": 1066,
+      "sources": [
+        "serialize-to-javascript@0.1.2/LICENSE-MIT",
+        "serialize-to-javascript 0.1.2: serialize-to-javascript-0.1.2/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "b4eb00df6e2a4d22518fcaa6a2b4646f249b3a3c9814509b22bd2091f1392ff1",
+      "bytes": 1138,
+      "sources": [
+        "sha2@0.10.9/LICENSE-MIT",
+        "sha2 0.10.9: sha2-0.10.9/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "c962ee4d1d05ddc138b202b2540219ebc57893fcf97b364852094a9a94ce1365",
+      "bytes": 281,
+      "sources": [
+        "siphasher@1.0.3/COPYING",
+        "siphasher 1.0.3: siphasher-1.0.3/COPYING"
+      ]
+    },
+    {
+      "sha256": "8ce0830173fdac609dfb4ea603fdc002c2f4af0dc9b1a005653f5da9cf534b18",
+      "bytes": 1055,
+      "sources": [
+        "slab@0.4.12/LICENSE",
+        "slab 0.4.12: slab-0.4.12/LICENSE"
+      ]
+    },
+    {
+      "sha256": "0b28172679e0009b655da42797c03fd163a3379d5cfa67ba1f1655e974a2a1a9",
+      "bytes": 1072,
+      "sources": [
+        "smallvec@1.15.2/LICENSE-MIT",
+        "smallvec 1.15.2: smallvec-1.15.2/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "a4445427440043e8ce6fadf7a43fb906cb0d7f6c573a560a9f142cf9f9bf8ff4",
+      "bytes": 11312,
+      "sources": [
+        "softbuffer@0.4.8/LICENSE-APACHE",
+        "softbuffer 0.4.8: softbuffer-0.4.8/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "0463bfa47d6d763d8c824333efb0e6d6df3946c13c3b077c78ed9f23ca50d0f2",
+      "bytes": 1056,
+      "sources": [
+        "softbuffer@0.4.8/LICENSE-MIT",
+        "softbuffer 0.4.8: softbuffer-0.4.8/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "6ac8711fb340c62ce0a4ecd463342d3fa0e8e70de697c863a2e1c0c53006003c",
+      "bytes": 1084,
+      "sources": [
+        "spin@0.9.9/LICENSE",
+        "spin 0.9.9: spin-0.9.9/LICENSE"
+      ]
+    },
+    {
+      "sha256": "9be39331309bc958aab10457c1a8459c038ae95662f26dfcf6c9088e2b3d653f",
+      "bytes": 10243,
+      "sources": [
+        "sqlx-core@0.8.6/LICENSE-APACHE",
+        "sqlx-core 0.8.6: sqlx-core-0.8.6/LICENSE-APACHE",
+        "sqlx-sqlite@0.8.6/LICENSE-APACHE",
+        "sqlx-sqlite 0.8.6: sqlx-sqlite-0.8.6/LICENSE-APACHE",
+        "sqlx@0.8.6/LICENSE-APACHE",
+        "sqlx 0.8.6: sqlx-0.8.6/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "44b1600a26039a75b28e1ce154a5dd163b16549f50e34fa577d9efe9c1bae179",
+      "bytes": 1060,
+      "sources": [
+        "sqlx-core@0.8.6/LICENSE-MIT",
+        "sqlx-core 0.8.6: sqlx-core-0.8.6/LICENSE-MIT",
+        "sqlx-sqlite@0.8.6/LICENSE-MIT",
+        "sqlx-sqlite 0.8.6: sqlx-sqlite-0.8.6/LICENSE-MIT",
+        "sqlx@0.8.6/LICENSE-MIT",
+        "sqlx 0.8.6: sqlx-0.8.6/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "5e05b024f653a5ce199e77cbbbd42fb5553562ec714b819421ed0c3e552a75d7",
+      "bytes": 1056,
+      "sources": [
+        "stable_deref_trait@1.2.1/LICENSE-MIT",
+        "stable_deref_trait 1.2.1: stable_deref_trait-1.2.1/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "02b6448337b757772d90e5f31caaa0f9e6afaad2221c01771d0a3deaa4d4196c",
+      "bytes": 793,
+      "sources": [
+        "tao@0.35.3/LICENSE.spdx",
+        "tao 0.35.3: tao-0.35.3/LICENSE.spdx"
+      ]
+    },
+    {
+      "sha256": "eb8a6c84630461b352badcab1dbe5d0168c56d377358b2b8c86b51003272d5ef",
+      "bytes": 888,
+      "sources": [
+        "tauri-plugin-dialog@2.7.2/LICENSE.spdx",
+        "tauri-plugin-dialog 2.7.2: tauri-plugin-dialog-2.7.2/LICENSE.spdx",
+        "tauri-plugin-fs@2.5.1/LICENSE.spdx",
+        "tauri-plugin-fs 2.5.1: tauri-plugin-fs-2.5.1/LICENSE.spdx"
+      ]
+    },
+    {
+      "sha256": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9",
+      "bytes": 10173,
+      "sources": [
+        "tauri-plugin-dialog@2.7.2/LICENSE_APACHE-2.0",
+        "tauri-plugin-dialog 2.7.2: tauri-plugin-dialog-2.7.2/LICENSE_APACHE-2.0",
+        "tauri-plugin-fs@2.5.1/LICENSE_APACHE-2.0",
+        "tauri-plugin-fs 2.5.1: tauri-plugin-fs-2.5.1/LICENSE_APACHE-2.0"
+      ]
+    },
+    {
+      "sha256": "89ff9689dcf9dd53968785d05a26f7898bb169dbfcada8d032b3e68cf0d55607",
+      "bytes": 1089,
+      "sources": [
+        "tauri-plugin-dialog@2.7.2/LICENSE_MIT",
+        "tauri-plugin-dialog 2.7.2: tauri-plugin-dialog-2.7.2/LICENSE_MIT",
+        "tauri-plugin-fs@2.5.1/LICENSE_MIT",
+        "tauri-plugin-fs 2.5.1: tauri-plugin-fs-2.5.1/LICENSE_MIT"
+      ]
+    },
+    {
+      "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+      "bytes": 1090,
+      "sources": [
+        "tauri-runtime-wry@2.11.4/LICENSE_MIT",
+        "tauri-runtime-wry 2.11.4: tauri-runtime-wry-2.11.4/LICENSE_MIT",
+        "tauri-runtime@2.11.3/LICENSE_MIT",
+        "tauri-runtime 2.11.3: tauri-runtime-2.11.3/LICENSE_MIT",
+        "tauri-utils@2.10.0/LICENSE-MIT",
+        "tauri@2.11.5/LICENSE_MIT",
+        "tauri 2.11.5: tauri-2.11.5/LICENSE_MIT",
+        "@tauri-apps/api@2.11.1/LICENSE_MIT"
+      ]
+    },
+    {
+      "sha256": "2537228d9a1b44a5dc595241349cae7090b326c8de165aaf89bfddef4a00d0fc",
+      "bytes": 1057,
+      "sources": [
+        "time-core@0.1.9/LICENSE-MIT",
+        "time-core 0.1.9: time-core-0.1.9/LICENSE-MIT",
+        "time@0.3.55/LICENSE-MIT",
+        "time 0.3.55: time-0.3.55/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "253cd04c6714889df2d32f3f64d669179a1c95c76ac43c40882c52eb06bc3552",
+      "bytes": 1070,
+      "sources": [
+        "tokio-stream@0.1.19/LICENSE",
+        "tokio-stream 0.1.19: tokio-stream-0.1.19/LICENSE",
+        "tokio@1.53.1/LICENSE",
+        "tokio 1.53.1: tokio-1.53.1/LICENSE"
+      ]
+    },
+    {
+      "sha256": "898b1ae9821e98daf8964c8d6c7f61641f5f5aa78ad500020771c0939ee0dea1",
+      "bytes": 1062,
+      "sources": [
+        "tracing-core@0.1.36/LICENSE",
+        "tracing-core 0.1.36: tracing-core-0.1.36/LICENSE",
+        "tracing@0.1.44/LICENSE",
+        "tracing 0.1.44: tracing-0.1.44/LICENSE"
+      ]
+    },
+    {
+      "sha256": "58545fed1565e42d687aecec6897d35c6d37ccb71479a137c0deb2203e125c79",
+      "bytes": 1085,
+      "sources": [
+        "tracing-core 0.1.36: tracing-core-0.1.36/src/spin/LICENSE"
+      ]
+    },
+    {
+      "sha256": "db11fec9946737df39ca3898d9cd8c10ec6f6c3a884a6802b0ad0b81b4e8f23a",
+      "bytes": 17,
+      "sources": [
+        "typenum@1.20.1/LICENSE",
+        "typenum 1.20.1: typenum-1.20.1/LICENSE"
+      ]
+    },
+    {
+      "sha256": "516b24e051bf5630880ebbd55c40a25ce9552ebaf8970a53e8976eb70e522406",
+      "bytes": 10835,
+      "sources": [
+        "typenum@1.20.1/LICENSE-APACHE",
+        "typenum 1.20.1: typenum-1.20.1/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "a825bd853ab71619a4923d7b4311221427848070ff44d990da39b0b274c1683f",
+      "bytes": 1083,
+      "sources": [
+        "typenum@1.20.1/LICENSE-MIT",
+        "typenum 1.20.1: typenum-1.20.1/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "23860c2a7b5d96b21569afedf033469bab9fe14a1b24a35068b8641c578ce24d",
+      "bytes": 321,
+      "sources": [
+        "unicode-segmentation@1.13.3/COPYRIGHT",
+        "unicode-segmentation 1.13.3: unicode-segmentation-1.13.3/COPYRIGHT"
+      ]
+    },
+    {
+      "sha256": "5cf1c9dc617e4cad7fa03181ff893601ad5243aa3be527ef39034e1cd6377676",
+      "bytes": 1073,
+      "sources": [
+        "urlpattern@0.6.0/LICENSE"
+      ]
+    },
+    {
+      "sha256": "c30152c94a6d75e021adbc52b3a52470366a46edb917e17deae3259251af244c",
+      "bytes": 1742,
+      "sources": [
+        "utf8_iter@1.0.4/COPYRIGHT",
+        "utf8_iter 1.0.4: utf8_iter-1.0.4/COPYRIGHT"
+      ]
+    },
+    {
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358,
+      "sources": [
+        "utf8_iter@1.0.4/LICENSE-APACHE",
+        "utf8_iter 1.0.4: utf8_iter-1.0.4/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "3fa4ca83dcc9237839b1bdeb2e6d16bdfb5ec0c5ce42b24694d8bbf0dcbef72c",
+      "bytes": 1053,
+      "sources": [
+        "utf8_iter@1.0.4/LICENSE-MIT",
+        "utf8_iter 1.0.4: utf8_iter-1.0.4/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "436bc5a105d8e57dcd8778730f3754f7bf39c14d2f530e4cde4bd2d17a83ec3d",
+      "bytes": 1157,
+      "sources": [
+        "uuid@1.24.0/LICENSE-MIT",
+        "uuid 1.24.0: uuid-1.24.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "54a744942eb3fa63a74d8d359989ed6962c04f3f10ff20cfa08ff8aa7efbe4e6",
+      "bytes": 11338,
+      "sources": [
+        "web-time@1.1.0/LICENSE-APACHE"
+      ]
+    },
+    {
+      "sha256": "f428305bbf2e70fbd807af0f3c7ac1b7acfb95311640f451e9d2e48db6d7e96b",
+      "bytes": 1065,
+      "sources": [
+        "web-time@1.1.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73",
+      "bytes": 1067,
+      "sources": [
+        "webview2-com-sys 0.38.2: upstream/webview2-com-sys-0.38.2-LICENSE.txt",
+        "webview2-com 0.38.2: upstream/webview2-com-0.38.2-LICENSE.txt"
+      ]
+    },
+    {
+      "sha256": "617b85f62a4f1b6a62d3d9f28f6d7003b7f68a70b7675a8174bbcc68401ac62d",
+      "bytes": 1108,
+      "sources": [
+        "window-vibrancy@0.6.0/LICENSE-MIT",
+        "window-vibrancy 0.6.0: window-vibrancy-0.6.0/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "7ccef0d35e8507fa02d7e904a5277d62723f9ec576d52f6a865cab7b4dbf12ad",
+      "bytes": 840,
+      "sources": [
+        "window-vibrancy@0.6.0/LICENSE.spdx",
+        "window-vibrancy 0.6.0: window-vibrancy-0.6.0/LICENSE.spdx"
+      ]
+    },
+    {
+      "sha256": "c16f8dcf1a368b83be78d826ea23de4079fe1b4469a0ab9ee20563f37ff3d44b",
+      "bytes": 11351,
+      "sources": [
+        "windows_x86_64_msvc@0.48.5/license-apache-2.0",
+        "windows_x86_64_msvc@0.52.6/license-apache-2.0",
+        "windows_x86_64_msvc 0.52.6: windows_x86_64_msvc-0.52.6/license-apache-2.0",
+        "windows_x86_64_msvc@0.53.1/license-apache-2.0",
+        "windows_x86_64_msvc 0.53.1: windows_x86_64_msvc-0.53.1/license-apache-2.0",
+        "windows-collections@0.2.0/license-apache-2.0",
+        "windows-collections 0.2.0: windows-collections-0.2.0/license-apache-2.0",
+        "windows-core@0.61.2/license-apache-2.0",
+        "windows-core 0.61.2: windows-core-0.61.2/license-apache-2.0",
+        "windows-future@0.2.1/license-apache-2.0",
+        "windows-future 0.2.1: windows-future-0.2.1/license-apache-2.0",
+        "windows-link@0.1.3/license-apache-2.0",
+        "windows-link 0.1.3: windows-link-0.1.3/license-apache-2.0",
+        "windows-link@0.2.1/license-apache-2.0",
+        "windows-link 0.2.1: windows-link-0.2.1/license-apache-2.0",
+        "windows-numerics@0.2.0/license-apache-2.0",
+        "windows-numerics 0.2.0: windows-numerics-0.2.0/license-apache-2.0",
+        "windows-result@0.3.4/license-apache-2.0",
+        "windows-result 0.3.4: windows-result-0.3.4/license-apache-2.0",
+        "windows-strings@0.4.2/license-apache-2.0",
+        "windows-strings 0.4.2: windows-strings-0.4.2/license-apache-2.0",
+        "windows-sys@0.48.0/license-apache-2.0",
+        "windows-sys@0.59.0/license-apache-2.0",
+        "windows-sys 0.59.0: windows-sys-0.59.0/license-apache-2.0",
+        "windows-sys@0.60.2/license-apache-2.0",
+        "windows-sys 0.60.2: windows-sys-0.60.2/license-apache-2.0",
+        "windows-sys@0.61.2/license-apache-2.0",
+        "windows-sys 0.61.2: windows-sys-0.61.2/license-apache-2.0",
+        "windows-targets@0.48.5/license-apache-2.0",
+        "windows-targets@0.52.6/license-apache-2.0",
+        "windows-targets 0.52.6: windows-targets-0.52.6/license-apache-2.0",
+        "windows-targets@0.53.5/license-apache-2.0",
+        "windows-targets 0.53.5: windows-targets-0.53.5/license-apache-2.0",
+        "windows-threading@0.1.0/license-apache-2.0",
+        "windows-threading 0.1.0: windows-threading-0.1.0/license-apache-2.0",
+        "windows-version@0.1.7/license-apache-2.0",
+        "windows-version 0.1.7: windows-version-0.1.7/license-apache-2.0",
+        "windows@0.61.3/license-apache-2.0",
+        "windows 0.61.3: windows-0.61.3/license-apache-2.0"
+      ]
+    },
+    {
+      "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+      "bytes": 1141,
+      "sources": [
+        "windows_x86_64_msvc@0.48.5/license-mit",
+        "windows_x86_64_msvc@0.52.6/license-mit",
+        "windows_x86_64_msvc 0.52.6: windows_x86_64_msvc-0.52.6/license-mit",
+        "windows_x86_64_msvc@0.53.1/license-mit",
+        "windows_x86_64_msvc 0.53.1: windows_x86_64_msvc-0.53.1/license-mit",
+        "windows-collections@0.2.0/license-mit",
+        "windows-collections 0.2.0: windows-collections-0.2.0/license-mit",
+        "windows-core@0.61.2/license-mit",
+        "windows-core 0.61.2: windows-core-0.61.2/license-mit",
+        "windows-future@0.2.1/license-mit",
+        "windows-future 0.2.1: windows-future-0.2.1/license-mit",
+        "windows-link@0.1.3/license-mit",
+        "windows-link 0.1.3: windows-link-0.1.3/license-mit",
+        "windows-link@0.2.1/license-mit",
+        "windows-link 0.2.1: windows-link-0.2.1/license-mit",
+        "windows-numerics@0.2.0/license-mit",
+        "windows-numerics 0.2.0: windows-numerics-0.2.0/license-mit",
+        "windows-result@0.3.4/license-mit",
+        "windows-result 0.3.4: windows-result-0.3.4/license-mit",
+        "windows-strings@0.4.2/license-mit",
+        "windows-strings 0.4.2: windows-strings-0.4.2/license-mit",
+        "windows-sys@0.48.0/license-mit",
+        "windows-sys@0.59.0/license-mit",
+        "windows-sys 0.59.0: windows-sys-0.59.0/license-mit",
+        "windows-sys@0.60.2/license-mit",
+        "windows-sys 0.60.2: windows-sys-0.60.2/license-mit",
+        "windows-sys@0.61.2/license-mit",
+        "windows-sys 0.61.2: windows-sys-0.61.2/license-mit",
+        "windows-targets@0.48.5/license-mit",
+        "windows-targets@0.52.6/license-mit",
+        "windows-targets 0.52.6: windows-targets-0.52.6/license-mit",
+        "windows-targets@0.53.5/license-mit",
+        "windows-targets 0.53.5: windows-targets-0.53.5/license-mit",
+        "windows-threading@0.1.0/license-mit",
+        "windows-threading 0.1.0: windows-threading-0.1.0/license-mit",
+        "windows-version@0.1.7/license-mit",
+        "windows-version 0.1.7: windows-version-0.1.7/license-mit",
+        "windows@0.61.3/license-mit",
+        "windows 0.61.3: windows-0.61.3/license-mit"
+      ]
+    },
+    {
+      "sha256": "cb5aedb296c5246d1f22e9099f925a65146f9f0d6b4eebba97fd27a6cdbbab2d",
+      "bytes": 1023,
+      "sources": [
+        "winnow@0.7.15/LICENSE-MIT",
+        "winnow@1.0.4/LICENSE-MIT",
+        "winnow 1.0.4: winnow-1.0.4/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "ef88893533af22ffbb68ceef0724ba1389518df26165a34f3c99ad30b884df4f",
+      "bytes": 1121,
+      "sources": [
+        "wry@0.55.1/LICENSE-MIT",
+        "wry 0.55.1: wry-0.55.1/LICENSE-MIT"
+      ]
+    },
+    {
+      "sha256": "26235c41e314fb0da35b33b2bb5bcbc4dd523839f8eeca52efcd43586f441fb5",
+      "bytes": 833,
+      "sources": [
+        "wry@0.55.1/LICENSE.spdx",
+        "wry 0.55.1: wry-0.55.1/LICENSE.spdx"
+      ]
+    },
+    {
+      "sha256": "cb4a7917af22bd56340e877f10a5c5aa4fded7af2459162630ff7fcb48bb45c7",
+      "bytes": 1071,
+      "sources": [
+        "@tanstack/react-store@0.11.1/LICENSE",
+        "@tanstack/store@0.11.1/LICENSE"
+      ]
+    },
+    {
+      "sha256": "9db3f8ddd7031ab264b99bec49c221155d0c8649b53dd4aa007f2041d36cdf5f",
+      "bytes": 1071,
+      "sources": [
+        "@tanstack/react-table@9.1.2/LICENSE",
+        "@tanstack/table-core@9.1.2/LICENSE"
+      ]
+    },
+    {
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
+      "bytes": 1088,
+      "sources": [
+        "react@19.2.8/LICENSE",
+        "react-dom@19.2.8/LICENSE",
+        "scheduler@0.27.0/LICENSE",
+        "use-sync-external-store@1.6.0/LICENSE"
+      ]
+    },
+    {
+      "sha256": "a77a1c089806b39ad339535bdf3677f636c91d96693e8ad7b11fe733f650ea64",
+      "bytes": 101176,
+      "sources": [
+        "vite@7.3.6/LICENSE.md"
+      ]
+    },
+    {
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "bytes": 35231,
+      "sources": [
+        "rollup@4.62.4/LICENSE.md"
+      ]
+    },
+    {
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "bytes": 1069,
+      "sources": [
+        "esbuild@0.28.2/LICENSE.md"
+      ]
+    },
+    {
+      "sha256": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55",
+      "bytes": 1487,
+      "sources": [
+        "Microsoft.Web.WebView2 1.0.3650.58 / LICENSE.txt"
+      ]
+    },
+    {
+      "sha256": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90",
+      "bytes": 3894,
+      "sources": [
+        "Microsoft.Web.WebView2 1.0.3650.58 / NOTICE.txt"
+      ]
+    },
+    {
+      "sha256": "cc65d76f325d884dd49e319acf3764d5513920f34ad18e34347b8dedc6ddd2ec",
+      "bytes": 1484,
+      "sources": [
+        "SQLite amalgamation SQLite 3.46.0 / libsqlite3-sys 0.30.1: tmp/phase-23d-c1c-b1/sqlite-disclaimer.SOURCE-EXCERPT.txt"
+      ]
+    },
+    {
+      "sha256": "f5062c9a188d81dfe66b56db4182dcf9e4b17c0d9b0d311a8e20b3a1b075c443",
+      "bytes": 1995,
+      "sources": [
+        "Rust core Unicode tables rustc 1.98.0; copyright 1991-2024: tmp/phase-23d-c1c-b1/upstream/rust-extra-LICENSES-Unicode-3.0.txt.txt"
+      ]
+    },
+    {
+      "sha256": "ab6eec6caf0fa5775e411c7a8bc6a45c4ef2956b0980b157ab74fc5cd62a928b",
+      "bytes": 15078,
+      "sources": [
+        "Rust std/compiler builtins LLVM exception contributions compiler_builtins 0.1.160 within Rust 1.98.0: tmp/phase-23d-c1c-b1/upstream/rust-library-compiler-builtins-LICENSE.txt.txt"
+      ]
+    },
+    {
+      "sha256": "b71bd43a069ca0641a9ecfe585ca7b3c53b5cc1608f8b68321168698e28b5ea1",
+      "bytes": 1068,
+      "sources": [
+        "Rust std/alloc/core/panic runtime source license Rust 1.98.0 / 88d9e12ae178fab0fb5cc050a94da85685d449ea: upstream/rust-1.98.0-LICENSE-MIT.txt"
+      ]
+    },
+    {
+      "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+      "bytes": 1512520,
+      "sources": [
+        "Rust 1.98.0 / COPYRIGHT-library.html (provider package-wide original)"
+      ]
+    },
+    {
+      "sha256": "3f7eedf574718eefa8657bb5720d4fe59fcf9e97d304f3289d3abc775ef5a7e4",
+      "bytes": 3819,
+      "sources": [
+        "tao 0.35.3 / src/keyboard.rs original header"
+      ]
+    }
+  ],
+  "exclusion_basis": "既存Local-3C O02とStep 2のsource/cfg/Release fingerprint判断を継承。機能・lock・Tauri設定不変。",
+  "owner_assessment_reference": "release/notice-source/reviews/copyright-review.json",
+  "toolchain": {
+    "rustc": [
+      "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+      "binary: rustc",
+      "commit-hash: 88d9e12ae178fab0fb5cc050a94da85685d449ea",
+      "commit-date: 2026-08-18",
+      "host: x86_64-pc-windows-msvc",
+      "release: 1.98.0",
+      "LLVM version: 22.1.8"
+    ],
+    "cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+    "node": "v24.20.0",
+    "npm": "11.19.0",
+    "tauri_cli": "2.11.4",
+    "powershell": "5.1.26100.9444"
+  },
+  "toolchain_sha256": "4283dd97a1eb8080c9ae2afc59e3e4b1608bca99071dcfb4021b0805930637e7",
+  "scope_note": "included=trueは通知対象として採用した通常経路候補・helper・provider原文を示す。全componentの最適化後の包含を証明しない。provider package中の他target/build用項目をアプリのライセンス選択にしない。",
+  "legal_clearance": false,
+  "public_release_approved": false,
+  "formal_review": {
+    "reviewer": "guardiancrow",
+    "reviewed_at": "2026-10-12T12:06:02.266Z",
+    "basis": "USER_ACCEPTANCE_OF_AUTOMATED_VALIDATION_AND_EXISTING_AUDIT",
+    "scope": "Windows x64 v0.3.0：通知201件、除外6件、原文148種類・357参照、ライセンス義務・出典・著作権・owner assessment5件・lock・toolchain・自動検証結果。不整合がないことを条件とするユーザー承認。全原文の逐語確認、法的クリアランス、公開承認を意味しない。",
+    "notice_sha256": "37e763e27a6fd410324b3617d6e55ba0bb058d0086949dac776dc073c0c282a1",
+    "toolchain_sha256": "4283dd97a1eb8080c9ae2afc59e3e4b1608bca99071dcfb4021b0805930637e7"
+  }
+}

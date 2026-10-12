@@ -118,8 +118,14 @@ function Get-PortableSource([string]$Root, [string]$Expected) {
 }
 
 function Assert-PortableNoticeAvailability([string]$Root) {
-    foreach ($name in @('manifest.json','inventory.json','review.json','THIRD-PARTY-NOTICES.txt')) {
+    foreach ($name in @('manifest.json','inventory.json','review.json')) {
         if (-not [IO.File]::Exists((Join-Path $Root ('release/notices/'+$name)))) { throw 'Notices: reviewed inputs unavailable.' }
+    }
+    if (-not [IO.File]::Exists((Join-Path $Root 'THIRD-PARTY-NOTICES.txt')) -or
+        -not [IO.File]::Exists((Join-Path $Root 'release/notices/source.json'))) { throw 'Notices: canonical source unavailable.' }
+    foreach ($name in @('manifest.json','review.json')) {
+        $input=Get-PortableText (Read-PortableBytes (Join-Path $Root ('release/notices/'+$name)) 16777216) | ConvertFrom-Json
+        if ($input.status -cne 'REVIEWED') { throw 'Notices: user review pending.' }
     }
 }
 
@@ -139,7 +145,7 @@ function Assert-PortableCopyrightMapping([string]$Root, $Record, $SourceHashes, 
         $assessment.source_evidence.Count -eq 0) { throw 'Notices: no-owner source assessment absent.' }
     $paths=New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
     foreach ($evidence in $assessment.source_evidence) {
-        if ($evidence.path -cnotmatch '^release/notices/evidence/[a-zA-Z0-9._-]+\.txt$' -or
+        if ($evidence.path -cnotmatch '^release/notices/(evidence|texts)/[a-zA-Z0-9._-]+\.txt$' -or
             -not $paths.Add($evidence.path) -or -not $SourceHashes.Contains($evidence.path) -or
             @($Record.evidence) -cnotcontains $evidence.path -or $evidence.sha256 -cnotmatch '^[a-f0-9]{64}$') { throw 'Notices: untrusted no-owner assessment.' }
         $bytes=Read-PortableBytes (Join-Path $Root $evidence.path) 16777216
@@ -151,15 +157,27 @@ function Assert-PortableCopyrightMapping([string]$Root, $Record, $SourceHashes, 
 function Read-PortableNotices([string]$Root, [string]$Version, $SourceHashes) {
     Assert-PortableNoticeAvailability $Root
     $raw=@{}
-    foreach ($name in @('manifest.json','inventory.json','review.json','THIRD-PARTY-NOTICES.txt')) {
+    foreach ($name in @('manifest.json','inventory.json','review.json','source.json')) {
         $relative='release/notices/'+$name
         if (-not $SourceHashes.Contains($relative)) { throw 'Notices: input must be committed.' }
         $raw[$name]=Read-PortableBytes (Join-Path $Root $relative) 16777216
     }
+    if (-not $SourceHashes.Contains('THIRD-PARTY-NOTICES.txt')) { throw 'Notices: canonical input must be committed.' }
+    $raw['THIRD-PARTY-NOTICES.txt']=Read-PortableBytes (Join-Path $Root 'THIRD-PARTY-NOTICES.txt') 16777216
     $manifest=Get-PortableText $raw['manifest.json'] | ConvertFrom-Json
     $inventory=Get-PortableText $raw['inventory.json'] | ConvertFrom-Json
     $review=Get-PortableText $raw['review.json'] | ConvertFrom-Json
+    $source=Get-PortableText $raw['source.json'] | ConvertFrom-Json
     $text=Get-PortableText $raw['THIRD-PARTY-NOTICES.txt']
+    if ($source.schema -ne 1 -or $source.purpose -cne 'PACKAGE_NOTICE_SOURCE' -or
+        $source.canonical_file -cne 'THIRD-PARTY-NOTICES.txt' -or $source.version -cne $Version -or
+        $source.target -cne 'x86_64-pc-windows-msvc' -or $source.source_commit -cnotmatch '^[a-f0-9]{40}$' -or
+        $source.formal_review_state -cne 'REVIEWED' -or
+        $source.sha256 -cne (Get-ReleaseSHA256 $raw['THIRD-PARTY-NOTICES.txt']) -or
+        $source.sha256 -cne $SourceHashes['THIRD-PARTY-NOTICES.txt'] -or
+        $manifest.source_sha256 -cne (Get-ReleaseSHA256 $raw['source.json']) -or
+        $source.cargo_lock_sha256 -cne $SourceHashes['src-tauri/Cargo.lock'] -or
+        $source.npm_lock_sha256 -cne $SourceHashes['package-lock.json']) { throw 'Notices: canonical source registration incomplete.' }
     if ($manifest.schema -ne 1 -or $manifest.status -cne 'REVIEWED' -or $manifest.scope -cne 'DISTRIBUTION' -or $manifest.test_only -isnot [bool] -or $manifest.test_only -ne $false -or
         $manifest.version -cne $Version -or $manifest.unresolved -isnot [array] -or @($manifest.unresolved).Count -ne 0 -or [string]::IsNullOrWhiteSpace($text) -or
         $text -match '(?i)\b(TEST_ONLY|SYNTHETIC|PLACEHOLDER|TODO|TBD|UNRESOLVED)\b|DRAFT\s+.\s+NOT FOR DISTRIBUTION|LICENSE CLEARANCE INCOMPLETE') { throw 'Notices: unresolved or fixture input.' }

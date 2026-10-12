@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '../third-party-notices.ps1')
 $repo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -153,7 +153,18 @@ Case 'No-owner evidence duplicate rejected' { $r=No-OwnerRecord; $r.copyright_re
 Case 'No-owner evidence traversal rejected' { $r=No-OwnerRecord; $r.copyright_review.source_evidence[0].path='release/notices/evidence/../TEST_ONLY.txt'; Reject { Assert-PortableCopyrightMapping $proofRoot $r $proofMap 'TEST_ONLY' } }
 Case 'Existing owner still requires literal notice' { $r=[pscustomobject]@{copyrights=@('TEST_ONLY actual owner')}; Reject { Assert-PortableCopyrightMapping $proofRoot $r $proofMap 'missing' }; Assert-PortableCopyrightMapping $proofRoot $r $proofMap 'TEST_ONLY actual owner' }
 Case 'Missing copyrights field rejected' { Reject { Assert-PortableCopyrightMapping $proofRoot ([pscustomobject]@{evidence=@($proofRelative)}) $proofMap 'TEST_ONLY' } }
-Case 'Genuine formal notice availability stays closed' { Reject { Assert-PortableNoticeAvailability $repo } }
+Case 'Unapproved synthetic notice availability stays closed' {
+    $root=New-Path
+    New-Item -ItemType Directory -Path (Join-Path $root 'release/notices') | Out-Null
+    foreach ($name in @('manifest.json','inventory.json','review.json','source.json')) {
+        Save-Json (Join-Path $root ('release/notices/'+$name)) @{schema=1;status='PENDING';test_only=$true}
+    }
+    Write-ReleaseNewText (Join-Path $root 'THIRD-PARTY-NOTICES.txt') 'TEST_ONLY synthetic notice'
+    $reason=''
+    try { Assert-PortableNoticeAvailability $root } catch { $reason=$_.Exception.Message }
+    Expect ($reason -ceq 'Notices: user review pending.')
+    Reject { Assert-PortableNoticeAvailability (New-Path) }
+}
 $summary=[ordered]@{classification='TEST_ONLY';passed=$passed;failed=$failed;application_executed=$false;formal_clearance=$false;real_license_fixture_copies=0}
 Write-ReleaseNewText (Join-Path $fixtures 'test-result.json') (($summary | ConvertTo-Json)+"`n")
 Write-Output "Third-party notices tests: $passed passed, $failed failed. TEST_ONLY; no application executed."

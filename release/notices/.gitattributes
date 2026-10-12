@@ -1,0 +1,4 @@
+# Preserve upstream license bytes used as signed notice evidence.
+texts/*.txt -text whitespace=-blank-at-eol,-blank-at-eof
+# Preserve the exact JSON bytes bound by metadata SHA-256 fields.
+*.json -text

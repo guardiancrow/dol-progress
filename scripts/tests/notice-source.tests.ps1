@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '../third-party-notices.ps1')
 $repo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -114,7 +114,18 @@ Case 'No network/cache discovery calls in source validator or assembly' {
         Expect ($text -notmatch '(?i)Invoke-WebRequest|Invoke-RestMethod|HttpClient|WebClient|cargo\s|npm\s|node_modules|CARGO_HOME|RUSTUP_HOME')
     }
 }
-Case 'Formal notice availability remains closed' { Reject { Assert-PortableNoticeAvailability $repo } }
+Case 'Unapproved synthetic notice availability remains closed' {
+    $root=New-Output
+    New-Item -ItemType Directory -Path (Join-Path $root 'release/notices') | Out-Null
+    foreach ($name in @('manifest.json','inventory.json','review.json','source.json')) {
+        Save (Join-Path $root ('release/notices/'+$name)) @{schema=1;status='PENDING';test_only=$true}
+    }
+    Write-ReleaseNewText (Join-Path $root 'THIRD-PARTY-NOTICES.txt') 'TEST_ONLY synthetic notice'
+    $reason=''
+    try { Assert-PortableNoticeAvailability $root } catch { $reason=$_.Exception.Message }
+    Expect ($reason -ceq 'Notices: user review pending.')
+    Reject { Assert-PortableNoticeAvailability (New-Output) }
+}
 $summary=[ordered]@{classification='TEST_ONLY';passed=$passed;failed=$failed;source_only_actual_candidates=207;source_only_actual_texts=148;source_only_input_files=$inputFiles.Count;application_executed=$false;formal_clearance=$false;network_required=$false;git_mutations=$false}
 Save (Join-Path $testRoot 'test-result.json') $summary
 Write-Output "Versioned notice source tests: $passed passed, $failed failed. TEST_ONLY; no application executed."

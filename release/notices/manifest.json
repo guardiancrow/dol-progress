@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "status": "REVIEWED",
+  "scope": "DISTRIBUTION",
+  "test_only": false,
+  "version": "0.3.0",
+  "source_head": "4396ff971bbb4b543ead88dd51ae7a077d7cb69f",
+  "unresolved": [],
+  "inventory_sha256": "abc2bb292db19a51d6bfc315d53d7506aaa933887802fd070534e85a40421277",
+  "review_sha256": "cbe17349c2bbc9141e1f8b0b3eced3ae201865bb47b9fca490918e5cf0a3239b",
+  "notices_sha256": "37e763e27a6fd410324b3617d6e55ba0bb058d0086949dac776dc073c0c282a1",
+  "source_sha256": "9dd92f90a06bbc65ab7e4185333a086cda40b43f2839eb80d85b3647fda7acfd",
+  "cargo_lock_sha256": "05c112cb5269dba19ac792bbbb33d200a29ede4074d219c384b0f5faff4095e8",
+  "npm_lock_sha256": "e54ce7518f50b7d2ec8252d0b715b415f0056f30436f7c9ce72f78e4a39c6466",
+  "toolchain_sha256": "4283dd97a1eb8080c9ae2afc59e3e4b1608bca99071dcfb4021b0805930637e7"
+}

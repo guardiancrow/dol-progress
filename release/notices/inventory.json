@@ -1,0 +1,1657 @@
+{
+  "schema": 1,
+  "version": "0.3.0",
+  "target": "x86_64-pc-windows-msvc",
+  "components": [
+    {
+      "id": "N001",
+      "name": "aho-corasick",
+      "version": "1.1.5",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N002",
+      "name": "alloc-no-stdlib",
+      "version": "3.0.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N003",
+      "name": "alloc-stdlib",
+      "version": "0.3.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N004",
+      "name": "allocator-api2",
+      "version": "0.2.21",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N005",
+      "name": "anyhow",
+      "version": "1.0.104",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N006",
+      "name": "atoi",
+      "version": "2.0.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N007",
+      "name": "base64",
+      "version": "0.22.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N008",
+      "name": "bitflags",
+      "version": "2.13.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N009",
+      "name": "block-buffer",
+      "version": "0.10.4",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N010",
+      "name": "brotli-decompressor",
+      "version": "6.0.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N011",
+      "name": "brotli",
+      "version": "9.0.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N012",
+      "name": "bytes",
+      "version": "1.12.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N013",
+      "name": "cfb",
+      "version": "0.14.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N014",
+      "name": "cfg-if",
+      "version": "1.0.4",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N015",
+      "name": "cookie",
+      "version": "0.18.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N016",
+      "name": "cpufeatures",
+      "version": "0.2.17",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N017",
+      "name": "crc-catalog",
+      "version": "2.5.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N018",
+      "name": "crc",
+      "version": "3.4.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N019",
+      "name": "crossbeam-channel",
+      "version": "0.5.16",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N020",
+      "name": "crossbeam-queue",
+      "version": "0.3.13",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N021",
+      "name": "crossbeam-utils",
+      "version": "0.8.22",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N022",
+      "name": "crypto-common",
+      "version": "0.1.7",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N023",
+      "name": "ctor",
+      "version": "1.0.13",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N024",
+      "name": "deranged",
+      "version": "0.5.8",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N025",
+      "name": "digest",
+      "version": "0.10.7",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N026",
+      "name": "dirs-sys",
+      "version": "0.5.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N027",
+      "name": "dirs",
+      "version": "6.0.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N028",
+      "name": "dpi",
+      "version": "0.1.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N029",
+      "name": "dunce",
+      "version": "1.0.5",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N030",
+      "name": "either",
+      "version": "1.17.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N031",
+      "name": "equivalent",
+      "version": "1.0.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N032",
+      "name": "erased-serde",
+      "version": "0.4.10",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N033",
+      "name": "event-listener",
+      "version": "5.4.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N034",
+      "name": "flume",
+      "version": "0.11.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N035",
+      "name": "fnv",
+      "version": "1.0.7",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N036",
+      "name": "foldhash",
+      "version": "0.1.5",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N037",
+      "name": "form_urlencoded",
+      "version": "1.2.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N038",
+      "name": "futures-channel",
+      "version": "0.3.34",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N039",
+      "name": "futures-core",
+      "version": "0.3.34",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N040",
+      "name": "futures-executor",
+      "version": "0.3.34",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N041",
+      "name": "futures-intrusive",
+      "version": "0.5.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N042",
+      "name": "futures-io",
+      "version": "0.3.34",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N043",
+      "name": "futures-sink",
+      "version": "0.3.34",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N044",
+      "name": "futures-task",
+      "version": "0.3.34",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N045",
+      "name": "futures-util",
+      "version": "0.3.34",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N046",
+      "name": "generic-array",
+      "version": "0.14.7",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N047",
+      "name": "getrandom",
+      "version": "0.3.4",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N048",
+      "name": "glob",
+      "version": "0.3.4",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N049",
+      "name": "hashbrown",
+      "version": "0.15.5",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N050",
+      "name": "hashbrown",
+      "version": "0.17.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N051",
+      "name": "hashlink",
+      "version": "0.10.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N052",
+      "name": "heck",
+      "version": "0.5.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N053",
+      "name": "http",
+      "version": "1.5.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N054",
+      "name": "icu_collections",
+      "version": "2.2.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N055",
+      "name": "icu_locale_core",
+      "version": "2.2.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N056",
+      "name": "icu_normalizer_data",
+      "version": "2.2.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N057",
+      "name": "icu_normalizer",
+      "version": "2.2.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N058",
+      "name": "icu_properties_data",
+      "version": "2.2.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N059",
+      "name": "icu_properties",
+      "version": "2.2.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N060",
+      "name": "icu_provider",
+      "version": "2.2.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N061",
+      "name": "idna_adapter",
+      "version": "1.2.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N062",
+      "name": "idna",
+      "version": "1.1.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N063",
+      "name": "indexmap",
+      "version": "2.14.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N064",
+      "name": "infer",
+      "version": "0.22.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N065",
+      "name": "itoa",
+      "version": "1.0.18",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N066",
+      "name": "json-patch",
+      "version": "4.2.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N067",
+      "name": "jsonptr",
+      "version": "0.7.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N068",
+      "name": "keyboard-types",
+      "version": "0.7.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N069",
+      "name": "libc",
+      "version": "0.2.189",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N070",
+      "name": "libsqlite3-sys",
+      "version": "0.30.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N071",
+      "name": "litemap",
+      "version": "0.8.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N072",
+      "name": "lock_api",
+      "version": "0.4.14",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N073",
+      "name": "log",
+      "version": "0.4.33",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N074",
+      "name": "memchr",
+      "version": "2.8.3",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N075",
+      "name": "mime",
+      "version": "0.3.17",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N076",
+      "name": "mio",
+      "version": "1.2.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N077",
+      "name": "muda",
+      "version": "0.19.3",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N078",
+      "name": "num-conv",
+      "version": "0.2.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N079",
+      "name": "num-traits",
+      "version": "0.2.19",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N080",
+      "name": "once_cell",
+      "version": "1.21.4",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N081",
+      "name": "parking_lot_core",
+      "version": "0.9.12",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N082",
+      "name": "parking_lot",
+      "version": "0.12.5",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N083",
+      "name": "parking",
+      "version": "2.2.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N084",
+      "name": "percent-encoding",
+      "version": "2.3.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N085",
+      "name": "phf_shared",
+      "version": "0.13.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N086",
+      "name": "phf",
+      "version": "0.13.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N087",
+      "name": "pin-project-lite",
+      "version": "0.2.17",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N088",
+      "name": "plist",
+      "version": "1.10.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N089",
+      "name": "potential_utf",
+      "version": "0.1.5",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N090",
+      "name": "powerfmt",
+      "version": "0.2.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N091",
+      "name": "quick-xml",
+      "version": "0.41.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N092",
+      "name": "raw-window-handle",
+      "version": "0.6.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N093",
+      "name": "regex-automata",
+      "version": "0.4.18",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N094",
+      "name": "regex-syntax",
+      "version": "0.8.11",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N095",
+      "name": "regex",
+      "version": "1.13.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N096",
+      "name": "rfd",
+      "version": "0.16.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N097",
+      "name": "ryu",
+      "version": "1.0.23",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N098",
+      "name": "same-file",
+      "version": "1.0.6",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N099",
+      "name": "scopeguard",
+      "version": "1.2.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N100",
+      "name": "semver",
+      "version": "1.0.28",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N101",
+      "name": "serde_core",
+      "version": "1.0.229",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N102",
+      "name": "serde_json",
+      "version": "1.0.151",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N103",
+      "name": "serde_spanned",
+      "version": "1.1.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N104",
+      "name": "serde_urlencoded",
+      "version": "0.7.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N105",
+      "name": "serde_with",
+      "version": "3.22.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N106",
+      "name": "serde-untagged",
+      "version": "0.1.9",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N107",
+      "name": "serde",
+      "version": "1.0.229",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N108",
+      "name": "serialize-to-javascript",
+      "version": "0.1.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N109",
+      "name": "sha2",
+      "version": "0.10.9",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N110",
+      "name": "siphasher",
+      "version": "1.0.3",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N111",
+      "name": "slab",
+      "version": "0.4.12",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N112",
+      "name": "smallvec",
+      "version": "1.15.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N113",
+      "name": "socket2",
+      "version": "0.6.5",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N114",
+      "name": "softbuffer",
+      "version": "0.4.8",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N115",
+      "name": "spin",
+      "version": "0.9.9",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N116",
+      "name": "sqlx-core",
+      "version": "0.8.6",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N117",
+      "name": "sqlx-sqlite",
+      "version": "0.8.6",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N118",
+      "name": "sqlx",
+      "version": "0.8.6",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N119",
+      "name": "stable_deref_trait",
+      "version": "1.2.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N120",
+      "name": "tao",
+      "version": "0.35.3",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N121",
+      "name": "tauri-plugin-dialog",
+      "version": "2.7.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N122",
+      "name": "tauri-plugin-fs",
+      "version": "2.5.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N123",
+      "name": "tauri-runtime-wry",
+      "version": "2.11.4",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N124",
+      "name": "tauri-runtime",
+      "version": "2.11.3",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N125",
+      "name": "tauri-utils",
+      "version": "2.10.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N126",
+      "name": "tauri",
+      "version": "2.11.5",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N127",
+      "name": "thiserror",
+      "version": "2.0.20",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N128",
+      "name": "time-core",
+      "version": "0.1.9",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N129",
+      "name": "time",
+      "version": "0.3.55",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N130",
+      "name": "tinystr",
+      "version": "0.8.3",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N131",
+      "name": "tokio-stream",
+      "version": "0.1.19",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N132",
+      "name": "tokio",
+      "version": "1.53.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N133",
+      "name": "toml_datetime",
+      "version": "0.7.5+spec-1.1.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N134",
+      "name": "toml_parser",
+      "version": "1.1.3+spec-1.1.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N135",
+      "name": "toml_writer",
+      "version": "1.1.2+spec-1.1.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N136",
+      "name": "toml",
+      "version": "0.9.12+spec-1.1.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N137",
+      "name": "tracing-core",
+      "version": "0.1.36",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N138",
+      "name": "tracing",
+      "version": "0.1.44",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N139",
+      "name": "typeid",
+      "version": "1.0.3",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N140",
+      "name": "typenum",
+      "version": "1.20.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N141",
+      "name": "unicode-segmentation",
+      "version": "1.13.3",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N142",
+      "name": "url",
+      "version": "2.5.8",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N143",
+      "name": "urlpattern",
+      "version": "0.6.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N144",
+      "name": "utf8_iter",
+      "version": "1.0.4",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N145",
+      "name": "uuid",
+      "version": "1.24.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N146",
+      "name": "walkdir",
+      "version": "2.5.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N147",
+      "name": "web-time",
+      "version": "1.1.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N148",
+      "name": "webview2-com-sys",
+      "version": "0.38.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N149",
+      "name": "webview2-com",
+      "version": "0.38.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N150",
+      "name": "winapi-util",
+      "version": "0.1.11",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N151",
+      "name": "window-vibrancy",
+      "version": "0.6.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N152",
+      "name": "windows_x86_64_msvc",
+      "version": "0.48.5",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N153",
+      "name": "windows_x86_64_msvc",
+      "version": "0.52.6",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N154",
+      "name": "windows_x86_64_msvc",
+      "version": "0.53.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N155",
+      "name": "windows-collections",
+      "version": "0.2.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N156",
+      "name": "windows-core",
+      "version": "0.61.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N157",
+      "name": "windows-future",
+      "version": "0.2.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N158",
+      "name": "windows-link",
+      "version": "0.1.3",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N159",
+      "name": "windows-link",
+      "version": "0.2.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N160",
+      "name": "windows-numerics",
+      "version": "0.2.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N161",
+      "name": "windows-result",
+      "version": "0.3.4",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N162",
+      "name": "windows-strings",
+      "version": "0.4.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N163",
+      "name": "windows-sys",
+      "version": "0.48.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N164",
+      "name": "windows-sys",
+      "version": "0.59.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N165",
+      "name": "windows-sys",
+      "version": "0.60.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N166",
+      "name": "windows-sys",
+      "version": "0.61.2",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N167",
+      "name": "windows-targets",
+      "version": "0.48.5",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N168",
+      "name": "windows-targets",
+      "version": "0.52.6",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N169",
+      "name": "windows-targets",
+      "version": "0.53.5",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N170",
+      "name": "windows-threading",
+      "version": "0.1.0",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N171",
+      "name": "windows-version",
+      "version": "0.1.7",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N172",
+      "name": "windows",
+      "version": "0.61.3",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N173",
+      "name": "winnow",
+      "version": "0.7.15",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N174",
+      "name": "winnow",
+      "version": "1.0.4",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N175",
+      "name": "writeable",
+      "version": "0.6.3",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N176",
+      "name": "wry",
+      "version": "0.55.1",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N177",
+      "name": "yoke",
+      "version": "0.8.3",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N178",
+      "name": "zerofrom",
+      "version": "0.1.8",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N179",
+      "name": "zerotrie",
+      "version": "0.2.4",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N180",
+      "name": "zerovec",
+      "version": "0.11.6",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N181",
+      "name": "zmij",
+      "version": "1.0.23",
+      "group": "rust",
+      "included": true,
+      "inclusion_basis": "Windows通常経路の保守的通知候補。最適化後の全byte包含を断定しない"
+    },
+    {
+      "id": "N182",
+      "name": "@tanstack/react-store",
+      "version": "0.11.1",
+      "group": "frontend",
+      "included": true,
+      "inclusion_basis": "Frontend"
+    },
+    {
+      "id": "N183",
+      "name": "@tanstack/react-table",
+      "version": "9.1.2",
+      "group": "frontend",
+      "included": true,
+      "inclusion_basis": "Frontend"
+    },
+    {
+      "id": "N184",
+      "name": "@tanstack/store",
+      "version": "0.11.1",
+      "group": "frontend",
+      "included": true,
+      "inclusion_basis": "Frontend"
+    },
+    {
+      "id": "N185",
+      "name": "@tanstack/table-core",
+      "version": "9.1.2",
+      "group": "frontend",
+      "included": true,
+      "inclusion_basis": "Frontend"
+    },
+    {
+      "id": "N186",
+      "name": "@tauri-apps/api",
+      "version": "2.11.1",
+      "group": "frontend",
+      "included": true,
+      "inclusion_basis": "Frontend"
+    },
+    {
+      "id": "N187",
+      "name": "react",
+      "version": "19.2.8",
+      "group": "frontend",
+      "included": true,
+      "inclusion_basis": "Frontend"
+    },
+    {
+      "id": "N188",
+      "name": "react-dom",
+      "version": "19.2.8",
+      "group": "frontend",
+      "included": true,
+      "inclusion_basis": "Frontend"
+    },
+    {
+      "id": "N189",
+      "name": "scheduler",
+      "version": "0.27.0",
+      "group": "frontend",
+      "included": true,
+      "inclusion_basis": "Frontend"
+    },
+    {
+      "id": "N190",
+      "name": "use-sync-external-store",
+      "version": "1.6.0",
+      "group": "frontend",
+      "included": true,
+      "inclusion_basis": "Frontend"
+    },
+    {
+      "id": "N191",
+      "name": "vite",
+      "version": "7.3.6",
+      "group": "frontend",
+      "included": true,
+      "inclusion_basis": "Frontend生成helper（tool本体は非同梱）"
+    },
+    {
+      "id": "N192",
+      "name": "rollup",
+      "version": "4.62.4",
+      "group": "frontend",
+      "included": true,
+      "inclusion_basis": "Frontend生成helper（tool本体は非同梱）"
+    },
+    {
+      "id": "N193",
+      "name": "esbuild",
+      "version": "0.28.2",
+      "group": "frontend",
+      "included": true,
+      "inclusion_basis": "Frontend生成helper（tool本体は非同梱）"
+    },
+    {
+      "id": "N194",
+      "name": "Microsoft.Web.WebView2 SDK / static native Loader",
+      "version": "1.0.3650.58",
+      "group": "native",
+      "included": true,
+      "inclusion_basis": "Native"
+    },
+    {
+      "id": "N195",
+      "name": "SQLite amalgamation",
+      "version": "3.46.0 (libsqlite3-sys 0.30.1)",
+      "group": "native",
+      "included": true,
+      "inclusion_basis": "Native"
+    },
+    {
+      "id": "N196",
+      "name": "Rust core Unicode tables",
+      "version": "rustc 1.98.0; copyright 1991-2024",
+      "group": "toolchain",
+      "included": true,
+      "inclusion_basis": "Rust runtime"
+    },
+    {
+      "id": "N197",
+      "name": "Rust std/compiler builtins LLVM exception contributions",
+      "version": "compiler_builtins source 0.1.160 / Rust 1.98.0 (個別objectの包含範囲を示すものではありません)",
+      "group": "toolchain",
+      "included": true,
+      "inclusion_basis": "Rust runtime"
+    },
+    {
+      "id": "N198",
+      "name": "Rust std/alloc/core/panic runtime source license",
+      "version": "Rust 1.98.0 / 88d9e12ae178fab0fb5cc050a94da85685d449ea",
+      "group": "toolchain",
+      "included": true,
+      "inclusion_basis": "Rust runtime"
+    },
+    {
+      "id": "N199",
+      "name": "hashbrown",
+      "version": "0.17.1",
+      "group": "toolchain",
+      "included": true,
+      "inclusion_basis": "Rust標準ライブラリの依存"
+    },
+    {
+      "id": "N200",
+      "name": "rustc-demangle",
+      "version": "0.1.27",
+      "group": "toolchain",
+      "included": true,
+      "inclusion_basis": "Rust標準ライブラリの依存"
+    },
+    {
+      "id": "N201",
+      "name": "Rust standard-library provider notices (package scope)",
+      "version": "Rust 1.98.0 / 88d9e12ae178fab0fb5cc050a94da85685d449ea",
+      "group": "toolchain",
+      "included": true,
+      "inclusion_basis": "Rust runtime / provider NOTICE"
+    },
+    {
+      "id": "excluded:cssparser@0.37.0",
+      "name": "cssparser",
+      "version": "0.37.0",
+      "group": "rust",
+      "included": false
+    },
+    {
+      "id": "excluded:cssparser-macros@0.7.1",
+      "name": "cssparser-macros",
+      "version": "0.7.1",
+      "group": "rust",
+      "included": false
+    },
+    {
+      "id": "excluded:selectors@0.38.0",
+      "name": "selectors",
+      "version": "0.38.0",
+      "group": "rust",
+      "included": false
+    },
+    {
+      "id": "excluded:dtoa-short@0.3.5",
+      "name": "dtoa-short",
+      "version": "0.3.5",
+      "group": "rust",
+      "included": false
+    },
+    {
+      "id": "excluded:option-ext@0.2.0",
+      "name": "option-ext",
+      "version": "0.2.0",
+      "group": "rust",
+      "included": false
+    },
+    {
+      "id": "assets:application-icon",
+      "name": "Application icon",
+      "version": "0.3.0",
+      "group": "assets",
+      "included": false
+    }
+  ]
+}

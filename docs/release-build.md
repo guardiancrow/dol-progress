@@ -332,21 +332,29 @@ README.txtはUTF-8 BOM、CRLF、末尾CRLF。見出し/表/箇条書き/code fen
 
 ## C1Cへのnotice input契約
 
-正式inputはsigned source内の固定release/notices配下に置く。現在この入力は存在せず、REVIEWED metadataも通知原本も生成していない。docs/third-party-licenses.mdの名前変更/copy、単なるnotice file存在ではgateを通さない。
+正式metadataはsigned source内の固定release/notices配下に置き、通知本文はrootのTHIRD-PARTY-NOTICES.txtだけを正本とする。2026-10-12に、ユーザーが自動照合・既存監査に不整合がないことを条件として正式レビューを承認したため、manifest／review／sourceの承認状態をREVIEWEDへ更新した。全原文の逐語確認や一般公開承認を意味しない。署名済みclean HEADでの正式package検証は未実施で、formal_package_gateはNOT_COMPLETEDのまま。docs/third-party-licenses.mdの名前変更/copy、単なるnotice file存在ではgateを通さない。
 
 | ファイル | 必須契約（schema 1） |
 | --- | --- |
 | manifest.json | status=REVIEWED、scope=DISTRIBUTION、boolean test_only=false、source version、unresolved空array。inventory/review/noticesのSHA-256、Cargo/npm lock hashes、compile toolchain hashを束縛する。 |
 | inventory.json | schema/version、target=x86_64-pc-windows-msvc、components。各id/version/group/included（boolean）。rust/frontend/native/toolchain/assetsの全groupが必要。包含/除外のactual evidenceをC1Cで確定する。 |
 | review.json | schema/version、status=REVIEWED、boolean test_only=false、reviewer/reviewed_at、unresolved空array、coverage。inventoryの全idへ一意に対応し、included一致、obligations_completed/provenance_completedのboolean trueとsigned evidence pathが必要。 |
-| THIRD-PARTY-NOTICES.txt | manifestが束縛する完成原本。TEST_ONLY/SYNTHETIC/PLACEHOLDER/TODO/TBD/UNRESOLVEDを含まない。単なるcomponent一覧では完成としない。 |
+| rootのTHIRD-PARTY-NOTICES.txt | manifestとsource.jsonが束縛する唯一の通知正本。TEST_ONLY/SYNTHETIC/PLACEHOLDER/TODO/TBD/UNRESOLVEDを含まない。単なるcomponent一覧では完成としない。 |
+| source.json | schema=1、purpose=PACKAGE_NOTICE_SOURCE、canonical_file=THIRD-PARTY-NOTICES.txt、version／target、原文登録commit、通知・Cargo/npm lock hashes。本人承認後のformal_review_state=REVIEWEDが必要。 |
+| mapping.json | component／原文／出典、既存の除外根拠、toolchainを記録する署名対象のreview evidence。 |
 | texts/*.txt | reviewのrequired_textsから固定relative pathとSHA-256で参照する必要なLICENSE/NOTICE/copyright原文。原文全文がnotice本文に存在することを確認する。 |
 
-manifestのhash field名はinventory_sha256、review_sha256、notices_sha256、cargo_lock_sha256、npm_lock_sha256、toolchain_sha256。compile toolchain hashはresult.toolchainのrustc/cargo/node/npm/tauri_cli/powershellをこの順で、name=value＋LFとしてUTF-8 BOMなしで連結したSHA-256。rustc arrayの各行もLFで連結する。最終LFを含める。native/host生成物の条件を異なるtoolchainのcompileへ無条件で継承しない。
+manifestのhash field名はinventory_sha256、review_sha256、notices_sha256、source_sha256、cargo_lock_sha256、npm_lock_sha256、toolchain_sha256。compile toolchain hashはresult.toolchainのrustc/cargo/node/npm/tauri_cli/powershellをこの順で、name=value＋LFとしてUTF-8 BOMなしで連結したSHA-256。rustc arrayの各行もLFで連結する。最終LFを含める。native/host生成物の条件を異なるtoolchainのcompileへ無条件で継承しない。
 
 coverageのincluded recordはselected_license、required_texts（path/sha256）、copyrights、source_provision（NOT_REQUIREDまたはCOMPLETE）を持つ。MPLを選択したrecordではCOMPLETEとhttps source_urlを必須とする。除外recordはexclusion_reasonを必要とする。evidenceはsigned sourceに実在するrelative path、required_textsはrelease/notices/texts配下のtxtだけ。missing/duplicate/不一致、blocker、原文/hash/copyright不足はfailure。
 
 これはC1Cの人による包含・原文・SDK由来・MPL source提供・Unicode・toolchain条件reviewを受け渡す契約であり、文字列検索だけで法的充足やURL到達可能性を証明するものではない。signed source内のreview証拠を必要とする。合成noticeや偽のclearance metadataを正式inputとして使用しない。
+
+今回のinventoryは通知201件と対象外6件の計207件。included=trueは保守的な通知対象として採用した通常経路候補・生成helper・provider原文を示し、最適化後の全byte包含を保証しない。assetsには独自アイコンを第三者通知対象外として登録する。各原文は検証用textsにbyte一致で保存し、通知本文を複製しない。JSON metadataと原文は当該領域の.gitattributesでGit改行変換を禁止し、hash束縛したbytesをcheckout後も保持する。独立owner行のない原文はcopyright_reviewのreasonとsource_evidence（evidenceまたはtexts配下の原文txt、SHA-256、署名対象）を伴う。承認前に記録したstate=PENDING_USER_APPROVALは、承認対象5レコードについてNO_SEPARATE_NOTICE_IN_REVIEWED_SOURCESへ確定した。
+
+本人レビューでは配布範囲、自動照合結果、例外、通知hash、toolchain、原文・著作権・除外・source提供判断を確認する。約3.7MBの本文の逐語確認は要求しない。承認後に限りreviewerへ実際の担当者、reviewed_atへ実際の承認日時を記録し、manifest／reviewのstatusをREVIEWED、承認待ちunresolvedを空array、各coverageのobligations_completed／provenance_completedをtrueにする。独立owner行なしの承認対象だけcopyright_review.stateをNO_SEPARATE_NOTICE_IN_REVIEWED_SOURCESへ確定する。source.jsonのformal_review_stateもREVIEWEDとし、manifestのreview_sha256／source_sha256を再計算する。formal_package_gateは実際のpackage検証前に完了扱いにしない。
+
+これらをレビュー・署名付きcommitしてclean HEADを確定した後、上記の既存build-release.ps1で新compile runを作成し、build-portable-package.ps1／verify-portable-package.ps1をそのHEADとrunで実行する。以前のHEADのcompile runを流用しない。Noticesの承認はMicrosoft契約・輸出管理・一般公開承認など独立したHOLDを解除しない。
 
 ## ZIP / manifest / 独立verifier
 
