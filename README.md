@@ -179,7 +179,7 @@ npm run tauri -- build --debug --no-bundle -- --locked --offline
 
 application iconは本プロジェクト用に新規作成したvectorから生成しています。[iconの制作・再生成手順](docs/icon-assets.md)を参照してください。
 
-公開用のlicense clearance、正式通知、ZIP／installer、GitHub Releaseの工程は停止中です。[旧release手順](docs/release-build.md)と[third-party license資料](docs/third-party-licenses.md)、既存script・原文・証拠・監査資料は保持します。署名済みclean HEADを要求する`build-release.ps1`や正式package gateは、通常のローカル開発の必須条件にしません。
+第三者通知の文書整備を進めていますが、公開用のlicense clearance、ZIP／installer、GitHub Releaseの工程は停止中です。[旧release手順](docs/release-build.md)と[third-party license資料](docs/third-party-licenses.md)、既存script・原文・証拠・監査資料は保持します。署名済みclean HEADを要求する`build-release.ps1`や正式package gateは、通常のローカル開発の必須条件にしません。
 
 ## 謝辞
 
@@ -189,7 +189,7 @@ application iconは本プロジェクト用に新規作成したvectorから生�
 
 本プロジェクト用に作成したsource code、documentation、synthetic tests／fixtures、独自iconのSVG sourceと生成assetには[MIT License](LICENSE)を適用します。
 
-第三者libraryと外部依存関係には各licenseが適用されます。GVDBのデータ・名称・service、『大航海時代 Online』、製品名・商標、ユーザーが外部からimportしたデータについて、第三者の権利を本プロジェクトのMIT Licenseで再licenseするものではありません。詳細は[third-party license方針](docs/third-party-licenses.md)を参照してください。
+第三者libraryと外部依存関係には各licenseが適用されます。GVDBのデータ・名称・service、『大航海時代 Online』、製品名・商標、ユーザーが外部からimportしたデータについて、第三者の権利を本プロジェクトのMIT Licenseで再licenseするものではありません。[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)に現行Windows x64 Releaseの第三者原文・表示を収録しています。配布時はEXEと同じ配布経路でこの通知を提供します。現在はユーザーレビュー待ちで、一般公開の承認や正式license clearanceの完了を意味しません。詳細は[third-party license方針](docs/third-party-licenses.md)を参照してください。
 
 ## 仕様書
 

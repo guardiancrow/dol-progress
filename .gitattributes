@@ -1,2 +1,4 @@
 # SQL migrations are checksum-sensitive; keep their bytes stable on all platforms.
 src-tauri/migrations/*.sql text eol=lf
+# Preserve the upstream license bytes embedded in the distribution notice.
+THIRD-PARTY-NOTICES.txt -text whitespace=-blank-at-eol,-blank-at-eof

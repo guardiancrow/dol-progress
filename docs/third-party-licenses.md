@@ -4,7 +4,8 @@
 
 当面、実行ファイルもソースコードも一般公開しない。GitHubのPrivateリポジトリを
 開発とバックアップに使用し、Windows x64の個人用アプリとして通常開発を継続する。
-公開用のlicense clearance、正式通知、ZIP／installer、GitHub Releaseは停止中である。
+公開用のlicense clearance、ZIP／installer、GitHub Releaseは停止中である。
+第三者通知の文書整備については、下記の2026-10-12の節を現在の状態とする。
 以下の配布条件・公開履歴・監査工程は旧公開工程の資料として保持し、正式package gateや
 未完の公開用reviewをローカル開発の必須条件にしない。原文、証拠、scriptは削除しない。
 この切替によって第三者licenseの条件充足や正式clearanceを認定するものではない。
@@ -15,6 +16,47 @@
 データは、本プロジェクトのMIT Licenseで再licenseしない。
 
 ## 依存関係とnotice確認
+
+### 現行Release向け通知の整備（2026-10-12）
+
+rootの[THIRD-PARTY-NOTICES.txt](../THIRD-PARTY-NOTICES.txt)は、0.3.0のWindows x64
+Release向け通知のレビュー候補である。現行lockと通常target経路に対応するRust181件、
+メモリ内Frontend buildで実際に残る9package、生成helper3件、SQLite、WebView2 SDK、
+Rust runtimeとその独自依存の原文を収録した。201レコード・原文148種類をbyte単位で保持し、同じ本文の参照は
+SHA-256で共有する。個別著作権表示とTao keyboard由来のW3C全文・変更説明も保持する。
+通常依存は最適化による除去があり得るため、全候補がEXEに残るとは断定しない。
+
+M07／M08は採用SDK1.0.3650.58のLICENSE（1,487 bytes）とNOTICE（3,894 bytes）を
+全文収録した。SDK package全体のNOTICEであり、Antlr等すべてのnative Loaderへの
+包含を認定しない。Microsoftのsource案内は原文の対象への案内として保持する。
+
+O01の旧版との差分は現行版の原文へ更新した。O02はLocal-3C／3Dの判断を継承し、
+cssparser、cssparser-macros、selectors、dtoa-shortはhost処理、option-extはUnix cfgに
+限るため、現在のWindows配布物に対するMPL source提供義務を認定しない。
+別target／feature／CSPへ変更する場合は再判定する。これらの保守的source候補は
+公開済みと扱わず、現構成に新たなsource公開作業を要求しない。
+alloc-stdlib0.3.0はpackageが示すcommitのrepository root LICENSEを照合し、
+BSD-3-Clauseの著作権・条件・免責全文を収録した。
+
+O06の表示対応には同版Rust1.98.0の提供元`COPYRIGHT-library.html`全文を採用した。
+原文HTMLをbyte単位で保持し、テキスト表示も添える。個別表示を推測で省かず、
+package全体の通知であると説明する。std独自依存のhashbrown0.17.1／rustc-demangle0.1.27、
+backtraceの表示も個別に対応した。installed sourceのcompiler_builtins0.1.160と
+LLVM例外付きLICENSEは現存資料で照合し、旧版記録だけを流用していない。
+提供元通知にある他target用／build用componentをWindows配布コードと認定しない。
+fortanix-sgx-abiのMPL経路はstd manifestのSGX専用targetであり、Windowsに適用しない。
+この全文収録で最適化後の各objectの包含範囲まで証明したとは扱わない。
+この通知は正式package入力`release/notices/`へ未登録で、REVIEWEDや署名済みreviewを
+生成していない。M03、M05-P01／P06／P09、輸出管理、一般公開HOLDは継続する。
+既存の原文正本・監査履歴・draft generator・正式gateは変更しない。
+
+予定ZIPにはEXE、LICENSE.txt、README.txt、THIRD-PARTY-NOTICES.txt、SHA256SUMS.txtを
+同梱する。利用者がEXEと同じ配布経路で通知を取得できる構成とする。
+外部VC++ x64 Runtime／WebView2 Runtime／Windows DLLは同梱しない。
+MPL等の対象コードを将来同梱する場合は、同版sourceの実提供と取得案内を別途整える。
+独自コードのGitHub公開予定を、第三者sourceの提供完了と扱わない。
+
+以下は過去の監査工程の記録であり、上記の現行通知整備とは区別する。
 
 npm依存関係の解決結果は`package-lock.json`、Rust依存関係は`src-tauri/Cargo.lock`で
 固定する。直接依存関係はpackage manifest、実際のversionはlockfile、licenseは

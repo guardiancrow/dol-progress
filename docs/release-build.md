@@ -3,10 +3,18 @@
 ## 現在のローカル開発方針（Phase Local-1）
 
 実行ファイル・ソースコードの一般公開は当面行わない。GitHubのPrivateリポジトリを継続し、
-Windows 10／11 x64の個人用アプリとして通常開発を行う。公開用のcompile runner、正式通知、
+Windows 10／11 x64の個人用アプリとして通常開発を行う。公開用のcompile runner、
 license clearance、ZIP／installer、GitHub Releaseの工程は停止中である。
 本書の後半は旧公開工程の記録として保持し、通常開発の必須条件にはしない。
 既存script、第三者原文、証拠、過去の監査資料と正式package gateは変更・削除しない。
+
+第三者通知の文書整備は再開し、rootの[THIRD-PARTY-NOTICES.txt](../THIRD-PARTY-NOTICES.txt)
+へ現行0.3.0の原文・表示を収録した。Rust標準ライブラリは同版の提供元通知全文を保持し、
+現在はユーザーレビュー待ちである。詳細と旧記録との関係は[third-party方針](third-party-licenses.md)
+を参照する。一般公開やlicense clearanceの完了、正式package入力の承認ではない。
+予定ZIPの5member構成（EXE、LICENSE.txt、README.txt、THIRD-PARTY-NOTICES.txt、
+SHA256SUMS.txt）は維持する。root通知の存在だけでは後述の正式gateを通さず、
+完成後に`release/notices/`へのmappingと実review・hash束縛が必要である。
 
 インストーラーを生成しないローカルReleaseビルドは、repository rootで次を実行する。
 lockfileを維持し、cache済みの依存関係を使用する。署名済みclean HEADを要求する
