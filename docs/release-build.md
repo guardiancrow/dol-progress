@@ -1,6 +1,51 @@
 # Windows portable release compile / package verification
 
-## 現在のローカル開発方針（Phase Local-1）
+## 現在の公開準備状況
+
+GitHubでソースコードをPublic化し、Windows x64 Portable ZIPをGitHub Releasesで配布する計画を進める。
+現段階はPUBLICATION DOCUMENTATION IMPLEMENTATION / LEGAL TERMS PENDINGであり、文書整備を
+Public化・Release公開済みの事実認定とは扱わない。通常のローカル開発と、正式な配布候補の検証を分ける。
+
+- 第三者通知は正式レビュー済み。`release/notices/`のREVIEWED、201通知・6除外、148原文・357参照を維持する。
+- mainのHEAD `482b9ae80f117946f6c36cc093b27f27666d044e` では正式Release、Package、独立Verifierが成功した。
+  CompileRunIdは`f75ee6b0c6c24ddaa68062c42c2f0ca6`、PackageRunIdは`d5f7f5183b6f4445af0d101493849c24`、
+  VerificationRunは`523e9f24853441d8bf35220e2b09a1d0`。ZIP SHA-256は
+  `5ad9b0d9d381576b91fe4e3f65020324eef7f78b6a85236bb67c6490fabb651b`。
+- 成功runは旧HEADの技術的な検証結果として保持する。文書変更後のHEADの検証結果には流用しない。
+- Windows SDK受領者条件の同程度の保護・合意方式、MSVC startupの再配布根拠、配布者本人の補償等の判断は未完了。
+  [第三者ライセンス方針](third-party-licenses.md)に現行の対象と残件を示す。
+- 承認済みConsentはversion 1のまま。v2草案の正式採用、hash登録、SDK条件のREADMEへの挿入は次工程とする。
+  技術検証の成功と、法的条件の充足・本人の公開承認は別である。
+
+上記の成功記録はローカルのignored資料
+`tmp/formal-package-validation/f75ee6b0c6c24ddaa68062c42c2f0ca6/report.md`と各runのresultに基づく。
+それらはcloneに同梱されない。source.jsonのformal_package_gate=NOT_COMPLETED等は登録時のmetadataであり、
+後続runの成功を記録するために書き換えない。通知の由来commit・review基点も最新アプリHEADへ機械的に更新しない。
+
+### 現行の正式Release・Package手順
+
+最終文面の承認・採用と必要なレビュー後、署名済みcleanな最終HEADを確定する。
+旧runを上書きせず、既存runnerを順に実行し、各工程のexit 0とresultの分類・HEAD・run IDを確認する。
+
+```powershell
+& ./scripts/build-release.ps1 -ExpectedSourceHead <final-40-character-HEAD>
+& ./scripts/build-portable-package.ps1 -ExpectedSourceHead <final-40-character-HEAD> -CompileRunId <new-compile-run-id>
+& ./scripts/verify-portable-package.ps1 -ExpectedSourceHead <final-40-character-HEAD> -CompileRunId <new-compile-run-id> -PackageRunId <new-package-run-id>
+```
+
+固定ZIPはEXE、README.txt、LICENSE.txt、THIRD-PARTY-NOTICES.txt、SHA256SUMS.txtの5ファイル。
+ZIP外へ同名の.sha256を置く。READMEはREADME.mdの既存指定節から全文抽出し、LICENSEと通知は原本bytesを保持する。
+DB、config、backup、取得CSV、PDB、Runtime、installerを含めない。VC++ x64 RuntimeとWebView2 Runtimeは外部要件を維持する。
+
+最終ZIPはテストユーザー／VMの書込み可能な新規配置で起動・同意・終了・再起動と同梱文書を確認する。
+実DB／config／backupをコピーせず、同一WindowsユーザーではWebView2 UDFが共有されることを考慮する。
+その後、最新origin/mainとのfast-forward可否・公開履歴・GitHub設定を確認し、本人の別途承認後に同期・Public化・
+最終HEADへのsigned tag・Release Draft・ZIPと外部hash添付・Publishを行う。今回はこれらの実行や新しい正式成果物の生成を行わない。
+
+## 履歴：Phase Local-1から配布候補整備まで
+
+以下から「現在のWindows CRT構成」節の前までは、当時の非公開方針とPREVIEW工程の記録である。
+現在の方針・レビュー・正式検証状況は本書冒頭を参照する。過去のPENDINGや停止状態を現在の残件へ戻さない。
 
 実行ファイル・ソースコードの一般公開は当面行わない。GitHubのPrivateリポジトリを継続し、
 Windows 10／11 x64の個人用アプリとして通常開発を行う。公開用のcompile runner、
@@ -108,16 +153,21 @@ Local-4Aのユーザー実機確認はWindows 10／11ともPASS。config・data�
 
 ## 公開前の使用許諾本文確認TODO
 
-初回起動用の承認済み本文はtermsVersion 1で、「本アプリのソースコードはGitHubで公開する予定です。」と記載する。これは公開済みという説明ではなく、公開工程の再開承認も意味しない。
+初回起動用の承認済み本文はtermsVersion 1で、「本アプリのソースコードはGitHubで公開する予定です。」と記載する。現在はこの本文を維持する。SDK条件を含むv2は最終レビュー・本人承認後の別工程で採用し、READMEへの条件掲載も同じ文面と整合させる。
 
 - GitHubの実際の公開状態を確認する。
-- Publicへ変更する際は「公開する予定です」を必要に応じて更新する。
+- v2は正式公開後の表現を想定するが、実際の公開状態と正式採用日を確認して最終本文を確定する。
 - 表示本文を変更する場合はユーザー承認を得て、termsVersionとcanonical SHA-256を更新する。
+- 正規化方式を変えない場合はcanonicalVersion 1を維持し、旧記録を自動承認せず既存の再同意・安全保存を使用する。
 - 配布前に実際の公開先URL `https://github.com/guardiancrow/dol-progress` が有効か確認する。
 
-README／LICENSEの既存権利条件、正式通知、license clearance、package／privacy／release gateの停止状態は維持する。
+LICENSEのMIT本文、正式通知とREVIEWED metadata、既存package／privacy／release gateは維持する。
+SDK条件の最終確認とM03の独立した残件を、文書整備や既存成功runで解決済みにしない。
 
-## 停止中の旧公開工程
+## 旧公開工程の記録と共通検証仕様
+
+次の旧Phaseの段落は当時の状態を記録する。未レビュー・未実施の記述を現行の正式Noticesや成功runへ適用しない。
+後続のsource guard、通知入力契約、固定ZIP、独立Verifier等の仕様は、現行runnerでも保持する。
 
 この手順はPhase 23D-C1B-1の**portable release compile validation**と、C1B-2の固定ZIP生成・独立検証を扱う。Windows x64の単一application EXEを専用runnerでcompileし、package工程はその検証済みrunを入力にする。versionは0.3.0。正式release candidate、一般公開の手順ではない。
 
@@ -332,7 +382,7 @@ README.txtはUTF-8 BOM、CRLF、末尾CRLF。見出し/表/箇条書き/code fen
 
 ## C1Cへのnotice input契約
 
-正式metadataはsigned source内の固定release/notices配下に置き、通知本文はrootのTHIRD-PARTY-NOTICES.txtだけを正本とする。2026-10-12に、ユーザーが自動照合・既存監査に不整合がないことを条件として正式レビューを承認したため、manifest／review／sourceの承認状態をREVIEWEDへ更新した。全原文の逐語確認や一般公開承認を意味しない。署名済みclean HEADでの正式package検証は未実施で、formal_package_gateはNOT_COMPLETEDのまま。docs/third-party-licenses.mdの名前変更/copy、単なるnotice file存在ではgateを通さない。
+正式metadataはsigned source内の固定release/notices配下に置き、通知本文はrootのTHIRD-PARTY-NOTICES.txtだけを正本とする。2026-10-12に、ユーザーが自動照合・既存監査に不整合がないことを条件として正式レビューを承認したため、manifest／review／sourceの承認状態をREVIEWEDへ更新した。全原文の逐語確認や一般公開承認を意味しない。その後の署名済みclean HEADでの正式package検証は冒頭のrunで成功した。formal_package_gateは登録時のNOT_COMPLETEDのまま保持し、成功はrun/resultで記録する。docs/third-party-licenses.mdの名前変更/copy、単なるnotice file存在ではgateを通さない。
 
 | ファイル | 必須契約（schema 1） |
 | --- | --- |
@@ -351,6 +401,8 @@ coverageのincluded recordはselected_license、required_texts（path/sha256）�
 これはC1Cの人による包含・原文・SDK由来・MPL source提供・Unicode・toolchain条件reviewを受け渡す契約であり、文字列検索だけで法的充足やURL到達可能性を証明するものではない。signed source内のreview証拠を必要とする。合成noticeや偽のclearance metadataを正式inputとして使用しない。
 
 今回のinventoryは通知201件と対象外6件の計207件。included=trueは保守的な通知対象として採用した通常経路候補・生成helper・provider原文を示し、最適化後の全byte包含を保証しない。assetsには独自アイコンを第三者通知対象外として登録する。各原文は検証用textsにbyte一致で保存し、通知本文を複製しない。JSON metadataと原文は当該領域の.gitattributesでGit改行変換を禁止し、hash束縛したbytesをcheckout後も保持する。独立owner行のない原文はcopyright_reviewのreasonとsource_evidence（evidenceまたはtexts配下の原文txt、SHA-256、署名対象）を伴う。承認前に記録したstate=PENDING_USER_APPROVALは、承認対象5レコードについてNO_SEPARATE_NOTICE_IN_REVIEWED_SOURCESへ確定した。
+
+以下は正式レビューを反映した際の手順の記録である。現行Noticesは承認済みであり、文書修正のために再承認やmetadata更新を行わない。
 
 本人レビューでは配布範囲、自動照合結果、例外、通知hash、toolchain、原文・著作権・除外・source提供判断を確認する。約3.7MBの本文の逐語確認は要求しない。承認後に限りreviewerへ実際の担当者、reviewed_atへ実際の承認日時を記録し、manifest／reviewのstatusをREVIEWED、承認待ちunresolvedを空array、各coverageのobligations_completed／provenance_completedをtrueにする。独立owner行なしの承認対象だけcopyright_review.stateをNO_SEPARATE_NOTICE_IN_REVIEWED_SOURCESへ確定する。source.jsonのformal_review_stateもREVIEWEDとし、manifestのreview_sha256／source_sha256を再計算する。formal_package_gateは実際のpackage検証前に完了扱いにしない。
 

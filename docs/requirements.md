@@ -33,11 +33,15 @@ DBの具体的な列定義は `database-design.md`、GVDB公開データの取�
 - 単一ユーザー
 - ローカル利用
 
-当面、実行ファイルもソースコードも一般公開せず、個人用Windowsアプリとして開発する。
-GitHubのPrivateリポジトリは開発とバックアップのために継続する。インストーラーを必要とせず、
-完全終了後のフォルダー全体のコピー・移動で利用できる構成とする。
-公開用のlicense clearance、正式通知、ZIP／installer、GitHub Releaseの工程は停止中であり、
-正式package gateを通常のローカル開発の必須条件にしない。
+GitHubのPublicリポジトリでソースコードを公開し、Windows x64 Portable ZIPをGitHub Releasesで
+配布する方針とする。アプリは個人のPCでローカル利用し、インストーラーを必要とせず、
+完全終了後のフォルダー全体のコピー・移動で利用できる構成を維持する。
+実際のPublic化・配布は本人の別途承認による。文書の整備を公開済みの事実認定とは扱わない。
+
+第三者通知の正式レビューと既存HEADのRelease／Package／独立Verifierの技術検証は完了済みである。
+SDK受領者条件の最終確認、MSVC startupの再配布根拠、Consent v2本文の承認・採用は未完了であり、
+このフェーズでは現行Consent v1を維持する。配布候補の生成には署名済みclean sourceと既存gateを
+使用し、通常のローカル開発とは区別する。現行状況と工程は[Release手順](release-build.md)を参照する。
 
 ### 3.2 通常利用時の前提
 

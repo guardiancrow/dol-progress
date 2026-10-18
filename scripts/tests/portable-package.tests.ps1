@@ -170,7 +170,34 @@ Case 'README BOM CRLF complete section and external URL retention' {
     Expect ($text.Contains('LICENSE.txt') -and $text.Contains('THIRD-PARTY-NOTICES.txt') -and $text.Contains('data/configを削除・上書きしない'))
     Expect (-not $text.Contains('ユーザーレビュー待ち') -and $text.Contains('通知の正式レビューは完了しています'))
     Expect ($text.Contains('配布物内のTHIRD-PARTY-NOTICES.txtを参照してください') -and $text.Contains('一般公開の承認や正式license clearanceの完了を意味しません'))
-    Expect ($text.Contains('当面、実行ファイルもソースコードも一般公開しません'))
+    Expect (-not $text.Contains('当面、実行ファイルもソースコードも一般公開しません'))
+}
+Case 'README public distribution and integrity guidance retained' {
+    $text=Get-PortableText $readme
+    Expect ($text.Contains('https://github.com/guardiancrow/dol-progress/releases'))
+    Expect ($text.Contains('DOL-Progress-Manager_0.3.0_windows-x64_portable.zip.sha256'))
+    Expect ($text.Contains('Source code') -and $text.Contains('実行用Portable ZIPとは別'))
+    Expect ($text.Contains('Get-FileHash -Algorithm SHA256 -LiteralPath') -and $text.Contains('Get-Content -LiteralPath'))
+    Expect ($text.Contains('先頭64桁') -and $text.Contains('一致しない場合は起動・更新せず'))
+    Expect ($text.Contains('Authenticode未署名') -and $text.Contains('ソースのGit署名は、EXEのAuthenticode署名とは別'))
+}
+Case 'README portable operation and data safety retained' {
+    $text=Get-PortableText $readme
+    Expect ($text.Contains('書き込み可能な新しいフォルダーへZIP全体を展開'))
+    Expect ($text.Contains('外部Runtime、インストーラー、進捗DB、設定、マスターデータはZIPに含みません'))
+    Expect ($text.Contains('初回は使用許諾を確認') -and $text.Contains('拒否または画面を閉じた場合は起動しません'))
+    Expect ($text.Contains('更新前に内蔵バックアップを保存') -and $text.Contains('完全に終了'))
+    Expect ($text.Contains('既存のアプリとは別の新しいフォルダーへ全体を展開'))
+    Expect ($text.Contains('展開したEXEと同梱文書だけ') -and $text.Contains('data/configを削除・上書きしない'))
+    Expect ($text.Contains('カスタム利用では、アプリのフォルダーをコピーするだけでは外部DBを保管できません'))
+    Expect ($text.Contains('consent.json') -and $text.Contains('空DBを自動作成しません'))
+}
+Case 'README unofficial tool and license boundaries retained without pending SDK terms' {
+    $text=Get-PortableText $readme
+    Expect ($text.Contains('非公式のファンツール') -and $text.Contains('提携・公認を示すものでもありません'))
+    Expect ($text.Contains('MIT License') -and $text.Contains('第三者の権利を本プロジェクトのMIT Licenseで再licenseするものではありません'))
+    Expect ($text.Contains('THIRD-PARTY-NOTICES.txt') -and $text.Contains('通知の正式レビューは完了しています'))
+    Expect (-not $text.Contains('SDK対象コード') -and -not $text.Contains('Microsoft Windows SDK由来コードの利用・再配布条件'))
 }
 Case 'README missing Windows x64' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes([regex]::Replace($fixtureReadme,'Windows[ \t]+[^。\r\n]*x64','Windows'))) } }
 Case 'README missing VC Runtime guidance' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('Microsoft Visual C++ Redistributable','Microsoft native Runtime'))) } }

@@ -2,9 +2,9 @@
 
 『大航海時代 Online』のクエスト・発見物の進捗を、プロフィールごとにPC上で管理するWindows向けデスクトップアプリケーションです。ユーザーが手動取得した大航海時代データベースのマスターデータを取り込み、進捗はローカルSQLiteへ保存します。取り込み後の通常利用はオフラインで行えます。
 
-本プロジェクトは当面、実行ファイルもソースコードも一般公開しません。Windows x64での個人利用を前提とし、GitHubのPrivateリポジトリは開発とバックアップのために継続します。インストーラーを使わず、アプリのフォルダーをコピー・移動して利用できます。
+本プロジェクトはGitHubでソースコードを公開し、Windows x64 Portable ZIPをGitHub Releasesで配布する方針です。配布物の公開状況は[GitHub Releases](https://github.com/guardiancrow/dol-progress/releases)で確認してください。インストーラーを使わず、アプリのフォルダーをコピー・移動して利用できます。
 
-本プロジェクトは非公式のfan utilityです。ゲームの開発元・販売元・運営元による公式toolではなく、それらの組織や大航海時代データベースとの提携・公認を示すものでもありません。ゲーム名、製品名、商標などの権利は各権利者に帰属します。
+本プロジェクトは非公式のファンツールです。ゲームの開発元・販売元・運営元による公式ツールではなく、それらの組織や大航海時代データベースとの提携・公認を示すものでもありません。ゲーム名、製品名、商標などの権利は各権利者に帰属します。
 
 ## 主な機能
 
@@ -20,15 +20,30 @@
 
 ## 動作環境と起動方法
 
-利用対象はWindows 10／11 x64です。Windows/MSVC向けのローカル開発構成として動的CRT方式を正式採用し、Microsoft Visual C++ Redistributable x64（v14系）とMicrosoft Edge WebView2 Runtimeを外部要件とします。SQLite bundledとWebView2 LoaderはEXE内に静的リンクされるため、個別インストールは不要です。Windows標準のUCRT等のOS提供DLLへの依存も残ります。アプリはVC++ RedistributableやWebView2 Runtimeを自動ダウンロード・インストールしません。
+利用対象はWindows 10／11 x64です。Microsoft Visual C++ Redistributable x64（v14系）とMicrosoft Edge WebView2 Runtimeが必要です。SQLiteとWebView2 LoaderはEXEへ組み込まれているため、個別インストールは不要です。アプリはVC++ RedistributableやWebView2 Runtimeを自動ダウンロード・インストールしません。
 
-配布候補ZIPを利用する場合は、書き込み可能な新しいフォルダーへZIP全体を展開し、展開後のEXEを実行してください。ZIP内から直接実行せず、README.txt、LICENSE.txt、THIRD-PARTY-NOTICES.txtをEXEと一緒に保持してください。外部RuntimeやインストーラーはZIPに含みません。
+### Portable ZIPの取得と起動
 
-1. ローカルビルドした`dol-progress-manager.exe`を、ユーザーが書き込めるアプリ用フォルダーへ置きます。
-2. `dol-progress-manager.exe`を起動します。初回は使用許諾を確認し、「同意する」を選択すると通常起動して必要なデータ・設定フォルダーが作成されます。拒否または画面を閉じた場合は起動しません。同意済みの同じ配置では次回から画面を省略します。
-3. 「保存場所」画面で現在のデータベースと設定フォルダーを確認します。
+1. [GitHub Releases](https://github.com/guardiancrow/dol-progress/releases)で対象版の説明を確認し、AssetsからWindows x64 Portable ZIPと、同じ名前に`.sha256`を付けたファイルを取得します。v0.3.0のファイル名は`DOL-Progress-Manager_0.3.0_windows-x64_portable.zip`と`DOL-Progress-Manager_0.3.0_windows-x64_portable.zip.sha256`です。GitHubが表示する「Source code」のZIPは開発用ソースで、実行用Portable ZIPとは別です。
+2. 下記の方法でZIPのSHA-256を確認します。一致しない場合は起動・更新せず、取得元と対象版を確認してください。
+3. 書き込み可能な新しいフォルダーへZIP全体を展開します。ZIP内から直接実行せず、README.txt、LICENSE.txt、THIRD-PARTY-NOTICES.txt、SHA256SUMS.txtをEXEと一緒に保持してください。外部Runtime、インストーラー、進捗DB、設定、マスターデータはZIPに含みません。
+4. 展開した`dol-progress-manager.exe`を起動します。初回は使用許諾を確認し、「同意する」を選択すると通常起動して必要なデータ・設定フォルダーが作成されます。拒否または画面を閉じた場合は起動しません。同意済みの同じ配置では次回から画面を省略します。
+5. 「保存場所」画面で現在のデータベースと設定フォルダーを確認します。
 
 Program Filesや読み取り専用フォルダー等で書き込めない場合は、アプリを終了し、フォルダー全体を書き込み可能な場所へ移動してください。管理者としての実行やACL変更は標準の解決手順にしません。データ保存先をAppDataへ自動で切り替えることもありません。
+
+### SHA-256と実行ファイルの署名
+
+取得したファイルがあるフォルダーでPowerShellを開き、次を実行します。別の版ではファイル名を取得した版に合わせてください。
+
+```powershell
+Get-FileHash -Algorithm SHA256 -LiteralPath .\DOL-Progress-Manager_0.3.0_windows-x64_portable.zip
+Get-Content -LiteralPath .\DOL-Progress-Manager_0.3.0_windows-x64_portable.zip.sha256
+```
+
+表示されたHashと、`.sha256`の先頭64桁が一致することを確認します。英字の大文字・小文字は区別しません。ZIP内のSHA256SUMS.txtは、EXEと同梱文書の4ファイルを照合するための一覧です。hashの一致はファイルの整合性確認であり、入手先の正当性を単独で保証するものではありません。
+
+実行ファイルはAuthenticode未署名です。Windowsから発行元を確認できない等の警告が表示される場合があります。配布元、Releaseの説明、hashを確認したうえで実行を判断してください。保護機能を恒常的に無効化する必要はありません。ソースのGit署名は、EXEのAuthenticode署名とは別です。
 
 ### Visual C++ Redistributable x64
 
@@ -60,11 +75,12 @@ DOL-Progress\
   data\
     dol-progress.db
   config\
+    consent.json
     data-root.json
     data-root.last-good.json
 ```
 
-`data`内のデータベースには、プロフィール、クエスト・発見物の進捗、メモ、取り込んだマスターデータ等を保存します。`config`には保存場所を判断する設定と復旧情報を保存します。通常、設定ファイルを手編集する必要はありません。
+`data`内のデータベースには、プロフィール、クエスト・発見物の進捗、メモ、取り込んだマスターデータ等を保存します。`config`には初回同意の記録（consent.json）、保存場所を判断する設定と復旧情報を保存します。通常、設定ファイルを手編集する必要はありません。
 
 保存先はEXEの親フォルダーを基準に決まり、カレントディレクトリに依存しません。異なるEXEフォルダーは別々の標準DBを使用します。
 
@@ -109,8 +125,8 @@ WebView2 UDFは既存のOption A（`%LOCALAPPDATA%\com.dolprogress.manager`）�
 
 1. 更新前に内蔵バックアップを保存します。
 2. DOL Progress Managerを完全に終了し、必要ならフォルダーバックアップも保管します。
-3. 新しくローカルビルドしたEXEを用意します。
-4. 既存の`data`と`config`を保持したまま、アプリ本体を更新します。**data/configを削除・上書きしないでください。**
+3. GitHub Releasesから更新先のPortable ZIPと外部`.sha256`を取得し、hashを確認して、既存のアプリとは別の新しいフォルダーへ全体を展開します。
+4. 展開したEXEと同梱文書だけを既存のアプリのフォルダーへコピーして更新します。既存の`data`と`config`、カスタム保存先のDBは保持します。**data/configを削除・上書きしないでください。**
 5. 再起動し、「保存場所」画面とプロフィール・進捗を確認します。
 
 新しい空のdata/configで既存データを置き換えないことが原則です。
@@ -181,7 +197,7 @@ npm run tauri -- build --debug --no-bundle -- --locked --offline
 
 application iconは本プロジェクト用に新規作成したvectorから生成しています。[iconの制作・再生成手順](docs/icon-assets.md)を参照してください。
 
-第三者通知の文書整備を進めていますが、公開用のlicense clearance、ZIP／installer、GitHub Releaseの工程は停止中です。[旧release手順](docs/release-build.md)と[third-party license資料](docs/third-party-licenses.md)、既存script・原文・証拠・監査資料は保持します。署名済みclean HEADを要求する`build-release.ps1`や正式package gateは、通常のローカル開発の必須条件にしません。
+通常の開発用ビルドと、配布用の正式Release検証は別です。配布候補は署名済みclean HEADから`build-release.ps1`、`build-portable-package.ps1`、`verify-portable-package.ps1`の順で検証し、同じHEADとrunに対応するZIP・外部hashを使用します。これは通常のローカル開発の必須条件ではありません。[正式Release手順と現在の準備状況](docs/release-build.md)、[第三者ライセンス方針](docs/third-party-licenses.md)を参照してください。技術検証の成功だけで法的条件の充足や公開承認を意味するものではありません。
 
 ## 謝辞
 

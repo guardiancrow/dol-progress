@@ -1,6 +1,36 @@
 # Third-party licensesとrelease方針
 
-## 現在の運用方針（Phase Local-1）
+## 現在の公開計画と確認状況
+
+ソースコードのGitHub Public化とWindows x64 Portable ZIPのGitHub Releases配布を計画する。
+現在は公開用文書と関連テストの整備段階であり、実際の公開・配布や法的条件の充足を認定しない。
+独自コード・文書・合成テスト・独自アイコンには[MIT License](../LICENSE)を適用し、第三者コード・データ・商標の権利とは区別する。
+
+- rootの[THIRD-PARTY-NOTICES.txt](../THIRD-PARTY-NOTICES.txt)と`release/notices/`は正式レビュー済み。
+  201通知・6除外、原文148種類・357参照、REVIEWED metadataと原文hashを維持する。
+- WebView2 SDK LICENSE／NOTICE、現行依存・Rust提供元通知等の完了事項を、下記の旧記録を理由に未完了へ戻さない。
+- HEAD `482b9ae80f117946f6c36cc093b27f27666d044e` の正式Release／Package／独立Verifierは成功済み。
+  runとhashの対応は[Release手順](release-build.md)に記録する。文書変更後の新HEADの検証成功を意味しない。
+- ZIPはEXE・README・LICENSE・Notices・SHA256SUMSの固定5ファイルとし、外部.sha256を提供する。
+  VC++ Redistributable／WebView2 Runtime／OS DLL本体、取得CSV、個人DB・設定・backupは同梱しない。
+- Windows SDKのucrt.lib／ntdll.libの対象指定と、Community／Build Toolsの開発利用資格は既存評価を継承する。
+  SDK受領者条件の同程度の保護と合意方式、MSVC startup（msvcrt.lib等）の再配布許諾への対応は未確定。
+  SDKの製品全体を配布すると扱わず、Runtime非同梱だけで組込みcodeの条件が消えるとも扱わない。
+- SDKの配布者補償・防御等は本人の判断事項であり、利用者向け免責や通知レビューの完了で解消しない。
+- Consent v2とREADMEへ追加するSDK条件は草案段階。今回は採用・hash登録・条文挿入を行わず、承認済みv1を維持する。
+  次工程では最終本文・改訂日・条件提示と合意の扱いを確定し、既存の再同意・安全保存を使用する。
+
+現在のWindows構成で除外したhost／Unix限定MPL対象について、旧source提供案を理由に新しい公開義務を追加しない。
+個別条件を新たなtarget／feature／配布構成へ無条件で一般化しない。正式Noticesの承認metadataや通知由来commitは、
+公開文書の修正だけでは更新・再承認しない。技術照合PASSと包括的な法的保証・本人の公開承認を区別する。
+
+ローカルの限定監査・草案はignoredの`tmp/publication-license-closure/`、`tmp/publication-terms-draft/`に保持しており、
+cloneの同梱資料ではない。上記はそれらの確認済み範囲と未確定事項の要約である。
+
+## 履歴：Phase Local-1の非公開方針
+
+以下は当時の方針・整備工程の記録。非公開、未レビュー、未登録、HOLD等の状態は当時の対象に限り、
+現行の公開計画・Notices・検証状況は冒頭を参照する。過去の原文・監査証拠は改変しない。
 
 当面、実行ファイルもソースコードも一般公開しない。GitHubのPrivateリポジトリを
 開発とバックアップに使用し、Windows x64の個人用アプリとして通常開発を継続する。
@@ -17,7 +47,7 @@
 
 ## 依存関係とnotice確認
 
-### 現行Release向け通知の整備（2026-10-12）
+### 履歴：Release向け通知の整備（2026-10-12、正式レビュー前）
 
 rootの[THIRD-PARTY-NOTICES.txt](../THIRD-PARTY-NOTICES.txt)は、0.3.0のWindows x64
 Release向け通知のレビュー候補である。現行lockと通常target経路に対応するRust181件、
@@ -71,7 +101,7 @@ Phase 23D-C1CではWindows x64の包含候補と原文を監査し、207通知�
 契約上の判断は別々に確認する。現時点で全依存関係のlicense条件を満たしたとは断定しない。
 raw GVDB datasetはsource snapshotに同梱しない。
 
-## 未承認通知の組立
+## 履歴：未承認通知の組立
 
 `scripts/build-third-party-notices.ps1`は入力manifestでinventoryのhashとcomponentごとの
 version・宣言式・選択案・COPYRIGHT/NOTICE・source状態・未解決項目を固定する。
@@ -97,6 +127,8 @@ assemblyの実行方法と入力契約は[release手順](release-build.md#未承
 
 ## 独立した著作権者表示がない原本
 
+以下の調査経緯は当時の記録であり、現行の正式reviewは完了済み。schemaの条件は既存gateで維持する。
+
 owner行の未検出は、必須表示の欠落を意味しない。原文にある著作者を推測して補わず、
 原文・source header・NOTICEを対応付ける。既存30件の限定調査では、実表示が別の場所に
 ある4件と、調べた原本に独立owner行がない26件を区別した。必要表示全体のreviewは未完である。
@@ -110,7 +142,10 @@ componentのreview evidenceへ含め、記録hash・署名対象hash・実bytes�
 この例外は原文やNOTICEの省略を認めず、実reviewerと条件履行・provenanceの完了を要求する
 親gateも維持する。raw文書から表示の法的要否を自動判定するものではない。
 
-## 残る配布条件
+## 履歴：Local-3からLocal-4時点の配布条件
+
+当時の未完事項を記録する。現在残るSDK受領者条件・MSVC startupの対応と本人判断は冒頭に区分した。
+後に完了した通知や除外対象のsource提供を、この節だけを理由に現行の残件へ戻さない。
 
 MPLの対応sourceはアプリZIPとは別のversion対応補助archiveを匿名HTTPSで提供する方針だが、
 公開先・実URL・維持責任が未確定である。検証済source候補を公開済み、提供完了と扱わない。
@@ -151,7 +186,11 @@ Tao keyboard sourceにあるW3C全文と通知も正本に残し、最終配布s
 必要表示、MPLの実source提供が必要である。未承認draftや未解決metadataは正式packageが
 引き続き拒否する。今回の組立成功はlicense clearance・一般公開の許可ではない。
 
-## 停止中のGit署名と公開履歴の旧方針
+## 履歴：Git署名と公開履歴の旧方針
+
+以下のparentなしsnapshotから履歴を開始する案は旧方針として保持する。現在は既存Git履歴の公開を検討し、
+最新origin/mainとのfast-forward可否と公開対象履歴を確認する。履歴の書換えは行わない。
+署名付きcommit・signed annotated tagの方針は維持し、EXEのAuthenticode署名とは区別する。
 
 公開開発commitにはGit SSH signingを使用し、release tagはsigned annotated tagとする。
 公開Git履歴は公開対象を整理したsnapshotから、parentなしのsigned root commitで開始する。
