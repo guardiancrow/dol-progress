@@ -46,6 +46,12 @@ source_provisionはNOT_REQUIREDまたはCOMPLETE。MPLを選択したrecordはCO
 
 これは人の包含・原文・source提供等の判断を検証へ受け渡す契約である。hashや文字列照合だけで、すべての法的充足や外部URLの到達可能性を証明しない。合成fixture、未承認DRAFT、偽のclearance metadataを正式配布入力へ使わない。
 
+### toolchainの限定更新
+
+toolchainの版だけを更新する場合は、既存の6要素とfingerprint仕様で旧承認・現在値を比較し、変わった要素だけをレビュー対象とする。mapping.jsonのtoolchainとmanifestのtoolchain_sha256を更新候補へ揃え、review.jsonから差分証拠のhashを参照してmanifestのreview_sha256を再計算する。schema、coverage、通知原文、元のreviewer／reviewed_atとapproval_basis／formal_reviewは当時の記録として保持する。
+
+追加するtoolchain_refreshは本人レビュー前のPREPARED記録であり、新しい正式承認を表さない。本人が差分をレビュー・承認し、署名付きcommitでclean HEADを確定した後、そのHEADから正式3工程を新runで行う。元のCompile結果を変更後のHEADへ流用せず、既存の厳密なhash・署名・clean・privacy条件を維持する。
+
 ### 独立した著作権者表示がない原本
 
 `review.coverage[].copyrights`は明示配列とし、非空なら各表示が通知本文に存在することを検証する。空配列を許すのは、`copyright_review.state=NO_SEPARATE_NOTICE_IN_REVIEWED_SOURCES`、具体的なreason、非空のsource_evidenceがある場合だけである。著作者を推測で作らない。

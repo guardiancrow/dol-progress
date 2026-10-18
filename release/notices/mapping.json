@@ -4291,9 +4291,9 @@
     "node": "v24.20.0",
     "npm": "11.19.0",
     "tauri_cli": "2.11.4",
-    "powershell": "5.1.26100.9444"
+    "powershell": "5.1.26100.9711"
   },
-  "toolchain_sha256": "4283dd97a1eb8080c9ae2afc59e3e4b1608bca99071dcfb4021b0805930637e7",
+  "toolchain_sha256": "e2123b4c42a45064cfa99eb49084c509f1a440594e5e7165a1e53fb3ecadd9a7",
   "scope_note": "included=trueは通知対象として採用した通常経路候補・helper・provider原文を示す。全componentの最適化後の包含を証明しない。provider package中の他target/build用項目をアプリのライセンス選択にしない。",
   "legal_clearance": false,
   "public_release_approved": false,
@@ -4304,5 +4304,25 @@
     "scope": "Windows x64 v0.3.0：通知201件、除外6件、原文148種類・357参照、ライセンス義務・出典・著作権・owner assessment5件・lock・toolchain・自動検証結果。不整合がないことを条件とするユーザー承認。全原文の逐語確認、法的クリアランス、公開承認を意味しない。",
     "notice_sha256": "37e763e27a6fd410324b3617d6e55ba0bb058d0086949dac776dc073c0c282a1",
     "toolchain_sha256": "4283dd97a1eb8080c9ae2afc59e3e4b1608bca99071dcfb4021b0805930637e7"
+  },
+  "toolchain_refresh": {
+    "state": "PREPARED_FOR_USER_REVIEW",
+    "prepared_on": "2026-10-18",
+    "basis": "USER_REQUESTED_WINDOWS_POWERSHELL_5_1_PATCH_ONLY_REFRESH",
+    "previous_version": "5.1.26100.9444",
+    "candidate_version": "5.1.26100.9711",
+    "previous_toolchain_sha256": "4283dd97a1eb8080c9ae2afc59e3e4b1608bca99071dcfb4021b0805930637e7",
+    "candidate_toolchain_sha256": "e2123b4c42a45064cfa99eb49084c509f1a440594e5e7165a1e53fb3ecadd9a7",
+    "unchanged_elements": [
+      "rustc",
+      "cargo",
+      "node",
+      "npm",
+      "tauri_cli"
+    ],
+    "comparison_source_head": "13859ea91017714c65e5df42b09b5b4892ee23f0",
+    "comparison_compile_run_id": "a235113ce046474bbfbce81675ab3aa1",
+    "scope": "Windows PowerShell 5.1のbuild差分のみを照合。元のformal_reviewは旧toolchainに対する当時の承認として不変。通知本文・包含・原文・ライセンス義務は変更していない。",
+    "next_step": "本人による差分レビュー・承認と署名付きclean commit後、新HEADから正式3工程を新runで実行する。準備記録は正式承認・Package成功・公開許可を意味しない。"
   }
 }

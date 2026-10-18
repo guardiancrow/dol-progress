@@ -383,6 +383,44 @@ Case 'Source version roots and lock application entries agree' {
 Case 'Cargo dependency version cannot mask application version mismatch' {
     Reject { Assert-PortableVersions '0.3.0' '0.3.0' "[package]`nversion = `"0.4.0`"`n[dependencies.fixture]`nversion = `"0.3.0`"" "name = `"dol-progress-manager`"`nversion = `"0.3.0`"" @('0.3.0','0.3.0') }
 }
+Case 'Exact toolchain match and drift rejection use production reader TEST_ONLY' {
+    $root=New-TestPath '.toolchain-fixture'
+    $id='b'*32; $head='a'*40
+    $run=Join-Path $root ('tmp/portable-release/'+$id)
+    foreach ($dir in @('release/notices',('tmp/portable-release/'+$id+'/output'),('tmp/portable-release/'+$id+'/target/release'),('tmp/portable-release/'+$id+'/logs'))) {
+        New-Item -ItemType Directory -Path (Join-Path $root $dir) -Force | Out-Null
+    }
+    $state=Fixture-CompileState
+    $result=$state.Result
+    $result | Add-Member -NotePropertyName toolchain -NotePropertyValue ((Get-PortableText (Read-PortableBytes (Join-Path $repo 'release/notices/mapping.json'))) | ConvertFrom-Json).toolchain
+    $result | Add-Member -NotePropertyName input_hashes -NotePropertyValue ([ordered]@{'TEST_ONLY.source'=('c'*64)})
+    $result.executable.sha256=Get-ReleaseSHA256 $payload['dol-progress-manager.exe']
+    $source=[pscustomobject]@{Head=$head;Version='0.3.0';Hashes=[ordered]@{'TEST_ONLY.source'=('c'*64)}}
+    Write-ReleaseNewText (Join-Path $run 'ownership.json') (($state.Owner | ConvertTo-Json)+"`n")
+    Write-PortableBytes $root (Join-Path $run 'output/dol-progress-manager.exe') $payload['dol-progress-manager.exe']
+    Write-PortableBytes $root (Join-Path $run 'target/release/dol-progress-manager.exe') $payload['dol-progress-manager.exe']
+    Write-ReleaseNewText (Join-Path $run 'logs/compile.txt') 'TEST_ONLY resource-only PE; no application executed.'
+    $approved=(Get-PortableText (Read-PortableBytes (Join-Path $repo 'release/notices/manifest.json')) | ConvertFrom-Json).toolchain_sha256
+    Write-ReleaseNewText (Join-Path $root 'release/notices/manifest.json') ((@{toolchain_sha256=$approved} | ConvertTo-Json)+"`n")
+    $resultPath=Join-Path $run 'result.json'
+    [IO.File]::WriteAllText($resultPath,($result | ConvertTo-Json -Depth 12),[Text.UTF8Encoding]::new($false))
+    $actual=Get-PortableCompile $root $id $source $prefixes
+    Expect ((Get-ReleaseSHA256 $actual) -ceq $result.executable.sha256)
+    foreach ($field in @('rustc','cargo','node','npm','tauri_cli','powershell')) {
+        $original=$result.toolchain.$field
+        $result.toolchain.$field='TEST_ONLY unapproved version'
+        [IO.File]::WriteAllText($resultPath,($result | ConvertTo-Json -Depth 12),[Text.UTF8Encoding]::new($false))
+        $reason=''
+        try { [void](Get-PortableCompile $root $id $source $prefixes) } catch { $reason=$_.Exception.Message }
+        Expect ($reason -ceq 'Notices: compile toolchain was not reviewed.')
+        $result.toolchain.$field=$original
+    }
+    $result.source_head='d'*40
+    [IO.File]::WriteAllText($resultPath,($result | ConvertTo-Json -Depth 12),[Text.UTF8Encoding]::new($false))
+    $reason=''
+    try { [void](Get-PortableCompile $root $id $source $prefixes) } catch { $reason=$_.Exception.Message }
+    Expect ($reason -ceq 'Compile: provenance mismatch.')
+}
 Case 'Output collision preserves existing ZIP' { Reject { Write-PortableZip $staging $zipPath }; Expect ((Get-ReleaseSHA256 (Read-PortableBytes $zipPath)) -ceq (Get-ReleaseSHA256 $zipBytes)) }
 Case 'Extraction collision preserves existing files' { $root=New-TestPath '.verify'; New-Item -ItemType Directory -Path $root | Out-Null; Write-ReleaseNewText (Join-Path $root 'keep.txt') 'keep'; Reject { Test-PortableArchive $zipPath '' $root $hashes '0.3.0' $payload $prefixes }; Expect ([IO.File]::ReadAllText((Join-Path $root 'keep.txt')) -ceq 'keep') }
 Case 'Hidden unexpected staging file' { $stage=New-TestPath '.staging'; [void](New-PortableStaging $stage $payload); Write-ReleaseNewText (Join-Path $stage '.hidden') 'extra'; Reject { Write-PortableZip $stage (New-TestPath '.zip') } }

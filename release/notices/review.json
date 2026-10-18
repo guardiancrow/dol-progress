@@ -5518,5 +5518,17 @@
     "scope": "Windows x64 v0.3.0：通知201件、除外6件、原文148種類・357参照、ライセンス義務・出典・著作権・owner assessment5件・lock・toolchain・自動検証結果。不整合がないことを条件とするユーザー承認。全原文の逐語確認、法的クリアランス、公開承認を意味しない。",
     "notice_sha256": "37e763e27a6fd410324b3617d6e55ba0bb058d0086949dac776dc073c0c282a1",
     "toolchain_sha256": "4283dd97a1eb8080c9ae2afc59e3e4b1608bca99071dcfb4021b0805930637e7"
+  },
+  "toolchain_refresh": {
+    "state": "PREPARED_FOR_USER_REVIEW",
+    "previous_toolchain_sha256": "4283dd97a1eb8080c9ae2afc59e3e4b1608bca99071dcfb4021b0805930637e7",
+    "candidate_toolchain_sha256": "e2123b4c42a45064cfa99eb49084c509f1a440594e5e7165a1e53fb3ecadd9a7",
+    "evidence": [
+      {
+        "path": "release/notices/mapping.json",
+        "sha256": "b88d680df8df2a1e64578df87ef415d15fda37fcb003f0e2fe1129664e25cf71"
+      }
+    ],
+    "scope": "元のapproval_basis・reviewer・reviewed_at・coverageは当時の承認として保持。Windows PowerShell 5.1 build差分の更新候補であり、本人のコミット前レビュー・承認は未完了。"
   }
 }
