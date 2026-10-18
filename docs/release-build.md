@@ -168,9 +168,9 @@ npm run typecheck
 
 既存の署名済みHEAD `482b9ae80f117946f6c36cc093b27f27666d044e` に対して正式Compile・Package・独立Verifierは成功済みである。これはそのHEADに限る検証結果で、文書変更後のHEADの成功とは扱わない。run識別子とhashを含む記録は[履歴の確認状況](release-build-history.md#現在の公開準備状況)に保持する。NoticesはREVIEWED、201通知・6除外、148原文・357参照のままとする。
 
-SDK受領者条件の同程度の保護と合意方式、MSVC startupの再配布根拠、配布者の補償等の判断は未完了。[Microsoft関連の区分](third-party-licenses.md#microsoft関連の確認範囲と残件)を参照する。SDK草案を承認済みの条文として挿入しない。
+SDK受領者条件はREADMEとConsent v2へ実装している。同程度の保護と合意方式の契約解釈、MSVC startupの個別再配布根拠、配布者の補償等の本人判断は未完了。[Microsoft関連の区分](third-party-licenses.md#microsoft関連の確認範囲と残件)を参照する。実装を契約適合性やバイナリ公開の承認と扱わない。
 
-承認済みConsentはversion 1であり、本文・hash・安全保存を維持する。v2は最終文面と正式採用日の承認後に扱い、正規化方式を変えなければcanonicalVersion 1、旧記録の自動承認をしない既存再同意を使う。実際のGitHub公開状態と公開先URLも確認する。
+現行ConsentはtermsVersion 2、canonicalVersion 1である。ユーザーが確定したv2の制定日・正式採用日2026年10月18日を本文末尾に記載し、改訂日の別行は設けない。本文hashは既存CanonicalTermsで算出し、旧v1本文・制定日・hashは固定fixtureで保全する。既存v1への同意を自動承認せず、Outdated／HashMismatchで全文再表示し、明示同意した場合だけ既存安全writerで更新する。公開前後で共通の参照先表記を使う。実際のGitHub公開状態と公開先URLは公開前に別途確認する。
 
 ### GitHub公開までの概要
 

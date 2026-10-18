@@ -21,6 +21,20 @@ fn prepared_display_preserves_full_content_and_canonical_identity() {
     assert_eq!(prepared.acceptance.terms_sha256(), terms.sha256());
 }
 #[test]
+fn adopted_v2_display_preserves_full_body_and_final_line() {
+    let terms = crate::consent::first_run::approved_terms()
+        .unwrap()
+        .unwrap();
+    let prepared = PreparedTerms::new(&terms).unwrap();
+    let displayed = String::from_utf16(&prepared.display[..prepared.display.len() - 1]).unwrap();
+    assert_eq!(displayed.replace("\r\n", "\n"), terms.text());
+    assert!(displayed.contains("Microsoft Windows SDK由来コードの条件"));
+    assert!(displayed.contains("認識すべきであった場合"));
+    assert!(displayed.ends_with("使用許諾文制定日：2026年10月18日\r\n"));
+    assert_eq!(prepared.acceptance.terms_version(), 2);
+    assert!(prepared.acceptance.matches(&terms));
+}
+#[test]
 fn long_display_above_default_edit_limit_is_never_truncated() {
     let body = "TEST ONLY 日本語 and English 🙂 — long synthetic paragraph.\n".repeat(1500);
     let terms =

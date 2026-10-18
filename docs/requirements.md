@@ -39,8 +39,9 @@ GitHubのPublicリポジトリでソースコードを公開し、Windows x64 Po
 実際のPublic化・配布は本人の別途承認による。文書の整備を公開済みの事実認定とは扱わない。
 
 第三者通知の正式レビューと既存HEADのRelease／Package／独立Verifierの技術検証は完了済みである。
-SDK受領者条件の最終確認、MSVC startupの再配布根拠、Consent v2本文の承認・採用は未完了であり、
-このフェーズでは現行Consent v1を維持する。配布候補の生成には署名済みclean sourceと既存gateを
+SDK受領者条件をREADMEとConsent v2へ実装しているが、同程度の保護と合意方式の契約解釈、
+MSVC startupの個別再配布根拠、配布者の補償等の本人判断は未完了である。
+文面の実装を契約適合性やバイナリ公開の承認と扱わない。配布候補の生成には署名済みclean sourceと既存gateを
 使用し、通常のローカル開発とは区別する。現行状況と工程は[Release手順](release-build.md)を参照する。
 
 ### 3.2 通常利用時の前提
@@ -512,7 +513,9 @@ v1では過剰なキャッシュや検索エンジンを導入しない。
 - 記録は再表示判定の設定であり、本人認証や法的な同意立証のための監査記録ではない。
 - 起動時のleaseはNormal／Recoveryの状態登録まで保持して解放し、アプリの稼働中に保持し続けない。新たな多重起動防止機能にはしない。
 
-2026年10月12日にユーザーが承認した本文をtermsVersion 1で組み込み、通常起動の同意判定を有効化する。canonicalVersionとSHA-256算出は既存CanonicalTermsの仕様に従う。Native UI、記録schema、安全writer、既存UDF、Normal／Recovery動作を維持する。文面承認は法的な許諾・配布・公開の最終判断とは別である。
+ユーザーが確認したSDK対象コードの条件を含む本文をtermsVersion 2で組み込む。v2の制定日・正式採用日は2026年10月18日とし、本文末尾を「使用許諾文制定日：2026年10月18日」とする。改訂日の別行は追加しない。旧v1の制定日2026年10月12日は歴史的な本文とともに保全する。公開前後で同じ文面を使える参照先表記とし、canonicalVersionは1を維持する。SHA-256は既存CanonicalTermsで算出する。
+
+旧v1の本文・version・hashは歴史的な固定fixtureとして保全する。既存v1記録はOutdated、同versionの本文不一致はHashMismatchとして全文を再表示し、明示同意がある場合だけ更新する。Native UI、記録schema、安全writer、既存UDF、Normal／Recovery動作を維持し、DB migrationは行わない。文面の採用はMicrosoft契約の適合性認定や、配布者の補償義務の受諾・バイナリ公開の承認とは別である。
 
 ## 9. v1で対象外とする機能
 

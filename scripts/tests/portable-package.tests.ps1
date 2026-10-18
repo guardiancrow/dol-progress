@@ -192,12 +192,48 @@ Case 'README portable operation and data safety retained' {
     Expect ($text.Contains('カスタム利用では、アプリのフォルダーをコピーするだけでは外部DBを保管できません'))
     Expect ($text.Contains('consent.json') -and $text.Contains('空DBを自動作成しません'))
 }
-Case 'README unofficial tool and license boundaries retained without pending SDK terms' {
+Case 'README unofficial tool and license boundaries retained with SDK terms' {
     $text=Get-PortableText $readme
     Expect ($text.Contains('非公式のファンツール') -and $text.Contains('提携・公認を示すものでもありません'))
     Expect ($text.Contains('MIT License') -and $text.Contains('第三者の権利を本プロジェクトのMIT Licenseで再licenseするものではありません'))
     Expect ($text.Contains('THIRD-PARTY-NOTICES.txt') -and $text.Contains('通知の正式レビューは完了しています'))
-    Expect (-not $text.Contains('SDK対象コード') -and -not $text.Contains('Microsoft Windows SDK由来コードの利用・再配布条件'))
+    Expect ($text.Contains('SDK対象コード') -and $text.Contains('Microsoft Windows SDK由来コードの利用・再配布条件'))
+}
+function Get-TestSdkConditions([string]$Text,[string]$Heading) {
+    $normalized=$Text.Replace("`r`n","`n").TrimStart([char]0xfeff)
+    $pattern='(?ms)^'+[regex]::Escape($Heading)+'\n\n(?<body>.*?)(?=^## |^「同意する」|\z)'
+    $matches=[regex]::Matches($normalized,$pattern)
+    if ($matches.Count -ne 1) { throw 'SDK terms: missing or duplicate section.' }
+    $body=$matches[0].Groups['body'].Value.Trim([char]10)
+    if ([regex]::Split($body,'\n\n').Count -ne 9) { throw 'SDK terms: expected nine paragraphs.' }
+    return $body
+}
+function Assert-TestSdkMatchesConsent([string]$ReadmeText,[string]$ConsentText) {
+    $actual=Get-TestSdkConditions $ReadmeText '### Microsoft Windows SDK由来コードの利用・再配布条件'
+    $expected=Get-TestSdkConditions $ConsentText 'Microsoft Windows SDK由来コードの条件'
+    if (-not [String]::Equals($actual,$expected,[StringComparison]::Ordinal)) { throw 'SDK terms: README and Consent differ.' }
+}
+$consentSource=Get-PortableText (Read-PortableBytes (Join-Path $repo 'src-tauri/src/consent/first_run.rs'))
+$consentMatch=[regex]::Match($consentSource,'(?ms)^const APPROVED_BODY: &str = r#"(?<body>.*?)"#;')
+Expect $consentMatch.Success
+$consentBody=$consentMatch.Groups['body'].Value
+Case 'SDK nine paragraphs match actual Consent and generated Portable README' {
+    Assert-TestSdkMatchesConsent $fixtureReadme $consentBody
+    Assert-TestSdkMatchesConsent (Get-PortableText $readme) $consentBody
+}
+Case 'SDK section omission fails comparison' {
+    $missing=[regex]::Replace($fixtureReadme,'(?ms)^### Microsoft Windows SDK由来コードの利用・再配布条件\r?\n.*?(?=^## |\z)','')
+    Reject { Assert-TestSdkMatchesConsent $missing $consentBody }
+}
+Case 'SDK README liability or scope drift fails comparison' {
+    foreach ($old in @('5米ドル','この条件はSDK対象コードだけに適用')) {
+        Expect $fixtureReadme.Contains($old)
+        Reject { Assert-TestSdkMatchesConsent ($fixtureReadme.Replace($old,($old+'TEST_ONLY変更'))) $consentBody }
+    }
+}
+Case 'SDK Consent-only change fails comparison' {
+    Expect $consentBody.Contains('認識すべきであった場合')
+    Reject { Assert-TestSdkMatchesConsent $fixtureReadme ($consentBody.Replace('認識すべきであった場合','TEST_ONLY変更')) }
 }
 Case 'README missing Windows x64' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes([regex]::Replace($fixtureReadme,'Windows[ \t]+[^。\r\n]*x64','Windows'))) } }
 Case 'README missing VC Runtime guidance' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('Microsoft Visual C++ Redistributable','Microsoft native Runtime'))) } }
