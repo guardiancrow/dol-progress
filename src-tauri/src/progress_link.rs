@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Connection, SqliteConnection, Transaction};
 use tauri::State;
 
-use crate::{active_database::ActiveDatabase, discovery_capabilities::RELIC_CATEGORY_NAME};
+use crate::active_database::ActiveDatabase;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,7 +39,7 @@ pub struct DiscoveryCompletionResult {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProgressLinkCommandError {
-    kind: &'static str,
+    pub(crate) kind: &'static str,
     user_message: String,
     detail: String,
 }
@@ -99,23 +99,36 @@ pub(crate) async fn complete_quest(
     profile_id: i64,
     quest_id: i64,
 ) -> Result<QuestCompletionResult, ProgressLinkCommandError> {
-    let mut transaction = connection.begin().await?;
+    let mut transaction = connection.begin_with("BEGIN IMMEDIATE").await?;
     let result = complete_quest_transaction(&mut transaction, profile_id, quest_id).await;
     finish_transaction(transaction, result).await
 }
 
 async fn complete_quest_transaction(
-    transaction: &mut Transaction<'_, sqlx::Sqlite>,
+    transaction: &mut SqliteConnection,
     profile_id: i64,
     quest_id: i64,
 ) -> Result<QuestCompletionResult, ProgressLinkCommandError> {
+    crate::discovery_state::validate_profile(transaction, profile_id)
+        .await
+        .map_err(|e| ProgressLinkCommandError::invalid_selection(format!("{e:?}")))?;
+    let active: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM quests WHERE id=? AND is_active=1)")
+            .bind(quest_id)
+            .fetch_one(&mut *transaction)
+            .await?;
+    if !active {
+        return Err(ProgressLinkCommandError::invalid_selection(
+            "Quest is missing or inactive",
+        ));
+    }
     let quest_changed = sqlx::query(
         "INSERT INTO quest_progress (profile_id, quest_id) VALUES (?, ?) \
          ON CONFLICT(profile_id, quest_id) DO NOTHING",
     )
     .bind(profile_id)
     .bind(quest_id)
-    .execute(&mut **transaction)
+    .execute(&mut *transaction)
     .await?
     .rows_affected()
         == 1;
@@ -134,27 +147,18 @@ async fn complete_quest_transaction(
          WHERE qd.quest_id = ?",
     )
     .bind(quest_id)
-    .fetch_one(&mut **transaction)
+    .fetch_one(&mut *transaction)
     .await?;
-    let discoveries_created = sqlx::query(
-        "INSERT INTO discovery_progress (profile_id, discovery_id, reported, card_owned) \
-         SELECT ?, qd.discovery_id, 0, CASE WHEN c.name = ? THEN 0 ELSE 1 END \
-         FROM quest_discoveries qd \
-         JOIN discoveries d ON d.id = qd.discovery_id AND d.is_active = 1 \
-         LEFT JOIN discovery_categories c ON c.id = d.category_id \
-         WHERE qd.quest_id = ? \
-           AND NOT EXISTS (\
-             SELECT 1 FROM discovery_progress dp \
-             WHERE dp.profile_id = ? AND dp.discovery_id = qd.discovery_id\
-           )",
-    )
-    .bind(profile_id)
-    .bind(RELIC_CATEGORY_NAME)
-    .bind(quest_id)
-    .bind(profile_id)
-    .execute(&mut **transaction)
-    .await?
-    .rows_affected();
+    let related: Vec<i64> = sqlx::query_scalar("SELECT d.id FROM quest_discoveries qd JOIN discoveries d ON d.id=qd.discovery_id WHERE qd.quest_id=? AND d.is_active=1 ORDER BY d.id").bind(quest_id).fetch_all(&mut *transaction).await?;
+    let mut discoveries_created = 0;
+    for discovery in related {
+        if crate::discovery_state::initialize(transaction, profile_id, discovery, Some(quest_id))
+            .await
+            .map_err(|e| ProgressLinkCommandError::database(format!("{e:?}")))?
+        {
+            discoveries_created += 1;
+        }
+    }
 
     Ok(QuestCompletionResult {
         quest_changed,
@@ -169,7 +173,7 @@ pub(crate) async fn discover(
     discovery_id: i64,
     selected_quest_id: Option<i64>,
 ) -> Result<DiscoveryCompletionResult, ProgressLinkCommandError> {
-    let mut transaction = connection.begin().await?;
+    let mut transaction = connection.begin_with("BEGIN IMMEDIATE").await?;
     let result = discover_transaction(
         &mut transaction,
         profile_id,
@@ -180,29 +184,16 @@ pub(crate) async fn discover(
     finish_transaction(transaction, result).await
 }
 
-async fn discover_transaction(
-    transaction: &mut Transaction<'_, sqlx::Sqlite>,
+pub(crate) async fn discover_transaction(
+    transaction: &mut SqliteConnection,
     profile_id: i64,
     discovery_id: i64,
     selected_quest_id: Option<i64>,
 ) -> Result<DiscoveryCompletionResult, ProgressLinkCommandError> {
-    let discovery_created = sqlx::query(
-        "INSERT INTO discovery_progress (profile_id, discovery_id, reported, card_owned) \
-         VALUES (?, ?, 0, CASE WHEN (SELECT c.name FROM discovery_categories c \
-                                    JOIN discoveries d ON d.category_id = c.id \
-                                    WHERE d.id = ?) = ? THEN 0 ELSE 1 END) \
-         ON CONFLICT(profile_id, discovery_id) DO NOTHING",
-    )
-    .bind(profile_id)
-    .bind(discovery_id)
-    .bind(discovery_id)
-    .bind(RELIC_CATEGORY_NAME)
-    .execute(&mut **transaction)
-    .await?
-    .rows_affected()
-        == 1;
-
-    if !discovery_created {
+    let current = crate::discovery_state::read_state(transaction, profile_id, discovery_id)
+        .await
+        .map_err(|e| ProgressLinkCommandError::invalid_selection(format!("{e:?}")))?;
+    if current.progress.is_some() {
         return Ok(DiscoveryCompletionResult {
             discovery_created: false,
             quest_completed: false,
@@ -210,14 +201,13 @@ async fn discover_transaction(
             selected_quest_id: None,
         });
     }
-
     let related_quest_ids: Vec<i64> = sqlx::query_scalar(
         "SELECT q.id FROM quest_discoveries qd \
          JOIN quests q ON q.id = qd.quest_id AND q.is_active = 1 \
          WHERE qd.discovery_id = ? ORDER BY q.id",
     )
     .bind(discovery_id)
-    .fetch_all(&mut **transaction)
+    .fetch_all(&mut *transaction)
     .await?;
 
     let quest_id = match related_quest_ids.as_slice() {
@@ -248,6 +238,15 @@ async fn discover_transaction(
         },
     };
 
+    let discovery_created =
+        crate::discovery_state::initialize(transaction, profile_id, discovery_id, quest_id)
+            .await
+            .map_err(|e| ProgressLinkCommandError::database(format!("{e:?}")))?;
+    if !discovery_created {
+        return Err(ProgressLinkCommandError::invalid_selection(
+            "Discovery is missing or inactive",
+        ));
+    }
     let (quest_completed, quest_already_completed) = if let Some(quest_id) = quest_id {
         let changed = sqlx::query(
             "INSERT INTO quest_progress (profile_id, quest_id) VALUES (?, ?) \
@@ -255,7 +254,7 @@ async fn discover_transaction(
         )
         .bind(profile_id)
         .bind(quest_id)
-        .execute(&mut **transaction)
+        .execute(&mut *transaction)
         .await?
         .rows_affected()
             == 1;
@@ -301,6 +300,10 @@ mod tests {
     async fn database() -> SqliteConnection {
         let mut connection = SqliteConnection::connect("sqlite::memory:").await.unwrap();
         connection.execute(INITIAL_SCHEMA).await.unwrap();
+        connection
+            .execute(crate::migrations::MAP_REPORT_HOLD_SCHEMA)
+            .await
+            .unwrap();
         sqlx::query("INSERT INTO profiles (id, name) VALUES (1, 'A'), (2, 'B')")
             .execute(&mut connection)
             .await
@@ -337,6 +340,94 @@ mod tests {
             .execute(connection)
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn offer_methods_initialize_both_routes_without_overwriting_existing_progress() {
+        for (method, expected) in [
+            ("通常", 0),
+            ("追究クエスト", 1),
+            ("レガシー", 1),
+            ("トレジャーハント", 1),
+            ("追及クエスト", 0),
+            ("レガシー ", 0),
+        ] {
+            for from_quest in [true, false] {
+                for relic in [true, false] {
+                    let mut db = database().await;
+                    sqlx::query("UPDATE quests SET offer_method = ? WHERE id = 1")
+                        .bind(method)
+                        .execute(&mut db)
+                        .await
+                        .unwrap();
+                    relate(&mut db, 1, 1).await;
+                    if relic {
+                        make_relic(&mut db, 1).await;
+                    }
+                    if from_quest {
+                        complete_quest(&mut db, 1, 1).await.unwrap();
+                    } else {
+                        discover(&mut db, 1, 1, None).await.unwrap();
+                    }
+                    let state: (i64, i64) = sqlx::query_as("SELECT reported, card_owned FROM discovery_progress WHERE profile_id = 1 AND discovery_id = 1")
+                        .fetch_one(&mut db).await.unwrap();
+                    assert_eq!(
+                        state,
+                        (if relic { 0 } else { expected }, if relic { 0 } else { 1 }),
+                        "{method}, quest={from_quest}, relic={relic}"
+                    );
+                    assert_eq!(count(&mut db, "discovery_progress", 2).await, 0);
+                    sqlx::query("UPDATE discovery_progress SET reported = 0, card_owned = 0, memo = 'keep', updated_at = '2000-01-01T00:00:00Z' WHERE profile_id = 1")
+                        .execute(&mut db).await.unwrap();
+                    sqlx::query("DELETE FROM quest_progress WHERE profile_id = 1")
+                        .execute(&mut db)
+                        .await
+                        .unwrap();
+                    complete_quest(&mut db, 1, 1).await.unwrap();
+                    discover(&mut db, 1, 1, None).await.unwrap();
+                    let state: (i64, i64, String, String) = sqlx::query_as("SELECT reported, card_owned, memo, updated_at FROM discovery_progress WHERE profile_id = 1 AND discovery_id = 1")
+                        .fetch_one(&mut db).await.unwrap();
+                    assert_eq!(state, (0, 0, "keep".into(), "2000-01-01T00:00:00Z".into()));
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn multiple_relations_use_only_selected_route_and_fail_atomically() {
+        for (selected, expected) in [(None, 0), (Some(1), 1), (Some(2), 0)] {
+            let mut db = database().await;
+            sqlx::query("UPDATE quests SET offer_method = 'レガシー' WHERE id = 1")
+                .execute(&mut db)
+                .await
+                .unwrap();
+            relate(&mut db, 1, 1).await;
+            relate(&mut db, 2, 1).await;
+            discover(&mut db, 1, 1, selected).await.unwrap();
+            let reported: i64 = sqlx::query_scalar(
+                "SELECT reported FROM discovery_progress WHERE profile_id = 1 AND discovery_id = 1",
+            )
+            .fetch_one(&mut db)
+            .await
+            .unwrap();
+            assert_eq!(reported, expected);
+            assert_eq!(
+                count(&mut db, "quest_progress", 1).await,
+                i64::from(selected.is_some())
+            );
+            assert!(discover(&mut db, 2, 1, Some(3)).await.is_err());
+            assert_eq!(count(&mut db, "discovery_progress", 2).await, 0);
+        }
+        let mut db = database().await;
+        sqlx::query("UPDATE quests SET offer_method = '追究クエスト' WHERE id = 1")
+            .execute(&mut db)
+            .await
+            .unwrap();
+        relate(&mut db, 1, 1).await;
+        db.execute("CREATE TRIGGER fail_quest BEFORE INSERT ON quest_progress BEGIN SELECT RAISE(ABORT, 'synthetic failure'); END").await.unwrap();
+        assert!(discover(&mut db, 1, 1, None).await.is_err());
+        assert_eq!(count(&mut db, "discovery_progress", 1).await, 0);
+        assert_eq!(count(&mut db, "quest_progress", 1).await, 0);
     }
 
     async fn count(connection: &mut SqliteConnection, table: &str, profile: i64) -> i64 {
@@ -623,6 +714,166 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(quest_memo, "quest memo");
+    }
+
+    #[tokio::test]
+    async fn file_pool_completion_and_cancel_finish_with_full_synthetic_master() {
+        use futures_core::Stream;
+        use std::time::{Duration, SystemTime, UNIX_EPOCH};
+        let directory = std::env::temp_dir().join(format!(
+            "dol-quest-click-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let database = crate::active_database::ActiveDatabase::open(directory.join("fixture.db"))
+            .await
+            .unwrap();
+        {
+            let pool = database.pool().await;
+            let mut connection = pool.acquire().await.unwrap();
+            for schema in [
+                INITIAL_SCHEMA,
+                crate::migrations::QUEST_FACETS_SCHEMA,
+                crate::migrations::MASTER_SOURCE_ORDER_SCHEMA,
+                crate::migrations::MAP_REPORT_HOLD_SCHEMA,
+            ] {
+                sqlx::raw_sql(schema)
+                    .execute(&mut *connection)
+                    .await
+                    .unwrap();
+            }
+            sqlx::raw_sql("INSERT INTO profiles(id,name) VALUES(1,'synthetic'),(2,'other');
+                WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<6784)
+                INSERT INTO quests(id,gvdb_id,title,offer_method,raw_row_json) SELECT x,x,'synthetic',CASE WHEN x%2=0 THEN '地理学' ELSE '冒険クエスト' END,'{}' FROM n;
+                WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<4032)
+                INSERT INTO discoveries(id,gvdb_id,name,raw_row_json) SELECT x,x,'synthetic','{}' FROM n;
+                INSERT INTO quest_discoveries SELECT id,id FROM discoveries;")
+                .execute(&mut *connection).await.unwrap();
+        }
+        let started = std::time::Instant::now();
+        // The shipped SQLite must execute the same bulk SQL used by the frontend.
+        let summary_sql = include_str!("../../src/discoveries/discoveryStateSummaries.sql")
+            .replace(
+                "__AUTOMATIC_REPORTING_DISCOVERIES__",
+                &crate::discovery_capabilities::automatic_reporting_discoveries_sql(),
+            );
+        let pool = database.pool().await;
+        let read_started = std::time::Instant::now();
+        let rows = tokio::time::timeout(
+            Duration::from_secs(2),
+            sqlx::query(&summary_sql).bind(1i64).fetch_all(&*pool),
+        )
+        .await
+        .expect("bulk summary exceeded 2 seconds")
+        .unwrap();
+        assert_eq!(rows.len(), 4032);
+        eprintln!(
+            "shipped SQLite summary completed in {:?}",
+            read_started.elapsed()
+        );
+        drop(pool);
+        tokio::time::timeout(Duration::from_secs(10), async {
+            // Match the command boundary: acquire/drop a pooled connection for each click.
+            for quest in [1, 2, 5001, 5002] {
+                for _ in 0..2 {
+                    let pool = database.pool().await;
+                    let mut connection = pool.acquire().await.unwrap();
+                    let result = complete_quest(&mut connection, 1, quest).await.unwrap();
+                    assert!(result.quest_changed);
+                    assert_eq!(result.discoveries_created + result.discoveries_already_present, u64::from(quest <= 4032));
+                    drop(connection);
+                    let deleted = sqlx::query("DELETE FROM quest_progress WHERE profile_id=1 AND quest_id=?").bind(quest).execute(&*pool).await.unwrap();
+                    assert_eq!(deleted.rows_affected(), 1);
+                    let _: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM quest_progress WHERE profile_id=1").fetch_one(&*pool).await.unwrap();
+                }
+            }
+            let pool = database.pool().await;
+            let mut connection = pool.acquire().await.unwrap();
+            // A failed linked insert must release its writer transaction for the next command.
+            sqlx::raw_sql("CREATE TRIGGER fail_synthetic BEFORE INSERT ON discovery_progress WHEN NEW.discovery_id=3 BEGIN SELECT RAISE(ABORT,'synthetic failure'); END;")
+                .execute(&mut *connection).await.unwrap();
+            let error = complete_quest(&mut connection, 1, 3).await.unwrap_err();
+            assert_eq!(error.kind, "DatabaseError");
+            assert_eq!(count(&mut connection, "quest_progress", 1).await, 0);
+            assert!(complete_quest(&mut connection, 1, 4).await.unwrap().quest_changed);
+            assert_eq!(count(&mut connection, "quest_progress", 2).await, 0);
+        }).await.expect("quest updates or rollback held the pool/SQLite writer longer than 10 seconds");
+        eprintln!(
+            "synthetic pooled quest sequence completed in {:?}",
+            started.elapsed()
+        );
+        // Reproduce the pre-fix query plan and its effect on a concurrent writer.
+        // This deliberately retains the former correlated EXISTS as a regression reference.
+        let old_query = "SELECT d.id,
+            EXISTS(SELECT 1 FROM quest_discoveries mq JOIN quests m ON m.id=mq.quest_id
+              WHERE mq.discovery_id=d.id AND m.is_active=1 AND m.offer_method COLLATE BINARY IN
+              ('地理学','考古学','宗教学','生物学','美術','財宝鑑定','天文学')) AS mapRelated,
+            EXISTS(SELECT 1 FROM quest_discoveries mq JOIN quests m ON m.id=mq.quest_id
+              WHERE mq.discovery_id=d.id AND m.is_active=1 AND m.offer_method COLLATE BINARY IN
+              ('地理学','考古学','宗教学','生物学','美術','財宝鑑定','天文学')
+              AND (SELECT COUNT(*) FROM quest_discoveries all_mq WHERE all_mq.quest_id=m.id)<>1) AS mapNeedsReview
+            FROM discoveries d ORDER BY d.id";
+        let pool = database.pool().await;
+        let read_pool = pool.clone();
+        let (ready, running) = tokio::sync::oneshot::channel();
+        let reader = tokio::spawn(async move {
+            let mut rows = Box::pin(sqlx::query(old_query).fetch(&read_pool));
+            std::future::poll_fn(|cx| rows.as_mut().poll_next(cx))
+                .await
+                .unwrap()
+                .unwrap();
+            ready.send(()).unwrap();
+            while let Some(row) = std::future::poll_fn(|cx| rows.as_mut().poll_next(cx)).await {
+                row.unwrap();
+            }
+        });
+        tokio::time::timeout(Duration::from_secs(30), async {
+            running.await.unwrap();
+            let mut writer = pool.acquire().await.unwrap();
+            let result = complete_quest(&mut writer, 1, 5003).await;
+            eprintln!("concurrent writer with old summary: {result:?}");
+            assert!(
+                result.is_err(),
+                "old correlated query did not retain the reader lock"
+            );
+            assert!(result.unwrap_err().detail.contains("locked"));
+            reader.await.unwrap();
+            assert!(
+                complete_quest(&mut writer, 1, 5003)
+                    .await
+                    .unwrap()
+                    .quest_changed
+            );
+        })
+        .await
+        .expect("old-query reproduction exceeded 30 seconds");
+        let fixed_started = std::time::Instant::now();
+        tokio::time::timeout(Duration::from_secs(2), async {
+            let read = sqlx::query(&summary_sql).bind(1i64).fetch_all(&*pool);
+            let write = async {
+                let mut connection = pool.acquire().await.unwrap();
+                complete_quest(&mut connection, 1, 5004).await.unwrap()
+            };
+            let (rows, result) = tokio::join!(read, write);
+            assert_eq!(rows.unwrap().len(), 4032);
+            assert!(result.quest_changed);
+            sqlx::query("DELETE FROM quest_progress WHERE profile_id=1 AND quest_id=5004")
+                .execute(&*pool)
+                .await
+                .unwrap();
+        })
+        .await
+        .expect("fixed summary blocked a concurrent quest command");
+        eprintln!(
+            "fixed summary and concurrent writer completed in {:?}",
+            fixed_started.elapsed()
+        );
+        drop(pool);
+        database.pool().await.close().await;
+        std::fs::remove_dir_all(directory).unwrap();
     }
 
     #[allow(dead_code)]

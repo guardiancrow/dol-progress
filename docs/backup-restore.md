@@ -11,6 +11,7 @@
 - `profiles`
 - `quest_progress`
 - `discovery_progress`
+- `discovery_reporting_history`（version 4以降）
 - `master_import_history`
 - migration管理情報を含むその他のDB内容
 
@@ -51,19 +52,20 @@ Frontendから任意パスを復元commandへ渡す方式は採用しない。
 - migration履歴が空、失敗状態、checksum不一致、順序不正、未知versionである。
 
 backupは独自archiveではなくSQLite DBのsnapshotである。対応versionは別のbackup形式番号ではなく、
-`_sqlx_migrations`に記録された最終migration versionを指す。現在はversion 1〜3の正規prefixを許可する。
+`_sqlx_migrations`に記録された最終migration versionを指す。現在はversion 1〜4の正規prefixを許可する。
 
 | version | migration | 必須schemaの追加 |
 |---|---|---|
 | 1 | `initial_schema` | マスター、進捗、プロフィール、取り込み履歴等の初期table／column |
 | 2 | `quest_facets` | 必要スキルと個別オファー都市のfacet table／column |
 | 3 | `master_source_order` | `quests.source_order`と`discoveries.source_order` |
+| 4 | `map_report_hold` | `discovery_progress.report_hold`と`discovery_reporting_history`の全列 |
 
 各versionで必須table／columnと、version・description・success・checksumが既知migrationの
 連続したprefixであることを確認する。外部キー違反も復元を拒否する。version 3のsnapshotでも
 source orderのcolumnが欠けていれば互換backupとして扱わない。
 
-version 1／2 backupからの復元後は、再起動時に未適用migrationをversion 3まで適用する。
+version 1〜3 backupからの復元後は、再起動時に未適用migrationをversion 4まで適用する。004は旧業務列を変更せず、旧勲功値算入資格だけを履歴不明として引き継ぐ。
 version 1では保存済みQuest列から必要スキルと個別オファー都市をbackfillしてから通常UIで利用する。
 旧backupに元ファイルの行順がなければsource orderはNULLのままで、値を推測して補わない。
 migration履歴を復元処理独自に書き換えてはならない。
@@ -121,3 +123,10 @@ dialogのキャンセルはDBを変更しない正常な中止として扱う。
 処理対象はユーザーがdialogで明示選択したローカルファイルに限定する。広範なfilesystem権限を
 追加せず、ファイル操作と検証は専用Rust commandで行う。ネットワークアクセス、同期、background
 処理は実装しない。
+
+## 7. migration 004の合成復元検証
+
+旧backupを004アプリへ復元した後の通常migrationは、合成DBの専用回帰テストで検証する。
+旧業務列・PK・timestampと勲功値資格を保持し、004の維持意思・独立履歴もbackup・復元する。
+公開版へOwner専用の実コピー検証処理は含めず、通常アプリの処理と合成試験を維持する。
+実データの比較、通常GUI、FHD、再起動確認、本番移行の判断は合成試験の成功とは区別する。旧アプリへの004 DB直接接続は互換対象外である。

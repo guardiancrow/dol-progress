@@ -2,6 +2,7 @@ import type { DatabaseProvider } from "../db/client";
 import { getDatabase } from "../db/connection";
 import { handleDatabaseErrors } from "../db/errors";
 import { RELIC_CATEGORY_NAME } from "../discoveries/capabilities";
+import { automaticReportingDiscoveriesSql, meritEligibleDiscoveriesSql } from "../discoveries/automaticReporting";
 import type {
   AdventureMeritStats,
   DiscoveryCategoryProgressStats,
@@ -22,6 +23,9 @@ interface DiscoveryStatsRow {
   total: number;
   discovered: number;
   unreported: number;
+  unreportedNotReported?: number;
+  unreportedConfirmed?: number;
+  unreportedUnknown?: number;
   reported: number;
   cardOwned: number;
   cardCapableDiscovered: number;
@@ -54,8 +58,12 @@ export class ProgressStatsRepository {
         ),
         database.select<DiscoveryStatsRow[]>(
           `WITH active_progress AS (
-             SELECT dp.discovery_id, dp.reported, dp.card_owned
+             SELECT dp.discovery_id,
+                    CASE WHEN dp.discovery_id IN (${automaticReportingDiscoveriesSql}) THEN 1 ELSE dp.reported END AS reported,
+                    dp.card_owned,
+                    COALESCE(h.first_report_status, 'unknown') AS first_report_status
              FROM discovery_progress dp
+             LEFT JOIN discovery_reporting_history h ON h.profile_id = dp.profile_id AND h.discovery_id = dp.discovery_id
              WHERE dp.profile_id = $1
            ), stats AS (
              SELECT d.category_id AS categoryId,
@@ -64,6 +72,9 @@ export class ProgressStatsRepository {
                     CASE WHEN c.name = '${RELIC_CATEGORY_NAME}' THEN 0 ELSE 1 END AS canReport,
                     CASE WHEN c.name = '${RELIC_CATEGORY_NAME}' THEN 0 ELSE 1 END AS hasCard,
                     COALESCE(SUM(CASE WHEN c.name IS NOT '${RELIC_CATEGORY_NAME}' AND ap.discovery_id IS NOT NULL AND ap.reported = 0 THEN 1 ELSE 0 END), 0) AS unreported,
+                    COALESCE(SUM(CASE WHEN c.name IS NOT '${RELIC_CATEGORY_NAME}' AND ap.discovery_id IS NOT NULL AND ap.reported = 0 AND ap.first_report_status = 'not_reported' THEN 1 ELSE 0 END), 0) AS unreportedNotReported,
+                    COALESCE(SUM(CASE WHEN c.name IS NOT '${RELIC_CATEGORY_NAME}' AND ap.discovery_id IS NOT NULL AND ap.reported = 0 AND ap.first_report_status = 'confirmed' THEN 1 ELSE 0 END), 0) AS unreportedConfirmed,
+                    COALESCE(SUM(CASE WHEN c.name IS NOT '${RELIC_CATEGORY_NAME}' AND ap.discovery_id IS NOT NULL AND ap.reported = 0 AND ap.first_report_status = 'unknown' THEN 1 ELSE 0 END), 0) AS unreportedUnknown,
                     COALESCE(SUM(CASE WHEN c.name IS NOT '${RELIC_CATEGORY_NAME}' AND ap.discovery_id IS NOT NULL AND ap.reported = 1 THEN 1 ELSE 0 END), 0) AS reported,
                     COALESCE(SUM(CASE WHEN c.name IS NOT '${RELIC_CATEGORY_NAME}' AND ap.discovery_id IS NOT NULL AND ap.card_owned = 1 THEN 1 ELSE 0 END), 0) AS cardOwned,
                     COALESCE(SUM(CASE WHEN c.name IS NOT '${RELIC_CATEGORY_NAME}' AND ap.discovery_id IS NOT NULL THEN 1 ELSE 0 END), 0) AS cardCapableDiscovered
@@ -80,6 +91,9 @@ export class ProgressStatsRepository {
                   COALESCE(SUM(total), 0) AS total,
                   COALESCE(SUM(discovered), 0) AS discovered,
                   COALESCE(SUM(unreported), 0) AS unreported,
+                  COALESCE(SUM(unreportedNotReported), 0) AS unreportedNotReported,
+                  COALESCE(SUM(unreportedConfirmed), 0) AS unreportedConfirmed,
+                  COALESCE(SUM(unreportedUnknown), 0) AS unreportedUnknown,
                   COALESCE(SUM(reported), 0) AS reported,
                   COALESCE(SUM(cardOwned), 0) AS cardOwned,
                   COALESCE(SUM(cardCapableDiscovered), 0) AS cardCapableDiscovered,
@@ -94,6 +108,9 @@ export class ProgressStatsRepository {
                   s.total,
                   s.discovered,
                   s.unreported,
+                  s.unreportedNotReported,
+                  s.unreportedConfirmed,
+                  s.unreportedUnknown,
                   s.reported,
                   s.cardOwned,
                   s.cardCapableDiscovered,
@@ -110,12 +127,10 @@ export class ProgressStatsRepository {
                   COUNT(*) AS reportedCount,
                   COUNT(d.experience) AS knownExperienceCount,
                   COALESCE(SUM(CASE WHEN d.experience IS NULL THEN 1 ELSE 0 END), 0) AS unknownExperienceCount
-           FROM discovery_progress dp
-           JOIN discoveries d ON d.id = dp.discovery_id
+           FROM (${meritEligibleDiscoveriesSql}) eligible
+           JOIN discoveries d ON d.id = eligible.discovery_id
            LEFT JOIN discovery_categories c ON c.id = d.category_id
-           WHERE dp.profile_id = $1
-             AND dp.reported = 1
-             AND c.name IS NOT $2`,
+           WHERE c.name IS NOT $2`,
           [profileId, RELIC_CATEGORY_NAME],
         ),
       ]);
@@ -160,11 +175,20 @@ function mapDiscoveryStats(row: DiscoveryStatsRow | undefined): DiscoveryProgres
     total,
     discovered,
     undiscovered: total - discovered,
+    ...mapUnreportedBreakdown(row),
     unreported: row?.unreported ?? 0,
     reported: row?.reported ?? 0,
     cardOwned: row?.cardOwned ?? 0,
     cardCapableDiscovered: row?.cardCapableDiscovered ?? 0,
   };
+}
+
+function mapUnreportedBreakdown(row: DiscoveryStatsRow | undefined): Pick<DiscoveryProgressStats, "unreportedBreakdown"> {
+  return row && row.unreportedNotReported !== undefined && row.unreportedConfirmed !== undefined &&
+    row.unreportedUnknown !== undefined &&
+    row.unreportedNotReported + row.unreportedConfirmed + row.unreportedUnknown === row.unreported
+    ? { unreportedBreakdown: { notReported: row.unreportedNotReported, confirmed: row.unreportedConfirmed, unknown: row.unreportedUnknown } }
+    : {};
 }
 
 function isCategoryRow(
@@ -197,6 +221,7 @@ function mapCategoryStats(
     discovered: row.discovered,
     undiscovered: row.total - row.discovered,
     unreported: row.unreported,
+    ...mapUnreportedBreakdown(row),
     cardOwned: row.cardOwned,
     canReport: row.canReport === 1,
     hasCard: row.hasCard === 1,

@@ -29,6 +29,8 @@ const QUEST_SELECT = `
 interface QuestWithDiscoveryRow extends QuestRow {
   discoveryId: number | null;
   discoveryName: string | null;
+  discoveryDescription: string | null;
+  discoveryNotes: string | null;
   categoryId: number | null;
   categoryName: string | null;
   categorySortOrder: number | null;
@@ -93,6 +95,8 @@ export class QuestRepository {
                 q.updated_at AS updatedAt,
                 d.id AS discoveryId,
                 d.name AS discoveryName,
+                d.description AS discoveryDescription,
+                d.notes AS discoveryNotes,
                 c.id AS categoryId,
                 c.name AS categoryName,
                 c.sort_order AS categorySortOrder
@@ -130,6 +134,8 @@ export class QuestRepository {
           item.discoveries.push({
             id: row.discoveryId,
             name: row.discoveryName,
+            description: row.discoveryDescription,
+            notes: row.discoveryNotes,
             categoryId: row.categoryId,
             categoryName: row.categoryName,
             categorySortOrder: row.categorySortOrder,

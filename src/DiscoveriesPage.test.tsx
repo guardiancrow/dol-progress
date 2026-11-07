@@ -19,13 +19,196 @@ import type { ProfileRepositoryPort } from "./profiles/ProfileContext";
 import type { UpdateProfileInput } from "./repositories/profileRepository";
 import type { ProgressLinkServicePort } from "./progressLink";
 import type { ProgressStats, DiscoveryCategoryProgressStats } from "./overview/types";
+import { DiscoveryStateService, type DiscoveryState } from "./discoveries/stateService";
+import { discoveryStateReader, type DiscoveryStateSummary } from "./discoveries/stateReader";
+
+vi.mock("./discoveries/stateReader", async (importOriginal) => ({...await importOriginal<typeof import("./discoveries/stateReader")>(),discoveryStateReader: {list: vi.fn().mockResolvedValue([])}}));
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.mocked(discoveryStateReader.list).mockReset().mockResolvedValue([]);
 });
 
 describe("Discovery UI", () => {
+  it("reloads map status, filters and existing card/memo after the common state command succeeds", async () => {
+    const saved=progress(1,1,false,true,"keep");
+    const storage=new Map([[1,[saved]]]);
+    const repositories=setup([profile(1)],[discovery(1,"地図の発見物",{relatedQuests:[{id:10,title:"対象地図"}]})],storage);
+    const before:DiscoveryStateSummary={id:1,active:1,categoryName:"地理",experience:100,masterUpdatedAt:saved.updatedAt,discovered:1,reported:0,reportHold:1,progressUpdatedAt:saved.updatedAt,firstReportStatus:"unknown",legacyMeritCredit:0,historyUpdatedAt:null,automaticReporting:0,mapRelated:1};
+    const after:DiscoveryStateSummary={...before,reported:1,reportHold:0,firstReportStatus:"confirmed",historyUpdatedAt:"saved",progressUpdatedAt:"saved"};
+    vi.mocked(discoveryStateReader.list).mockResolvedValueOnce([before]).mockResolvedValueOnce([after]);
+    const snapshot:DiscoveryState={profileId:1,discoveryId:1,active:true,categoryName:"地理",masterUpdatedAt:saved.updatedAt,automaticReporting:false,
+      progress:{reported:false,reportHold:true,cardOwned:true,memo:"keep",updatedAt:saved.updatedAt},history:null,
+      relatedQuests:[{id:10,active:true,offerMethod:"地理学",updatedAt:"q",discoveryCount:1}]};
+    vi.spyOn(DiscoveryStateService.prototype,"get").mockResolvedValue(snapshot);
+    const update=vi.spyOn(DiscoveryStateService.prototype,"update").mockImplementation(async()=>{
+      storage.set(1,[{...saved,reported:true,updatedAt:"saved"}]);
+      return {...snapshot,progress:{...snapshot.progress!,reported:true,reportHold:false,updatedAt:"saved"},history:{status:"confirmed",legacyMeritCredit:false,updatedAt:"saved"}};
+    });
+    const user=await open(repositories);
+    await user.selectOptions(screen.getByLabelText("地図"),"suppressed");
+    await user.selectOptions(await screen.findByRole("combobox",{name:"地図の発見物の地図の状態"}),"reported");
+    await user.click(await screen.findByRole("button",{name:"記録を保存"}));
+    await screen.findByText("条件に一致する発見物がありません");
+    await user.selectOptions(screen.getByLabelText("地図"),"candidate");
+    expect(await screen.findByRole("combobox",{name:"地図の発見物の地図の状態"})).toHaveValue("reported");
+    expect(screen.getByRole("checkbox",{name:"地図の発見物のカード所有状態"})).toBeChecked();
+    expect(storage.get(1)?.[0]?.memo).toBe("keep");
+    expect(update).toHaveBeenCalledExactlyOnceWith(snapshot,{kind:"report"},null);
+    expect(repositories.progress.setReported).not.toHaveBeenCalled();
+  });
+
+  it("reloads overview total, history breakdown and merit after a map history correction",async()=>{
+    const saved=progress(1,1,false,true,"keep");
+    const repositories=setup([profile(1)],[discovery(1,"履歴対象",{experience:100,relatedQuests:[{id:10,title:"地図"}]})],new Map([[1,[saved]]]));
+    let current:DiscoveryStateSummary={id:1,active:1,categoryName:"地理",experience:100,masterUpdatedAt:saved.updatedAt,
+      discovered:1,reported:0,reportHold:0,progressUpdatedAt:saved.updatedAt,firstReportStatus:"confirmed",
+      legacyMeritCredit:0,historyUpdatedAt:"h",automaticReporting:0,mapRelated:1};
+    vi.mocked(discoveryStateReader.list).mockImplementation(async()=>[current]);
+    const snapshot:DiscoveryState={profileId:1,discoveryId:1,active:true,categoryName:"地理",masterUpdatedAt:saved.updatedAt,automaticReporting:false,
+      progress:{reported:false,reportHold:false,cardOwned:true,memo:"keep",updatedAt:saved.updatedAt},
+      history:{status:"confirmed",legacyMeritCredit:false,updatedAt:"h"},relatedQuests:[{id:10,offerMethod:"地理学",active:true,updatedAt:"q",discoveryCount:1}]};
+    vi.spyOn(DiscoveryStateService.prototype,"get").mockResolvedValue(snapshot);
+    const stats=categoryStats([{id:1,name:"地理",sortOrder:10}]);
+    stats.discoveries={total:1,discovered:1,undiscovered:0,unreported:1,reported:0,cardOwned:1,cardCapableDiscovered:1,
+      unreportedBreakdown:{notReported:0,confirmed:1,unknown:0}};
+    stats.adventureMerit={knownMerit:100,reportedCount:1,knownExperienceCount:1,unknownExperienceCount:0};
+    const update=vi.spyOn(DiscoveryStateService.prototype,"update").mockImplementation(async()=>{
+      current={...current,firstReportStatus:"not_reported",historyUpdatedAt:"new"};
+      stats.discoveries={...stats.discoveries,unreportedBreakdown:{notReported:1,confirmed:0,unknown:0}};
+      stats.adventureMerit={knownMerit:0,reportedCount:0,knownExperienceCount:0,unknownExperienceCount:0};
+      return {...snapshot,history:{status:"not_reported",legacyMeritCredit:false,updatedAt:"new"}};
+    });
+    const user=await openDrilldown(repositories,stats);
+    expect(screen.getByRole("heading",{name:"現在未報告"}).closest("article")).toHaveTextContent("初回未報告0件再報告待ち1件");
+    await user.click(screen.getByRole("button",{name:"発見物"}));
+    await user.click(await screen.findByRole("checkbox",{name:"履歴対象の地図の初回報告"}));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button",{name:"記録を保存"}));
+    await waitFor(()=>expect(screen.getByRole("checkbox",{name:"履歴対象の地図の初回報告"})).not.toBeChecked());
+    expect(screen.getByRole("checkbox",{name:"履歴対象のカード所有状態"})).toBeChecked();
+    expect(update).toHaveBeenCalledExactlyOnceWith(snapshot,{kind:"correctHistory",status:"not_reported",removeLegacyCredit:false,currentState:null},null);
+    await user.click(screen.getByRole("button",{name:"概要"}));
+    await screen.findByRole("heading",{name:"現在未報告"});
+    expect(screen.getByRole("heading",{name:"現在未報告"}).closest("article")).toHaveTextContent("初回未報告1件再報告待ち0件");
+    const card=screen.getByRole("heading",{name:"現在未報告"}).closest("article")!;
+    expect(within(card).getByText("1件",{selector:".overview-value"})).toBeInTheDocument();
+    expect(screen.getByRole("heading",{name:"冒険勲功値"}).closest("article")).toHaveTextContent("算入対象発見物 0件");
+  });
+
+  it.each([
+    ["未報告の発見物一覧を開く", "unreported", "all", "{Enter}"],
+    ["カード未所有の発見物一覧を開く", "all", "not-owned", " "],
+  ])("opens %s with exclusive initial filters, preserves profile and allows later navigation", async (label, status, card, key) => {
+    const repositories = setup([profile(1, "A"), profile(2, "B")], [
+      discovery(1, "未報告未所有"), discovery(2, "報告済み所有"),
+      discovery(3, "自動報告", { automaticReporting: true }),
+      discovery(4, "レリック", { category: { id: 20, name: "レリック", sortOrder: 20 } }),
+      discovery(5, "未発見"), discovery(6, "非active", { isActive: false }),
+    ], new Map([[1, [progress(1, 1, false, false), progress(1, 2, true), progress(1, 3), progress(1, 4, false, false), progress(1, 6, false, false)]]]));
+    const stats = categoryStats([{ id: 1, name: "地理", sortOrder: 1 }]);
+    stats.discoveries = { total: 5, discovered: 4, undiscovered: 1, unreported: 1, reported: 2, cardOwned: 2, cardCapableDiscovered: 3 };
+    const user = await openDrilldown(repositories, stats);
+    expect(screen.getByText("所有 2 / 3")).toBeInTheDocument();
+    expect(screen.queryByText("未報告一覧を表示")).not.toBeInTheDocument();
+    expect(screen.queryByText("未所有一覧を表示")).not.toBeInTheDocument();
+    const button = screen.getByRole("button", { name: label });
+    button.focus();
+    await user.keyboard(key);
+    await screen.findByRole("table");
+    expect(screen.getByRole("option", { name: "未所有（発見済みのみ）" })).toHaveValue("not-owned");
+    expect(screen.getByLabelText("状態")).toHaveValue(status);
+    expect(screen.getByLabelText("カード所有")).toHaveValue(card);
+    expect(screen.getByLabelText("分類")).toHaveValue("all");
+    expect(screen.getByText("1 / 1ページ")).toBeInTheDocument();
+    const expectedCount = status === "unreported" ? stats.discoveries.unreported : stats.discoveries.cardCapableDiscovered - stats.discoveries.cardOwned;
+    expect(bodyRows()).toHaveLength(expectedCount);
+    expect(bodyRows()[0]).toHaveTextContent("未報告未所有");
+    await user.selectOptions(screen.getByLabelText("状態"), "all");
+    await user.selectOptions(screen.getByLabelText("カード所有"), "all");
+    expect(bodyRows()).toHaveLength(5);
+    await user.type(screen.getByLabelText("発見物名を検索"), "未報告");
+    await user.selectOptions(screen.getByLabelText("1ページの件数"), "100");
+    expect(bodyRows()).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "概要" }));
+    const otherLabel = status === "unreported" ? "カード未所有の発見物一覧を開く" : "未報告の発見物一覧を開く";
+    await user.click(await screen.findByRole("button", { name: otherLabel }));
+    await screen.findByRole("table");
+    expect(screen.getByLabelText("発見物名を検索")).toHaveValue("");
+    expect(screen.getByLabelText("状態")).toHaveValue(status === "unreported" ? "all" : "unreported");
+    expect(screen.getByLabelText("カード所有")).toHaveValue(status === "unreported" ? "not-owned" : "all");
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    await screen.findByRole("table");
+    expect(screen.getByLabelText("状態")).toHaveValue("all");
+    expect(screen.getByLabelText("カード所有")).toHaveValue("all");
+    expect(screen.getByRole("checkbox", { name: "未報告未所有の発見状態" })).not.toBeChecked();
+    await user.click(screen.getByRole("button", { name: "プロフィール" }));
+    await user.click(screen.getByRole("button", { name: "発見物" }));
+    await screen.findByRole("table");
+    expect(screen.getByLabelText("現在のプロフィール")).toHaveValue("2");
+    expect(screen.getByLabelText("状態")).toHaveValue("all");
+    expect(screen.getByLabelText("カード所有")).toHaveValue("all");
+    expect(bodyRows()).toHaveLength(5);
+    expect(repositories.link.discoverWithLinkedQuest).not.toHaveBeenCalled();
+    expect(repositories.progress.setReported).not.toHaveBeenCalled();
+    expect(repositories.progress.setCardOwned).not.toHaveBeenCalled();
+  });
+
+  it.each(["未報告の発見物一覧を開く", "カード未所有の発見物一覧を開く"])("opens zero matches and missing masters safely from %s", async (label) => {
+    const repositories = setup([profile(1)], [discovery(1, "既所有")], new Map([[1, [progress(1, 1, true, true)]]]));
+    const user = await openDrilldown(repositories, categoryStats([]));
+    await user.click(screen.getByRole("button", { name: label }));
+    expect(await screen.findByText("条件に一致する発見物がありません")).toBeInTheDocument();
+    expect(screen.getByText("0 / 0ページ")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "概要" }));
+    repositories.master.items.splice(0);
+    await user.click(await screen.findByRole("button", { name: label }));
+    expect(await screen.findByText("発見物のマスターデータがありません")).toBeInTheDocument();
+  });
+  it("shows legacy stored unreported progress as automatic, filters by effective state and isolates profiles", async () => {
+    const stored = progress(1, 1, false, false, "keep");
+    const repositories = setup([profile(1, "A"), profile(2, "B")], [
+      discovery(1, "特殊発見", { automaticReporting: true }), discovery(2, "通常発見"),
+      discovery(3, "レリック発見", { category: { id: 2, name: "レリック", sortOrder: 2 } }),
+    ], new Map([[1, [stored, progress(1, 2), progress(1, 3)]]]));
+    const user = await open(repositories);
+    expect(screen.getByText("報告済み（自動）")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "特殊発見の報告状態" })).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "特殊発見のカード所有状態" })).not.toBeChecked();
+    expect(screen.getByText("未報告 1件")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("状態"), "reported");
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent("特殊発見");
+    await user.selectOptions(screen.getByLabelText("状態"), "unreported");
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent("通常発見");
+    expect(stored).toMatchObject({ reported: false, cardOwned: false, memo: "keep" });
+    expect(repositories.progress.setReported).not.toHaveBeenCalled();
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    await user.selectOptions(await screen.findByLabelText("状態"), "all");
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "特殊発見の発見状態" })).not.toBeChecked());
+    expect(screen.queryByText("報告済み（自動）")).not.toBeInTheDocument();
+  });
+
+  it("uses persisted reported state immediately after selecting a special route among multiple quests", async () => {
+    const repositories = setup([profile(1)], [discovery(1, "複数経路", {
+      relatedQuests: [{ id: 10, title: "特殊Quest" }, { id: 20, title: "通常Quest" }],
+    })]);
+    repositories.link.discoverWithLinkedQuest.mockImplementation(async (profileId, discoveryId, selectedQuestId) => {
+      await repositories.progress.markDiscovered(profileId, discoveryId);
+      await repositories.progress.setReported(profileId, discoveryId, true);
+      return { discoveryCreated: true, questCompleted: true, questAlreadyCompleted: false, selectedQuestId };
+    });
+    const user = await open(repositories);
+    await user.click(screen.getByRole("checkbox", { name: "複数経路の発見状態" }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByLabelText("特殊Quest"));
+    await user.click(within(dialog).getByRole("button", { name: "発見済みにする" }));
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "複数経路の報告状態" })).toBeChecked());
+    expect(screen.getByRole("checkbox", { name: "複数経路の報告状態" })).toBeEnabled();
+    expect(screen.queryByText("報告済み（自動）")).not.toBeInTheDocument();
+  });
   it("passes master description and notes separately and excludes profile memo without changing progress", async () => {
     const repositories = setup([profile(1, "A"), profile(2, "B")], [
       discovery(1, "合成発見物", { description: "合成の説明", notes: "合成の攻略備考" }),
@@ -85,9 +268,8 @@ describe("Discovery UI", () => {
       }
       await user.click(screen.getByRole("button", { name: "概要" }));
     }
-    for (const label of ["主要な進捗", "補助的な進捗"]) {
-      expect(within(screen.getByRole("group", { name: label })).queryByRole("button")).not.toBeInTheDocument();
-    }
+    expect(within(screen.getByRole("group", { name: "主要な進捗" })).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(screen.getByRole("group", { name: "補助的な進捗" })).getAllByRole("button")).toHaveLength(2);
     expect(repositories.progress.markDiscovered).not.toHaveBeenCalled();
   });
 
@@ -461,6 +643,7 @@ describe("Discovery UI", () => {
   });
 
   it.each([[true], [false]])("updates reported=%s independently", async (initial) => {
+    vi.spyOn(window,"confirm").mockReturnValue(true);
     const repositories = setup([profile(1)], [discovery(1, "発見")], new Map([[1, [progress(1, 1, initial)]]]));
     const user = await open(repositories);
     await user.click(screen.getByRole("checkbox", { name: "発見の報告状態" }));
@@ -496,7 +679,11 @@ describe("Discovery UI", () => {
   it("prevents a duplicate row update while persistence is pending", async () => {
     let resolveWrite: (() => void) | undefined;
     const repositories = setup([profile(1)], [discovery(1, "発見")]);
-    repositories.progress.markDiscovered = vi.fn(() => new Promise<void>((resolve) => { resolveWrite = resolve; }));
+    const persist = repositories.progress.markDiscovered;
+    repositories.progress.markDiscovered = vi.fn(async (profileId, discoveryId) => {
+      await new Promise<void>((resolve) => { resolveWrite = resolve; });
+      await persist(profileId, discoveryId);
+    });
     const user = await open(repositories);
     const checkbox = screen.getByRole("checkbox", { name: "発見の発見状態" });
     await user.click(checkbox);
@@ -591,7 +778,7 @@ async function openDrilldown(repositories: Repositories, stats: ProgressStats) {
   />);
   await screen.findByRole("heading", { name: "プロフィール" });
   await user.click(screen.getByRole("button", { name: "概要" }));
-  await screen.findByRole("list");
+  await screen.findByRole("group", { name: "補助的な進捗" });
   return user;
 }
 
@@ -664,10 +851,11 @@ function progress(profileId: number, discoveryId: number, reported = false, card
 
 function masterThree() { return [discovery(1, "未発見物"), discovery(2, "未報告物"), discovery(3, "報告済み物")]; }
 
-function discovery(id: number, name: string, overrides: { description?: string | null; notes?: string | null; category?: { id: number; name: string; sortOrder: number } | null; rank?: number | null; era?: string | null; points?: number | null; difficulty?: number | null; experience?: number | null; relatedQuests?: Array<{ id: number; title: string }> } = {}): DiscoveryWithRelations {
+function discovery(id: number, name: string, overrides: { isActive?: boolean; automaticReporting?: boolean; description?: string | null; notes?: string | null; category?: { id: number; name: string; sortOrder: number } | null; rank?: number | null; era?: string | null; points?: number | null; difficulty?: number | null; experience?: number | null; relatedQuests?: Array<{ id: number; title: string; notes?: string | null }> } = {}): DiscoveryWithRelations {
   return {
-    discovery: { id, gvdbId: id + 1000, categoryId: overrides.category === null ? null : (overrides.category?.id ?? 1), name, rank: overrides.rank ?? null, description: overrides.description ?? null, era: overrides.era ?? null, points: overrides.points ?? null, difficulty: overrides.difficulty ?? null, experience: overrides.experience ?? null, notes: overrides.notes ?? null, sourceUpdatedAt: null, isActive: true, rawRowJson: "{}", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+    automaticReporting: overrides.automaticReporting ?? false,
+    discovery: { id, gvdbId: id + 1000, categoryId: overrides.category === null ? null : (overrides.category?.id ?? 1), name, rank: overrides.rank ?? null, description: overrides.description ?? null, era: overrides.era ?? null, points: overrides.points ?? null, difficulty: overrides.difficulty ?? null, experience: overrides.experience ?? null, notes: overrides.notes ?? null, sourceUpdatedAt: null, isActive: overrides.isActive ?? true, rawRowJson: "{}", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
     category: overrides.category === null ? null : (overrides.category ?? { id: 1, name: "地理", sortOrder: 10 }),
-    relatedQuests: overrides.relatedQuests ?? [],
+    relatedQuests: (overrides.relatedQuests ?? []).map((quest) => ({ ...quest, notes: quest.notes ?? null })),
   };
 }

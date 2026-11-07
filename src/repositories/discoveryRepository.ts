@@ -3,6 +3,7 @@ import { getDatabase } from "../db/connection";
 import { handleDatabaseErrors } from "../db/errors";
 import type { Discovery, DiscoveryWithRelations } from "../domain/models";
 import { mapDiscovery, type DiscoveryRow } from "./mappers";
+import { automaticReportingDiscoveriesSql } from "../discoveries/automaticReporting";
 
 const DISCOVERY_SELECT = `
   SELECT id,
@@ -62,6 +63,7 @@ export class DiscoveryRepository {
       const database = await this.databaseProvider();
       const rows = await database.select<DiscoveryWithRelationsRow[]>(`
         SELECT d.id,
+               d.id IN (${automaticReportingDiscoveriesSql}) AS automaticReporting,
                d.gvdb_id AS gvdbId,
                d.category_id AS categoryId,
                d.name,
@@ -80,7 +82,8 @@ export class DiscoveryRepository {
                c.name AS categoryName,
                c.sort_order AS categorySortOrder,
                q.id AS relatedQuestId,
-               q.title AS relatedQuestTitle
+               q.title AS relatedQuestTitle,
+               q.notes AS relatedQuestNotes
         FROM discoveries d
         LEFT JOIN discovery_categories c ON c.id = d.category_id
         LEFT JOIN quest_discoveries qd ON qd.discovery_id = d.id
@@ -92,6 +95,7 @@ export class DiscoveryRepository {
         let item = grouped.get(row.id);
         if (!item) {
           item = {
+            automaticReporting: row.automaticReporting === 1,
             discovery: mapDiscovery(row),
             category:
               row.categoryId === null || row.categoryName === null
@@ -109,6 +113,7 @@ export class DiscoveryRepository {
           item.relatedQuests.push({
             id: row.relatedQuestId,
             title: row.relatedQuestTitle,
+            notes: row.relatedQuestNotes,
           });
         }
       }
@@ -143,8 +148,10 @@ export class DiscoveryRepository {
 }
 
 interface DiscoveryWithRelationsRow extends DiscoveryRow {
+  automaticReporting: number;
   categoryName: string | null;
   categorySortOrder: number | null;
   relatedQuestId: number | null;
   relatedQuestTitle: string | null;
+  relatedQuestNotes: string | null;
 }

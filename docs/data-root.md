@@ -4,6 +4,11 @@
 
 Phase 23D-B1はportableの標準保存場所、外部Custom root、bootstrap、filesystem startup failureを扱う。active databaseは常に1つだけであり、Frontendは保存場所を決定しない。Phase 23D-B2ではこれらの処理の前にWindowsのWebView2 Runtime preflightを追加する。Phase 23D-B3は表示用情報と利用者向け案内を整備し、保存処理は変更しない。release packaging、version変更は後続Phaseとする。クラウド同期・ネットワーク共有の正式サポートを追加しない。
 
+Map-C6Aでは、Windowsの`main.rs`でRuntime preflightより先にアプリ単位の名前付きMutexを確保する。
+重複・作成失敗時は使用許諾、Data Rootの解決・probe、DB初期化へ進まない。
+同一セッションでは保存先が異なるポータブル環境も同時起動できない。
+起動順序と制限は[機能要件3.4](requirements.md#34-windowsの多重起動防止)、試験結果は[Map-C6A検証記録](map-c6a-verification.md)を参照する。
+
 ## 保存場所とbootstrap
 
 標準保存場所は`<exe-dir>\data\dol-progress.db`である。bootstrapの正本は`<exe-dir>\config\data-root.json`と`data-root.last-good.json`であり、DB rootとconfig rootを兼用しない。`PortablePaths`が`std::env::current_exe()`のparentから一度解決し、CWD、argv[0]、shortcutのStart Inに依存しない。PathBuf/OsStrを使用し、Unicodeと空白を保持する。

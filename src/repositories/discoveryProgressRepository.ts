@@ -4,6 +4,7 @@ import type { DatabaseProvider } from "../db/client";
 import { getDatabase } from "../db/connection";
 import { entityNotFound, handleDatabaseErrors } from "../db/errors";
 import type { DiscoveryProgress } from "../domain/models";
+import { automaticReportingDiscoveriesSql } from "../discoveries/automaticReporting";
 import {
   type DiscoveryProgressRow,
   type EntityIdRow,
@@ -55,12 +56,9 @@ export class DiscoveryProgressRepository {
     return handleDatabaseErrors(
       "discoveryProgress.markUndiscovered",
       async () => {
-        const database = await this.databaseProvider();
-        await database.execute(
-          `DELETE FROM discovery_progress
-           WHERE profile_id = $1 AND discovery_id = $2`,
-          [profileId, discoveryId],
-        );
+        await this.invokeCommand("remove_discovery_progress", {
+          request: { profileId, discoveryId },
+        });
       },
     );
   }
@@ -169,7 +167,10 @@ export class DiscoveryProgressRepository {
   ): Promise<number[]> {
     return handleDatabaseErrors(operation, async () => {
       const database = await this.databaseProvider();
-      const conditionSql = condition ? ` AND ${condition}` : "";
+      const capable = `discovery_id IN (SELECT d.id FROM discoveries d LEFT JOIN discovery_categories c ON c.id = d.category_id WHERE c.name IS NOT 'レリック')`;
+      const conditionSql = condition === "reported = 0"
+        ? ` AND reported = 0 AND discovery_id NOT IN (${automaticReportingDiscoveriesSql}) AND ${capable}`
+        : condition ? ` AND ${condition} AND ${capable}` : "";
       const rows = await database.select<EntityIdRow[]>(
         `SELECT discovery_id AS id
          FROM discovery_progress

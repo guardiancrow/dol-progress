@@ -26,6 +26,7 @@ function quest(id: number, notes: string | null): QuestRowViewModel {
 
 function discovery(id: number, description: string | null, notes: string | null): DiscoveryRowViewModel {
   return {
+    automaticReporting: false, effectiveReported: false,
     id, name: `合成発見物${id}`, description, notes, category: null, rank: null,
     era: null, points: null, difficulty: null, experience: null, relatedQuests: [],
     canReport: true, hasCard: true, status: "undiscovered", progress: null, updating: false,
@@ -38,6 +39,81 @@ function discoveryTable(rows: DiscoveryRowViewModel[], resetKey = 1) {
 }
 
 describe("Master information in tables", () => {
+  it("shows each linked discovery independently from quest notes, including matching and shared IDs", async () => {
+    const first = quest(1, "クエスト固有の備考");
+    const second = quest(2, null);
+    const shared = {
+      id: 1, name: "共有発見物", description: "発見物の説明\n次の行", notes: "発見物の備考",
+      categoryId: null, categoryName: null, categorySortOrder: null,
+    };
+    first.discoveries = [shared, { ...shared, id: 2, name: "別の発見物", description: null, notes: "別の備考" }];
+    second.discoveries = [shared];
+    const update = vi.fn();
+    render(<QuestTable rows={[first, second]} paginationResetKey={1} onToggleCompletion={update} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "合成依頼1の備考を表示" }));
+    expect(screen.getByRole("dialog", { name: "合成依頼1" })).toHaveTextContent("クエスト固有の備考");
+    const sharedButtons = screen.getAllByRole("button", { name: "共有発見物の説明・備考を表示" });
+    await user.click(sharedButtons[0]!);
+    let popup = screen.getByRole("dialog", { name: "共有発見物" });
+    expect(within(popup).getByRole("heading", { name: "説明" }).nextElementSibling?.textContent).toBe(shared.description);
+    expect(popup).toHaveTextContent("発見物の備考");
+    expect(popup).not.toHaveTextContent("クエスト固有の備考");
+    await user.click(sharedButtons[1]!);
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(sharedButtons[0]).toHaveAttribute("aria-expanded", "false");
+    expect(sharedButtons[1]).toHaveAttribute("aria-expanded", "true");
+    await user.keyboard("{Escape}");
+    expect(sharedButtons[1]).toHaveFocus();
+    const other = screen.getByRole("button", { name: "別の発見物の説明・備考を表示" });
+    other.focus();
+    await user.keyboard(" ");
+    popup = screen.getByRole("dialog", { name: "別の発見物" });
+    expect(popup).toHaveTextContent("別の備考");
+    expect(within(popup).queryByRole("heading", { name: "説明" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "閉じる" }));
+    expect(other).toHaveFocus();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it.each([[null, null], ["", ""], [" \n　", "\t "]])("omits empty linked discovery details (%j / %j)", (description, notes) => {
+    const row = quest(1, "クエスト備考");
+    row.discoveries = [{ id: 1, name: "空の発見物", description, notes, categoryId: null, categoryName: null, categorySortOrder: null }];
+    render(<QuestTable rows={[row]} paginationResetKey={1} onToggleCompletion={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "空の発見物の説明・備考を表示" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "合成依頼1の備考を表示" })).toBeInTheDocument();
+  });
+  it("keeps discovery and each related quest separate even with matching IDs, and reuses focus and close behavior", async () => {
+    const row = discovery(1, "発見物の説明", "発見物の備考");
+    row.relatedQuests = [
+      { id: 1, title: "関連依頼A", notes: "依頼Aの備考\n次の行" },
+      { id: 2, title: "関連依頼B", notes: "依頼Bの備考" },
+      { id: 3, title: "備考なし", notes: null },
+      { id: 4, title: "空白のみ", notes: " \n　" },
+    ];
+    render(discoveryTable([row]));
+    const user = userEvent.setup();
+    expect(screen.queryByRole("button", { name: "備考なしの備考を表示" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "空白のみの備考を表示" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "合成発見物1の説明・備考を表示" }));
+    expect(screen.getByRole("dialog", { name: "合成発見物1" })).toHaveTextContent("発見物の説明");
+    const first = screen.getByRole("button", { name: "関連依頼Aの備考を表示" });
+    await user.click(first);
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(screen.getByRole("dialog", { name: "関連依頼A" }).querySelector("p")?.textContent).toBe("依頼Aの備考\n次の行");
+    expect(screen.getByRole("dialog")).not.toHaveTextContent("発見物の備考");
+    await user.keyboard("{Escape}");
+    expect(first).toHaveFocus();
+    const second = screen.getByRole("button", { name: "関連依頼Bの備考を表示" });
+    second.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("dialog", { name: "関連依頼B" })).toHaveTextContent("依頼Bの備考");
+    await user.click(screen.getByRole("button", { name: "閉じる" }));
+    expect(second).toHaveFocus();
+    await user.click(second);
+    fireEvent.change(screen.getByLabelText("発見物名を検索"), { target: { value: "不存在" } });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
   it("only shows quest triggers for nonblank notes and preserves the complete multiline text", async () => {
     const text = `  合成の日本語長文\n${"攻略ABC123".repeat(500)}\nhttps://example.invalid/${"x".repeat(500)}  `;
     const onUpdate = vi.fn();

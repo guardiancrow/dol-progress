@@ -10,6 +10,14 @@ pub(crate) const QUEST_FACETS_SCHEMA: &str = include_str!("../migrations/002_que
 pub(crate) const MASTER_SOURCE_ORDER_SCHEMA: &str =
     include_str!("../migrations/003_master_source_order.sql");
 
+pub(crate) const MAP_REPORT_HOLD_SCHEMA: &str =
+    include_str!("../migrations/004_map_report_hold.sql");
+const MAP_REPORT_HOLD_CHECKSUM: &[u8] = &[
+    0x4b, 0xa4, 0xf8, 0x87, 0x1c, 0x39, 0xb0, 0x2e, 0xab, 0x27, 0xc8, 0x9f, 0xfd, 0x3f, 0x0d, 0x56,
+    0x70, 0xe1, 0x7b, 0x4a, 0x5e, 0xc7, 0xcb, 0xf9, 0xbc, 0x58, 0x59, 0x01, 0xe7, 0x43, 0x96, 0xec,
+    0x25, 0xff, 0x38, 0xb1, 0xcc, 0x9b, 0xbf, 0xf5, 0x6e, 0x76, 0x1b, 0x52, 0x1a, 0x75, 0xf6, 0x9c,
+];
+
 #[derive(Debug)]
 struct MigrationList(Vec<MigrationDefinition>);
 
@@ -42,7 +50,7 @@ const MASTER_SOURCE_ORDER_CHECKSUM: &[u8] = &[
     0x37, 0x70, 0x0c, 0x40, 0x5a, 0x48, 0xad, 0x7f, 0xcf, 0x86, 0xa7, 0x49, 0xa2, 0xb0, 0xfe, 0xda,
 ];
 
-pub(crate) const SUPPORTED_MIGRATION_PREFIX: [MigrationIdentity; 3] = [
+pub(crate) const SUPPORTED_MIGRATION_PREFIX: [MigrationIdentity; 4] = [
     MigrationIdentity {
         version: 1,
         description: "initial_schema",
@@ -57,6 +65,11 @@ pub(crate) const SUPPORTED_MIGRATION_PREFIX: [MigrationIdentity; 3] = [
         version: 3,
         description: "master_source_order",
         checksum: MASTER_SOURCE_ORDER_CHECKSUM,
+    },
+    MigrationIdentity {
+        version: 4,
+        description: "map_report_hold",
+        checksum: MAP_REPORT_HOLD_CHECKSUM,
     },
 ];
 
@@ -97,6 +110,11 @@ fn all() -> MigrationList {
             description: "master_source_order",
             sql: MASTER_SOURCE_ORDER_SCHEMA,
         },
+        MigrationDefinition {
+            version: 4,
+            description: "map_report_hold",
+            sql: MAP_REPORT_HOLD_SCHEMA,
+        },
     ])
 }
 
@@ -131,15 +149,15 @@ mod tests {
 
     #[tokio::test]
     async fn fresh_database_applies_each_historical_migration_once() {
-        let path = test_path("fresh");
-        let pool = SqlitePool::connect_with(
-            SqliteConnectOptions::new()
-                .filename(&path)
-                .create_if_missing(true)
-                .foreign_keys(true),
-        )
-        .await
-        .unwrap();
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(
+                SqliteConnectOptions::new()
+                    .in_memory(true)
+                    .foreign_keys(true),
+            )
+            .await
+            .unwrap();
 
         run(&pool).await.unwrap();
         run(&pool).await.unwrap();
@@ -150,7 +168,8 @@ mod tests {
         .fetch_all(&pool)
         .await
         .unwrap();
-        assert_eq!(migrations.len(), 3);
+        assert_eq!(migrations.len(), 4);
+        assert_eq!(migrations[3].3, super::MAP_REPORT_HOLD_CHECKSUM);
         assert_eq!(migrations[0].0, 1);
         assert_eq!(migrations[0].1, "initial_schema");
         assert!(migrations[0].2);
@@ -174,7 +193,6 @@ mod tests {
         );
 
         pool.close().await;
-        fs::remove_dir_all(path.parent().unwrap()).unwrap();
     }
 
     #[tokio::test]
@@ -262,3 +280,7 @@ mod tests {
         fs::remove_dir_all(path.parent().unwrap()).unwrap();
     }
 }
+
+#[cfg(test)]
+#[path = "map_report_hold_tests.rs"]
+mod map_report_hold_tests;

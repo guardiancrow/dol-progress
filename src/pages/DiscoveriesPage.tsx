@@ -1,3 +1,5 @@
+import { useReportHold } from "../discoveries/useReportHold";
+import { ReportHoldDialogs, ReportHoldFeedback } from "../components/discoveries/ReportHoldControls";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DiscoveryTable } from "../components/discoveries/DiscoveryTable";
@@ -7,6 +9,7 @@ import type {
   DiscoveryProgressRepositoryPort,
   DiscoveryRepositoryPort,
   DiscoveryRowViewModel,
+  DiscoveryInitialFilter,
 } from "../discoveries/types";
 import type { DiscoveryProgress, DiscoveryWithRelations } from "../domain/models";
 import { useProfiles } from "../profiles/ProfileContext";
@@ -19,16 +22,16 @@ interface DiscoveriesPageProps {
   discoveryRepository: DiscoveryRepositoryPort;
   discoveryProgressRepository: DiscoveryProgressRepositoryPort;
   progressLinkService: ProgressLinkServicePort;
-  initialCategoryId?: number;
-  onCategoryNavigationConsumed?(): void;
+  initialFilter?: DiscoveryInitialFilter;
+  onNavigationConsumed?(): void;
 }
 
 export function DiscoveriesPage({
   discoveryRepository,
   discoveryProgressRepository,
   progressLinkService,
-  initialCategoryId,
-  onCategoryNavigationConsumed,
+  initialFilter,
+  onNavigationConsumed,
 }: DiscoveriesPageProps) {
   const { selectedProfileId, isLoading: isProfileLoading } = useProfiles();
   const [discoveries, setDiscoveries] = useState<DiscoveryWithRelations[]>([]);
@@ -51,6 +54,16 @@ export function DiscoveriesPage({
   const selectedProfileRef = useRef(selectedProfileId);
   const pendingUpdatesRef = useRef<Set<string>>(new Set());
 
+  const reportHold = useReportHold(selectedProfileId, () => {
+    const id=selectedProfileId;
+    const generation=progressGeneration.current;
+    if(id === null) return;
+    void Promise.all([discoveryProgressRepository.listByProfile(id),discoveryRepository.listWithRelations()]).then(([saved,master])=>{
+      if(selectedProfileRef.current === id && progressGeneration.current === generation) {setProgressById(new Map(saved.map(p=>[p.discoveryId,p])));setDiscoveries(master);}
+    }).catch(()=>{if(selectedProfileRef.current === id && progressGeneration.current === generation) setUpdateError("進捗の再取得に失敗しました。再読み込みしてください。");});
+  });
+  const reloadReportStates = useRef(reportHold.reload);
+  reloadReportStates.current = reportHold.reload;
   useEffect(() => {
     selectedProfileRef.current = selectedProfileId;
   }, [selectedProfileId]);
@@ -116,11 +129,12 @@ export function DiscoveriesPage({
     async <T,>(
       discoveryId: number,
       operation: (profileId: number) => Promise<T>,
-      update: (current: DiscoveryProgress | null, profileId: number) => DiscoveryProgress | null,
+      update: (current: DiscoveryProgress | null, profileId: number, result: T) => DiscoveryProgress | null,
       onSuccess?: (result: T) => void,
     ) => {
       const profileId = selectedProfileRef.current;
       if (profileId === null) return;
+      const generation = progressGeneration.current;
       const key = `${profileId}:${discoveryId}`;
       if (pendingUpdatesRef.current.has(key)) return;
       pendingUpdatesRef.current.add(key);
@@ -129,51 +143,50 @@ export function DiscoveriesPage({
       setUpdateFeedback(null);
       try {
         const result = await operation(profileId);
-        if (selectedProfileRef.current === profileId) {
+        if (selectedProfileRef.current === profileId && progressGeneration.current === generation) {
           setProgressById((current) => {
             const next = new Map(current);
-            const changed = update(current.get(discoveryId) ?? null, profileId);
+            const changed = update(current.get(discoveryId) ?? null, profileId, result);
             if (changed) next.set(discoveryId, changed);
             else next.delete(discoveryId);
             return next;
           });
           onSuccess?.(result);
+          void reloadReportStates.current().catch(()=>{if(selectedProfileRef.current === profileId && progressGeneration.current === generation) setUpdateError("報告履歴の再取得に失敗しました。");});
         }
       } catch (error: unknown) {
         console.error("Discovery progress update failed", error);
-        if (selectedProfileRef.current === profileId) {
-          setUpdateError("発見物進捗を更新できませんでした。もう一度お試しください。");
+        if (selectedProfileRef.current === profileId && progressGeneration.current === generation) {
+          setUpdateError("発見物進捗を更新できませんでした。現在の状態を再取得します。");
+          try {
+            const saved=await discoveryProgressRepository.listByProfile(profileId);
+            await reloadReportStates.current();
+            if (selectedProfileRef.current === profileId && progressGeneration.current === generation) setProgressById(new Map(saved.map(p=>[p.discoveryId,p])));
+          } catch { if (selectedProfileRef.current === profileId && progressGeneration.current === generation) setProgressError("進捗の再取得に失敗しました。再読み込みしてください。"); }
         }
       } finally {
         pendingUpdatesRef.current.delete(key);
         setPendingUpdates(new Set(pendingUpdatesRef.current));
       }
     },
-    [],
+    [discoveryProgressRepository],
   );
 
   const markDiscovered = useCallback(
     async (discoveryId: number, selectedQuestId: number | null) => {
-      const target = discoveries.find((item) => item.discovery.id === discoveryId);
-      const capabilities = discoveryCapabilities(target?.category ?? null);
       await runUpdate(
         discoveryId,
-        (profileId) =>
-          progressLinkService.discoverWithLinkedQuest(
+        async (profileId) => {
+          const result = await progressLinkService.discoverWithLinkedQuest(
             profileId,
             discoveryId,
             selectedQuestId,
-          ),
-        (progress, profileId) =>
-          progress ?? {
-            profileId,
-            discoveryId,
-            reported: false,
-            cardOwned: capabilities.hasCard,
-            memo: null,
-            updatedAt: new Date().toISOString(),
-          },
-        (result: DiscoveryCompletionResult) => {
+          );
+          const saved = await discoveryProgressRepository.listByProfile(profileId);
+          return { result, saved: saved.find((item) => item.discoveryId === discoveryId) ?? null };
+        },
+        (_progress, _profileId, { saved }) => saved,
+        ({ result }: { result: DiscoveryCompletionResult }) => {
           if (result.questCompleted) {
             setUpdateFeedback(
               "発見物を発見済みにし、関連クエストを達成済みにしました。",
@@ -182,7 +195,7 @@ export function DiscoveriesPage({
         },
       );
     },
-    [discoveries, progressLinkService, runUpdate],
+    [discoveryProgressRepository, progressLinkService, runUpdate],
   );
 
   const toggleDiscovered = useCallback(
@@ -192,7 +205,7 @@ export function DiscoveriesPage({
         const memoWarning = current?.memo
           ? "\nこの発見物のメモも削除されます。"
           : "\nこの発見物に保存されたメモがある場合は削除されます。";
-        if (!window.confirm(`未発見に戻しますか？報告状態とカード所有状態も削除されます。${memoWarning}`)) return;
+        if (!window.confirm(`未発見に戻しますか？現在の発見・報告・カード所有・維持設定を削除します。クエスト達成と過去の報告履歴・旧算入資格は保持します。${memoWarning}`)) return;
       } else {
         const target = discoveries.find((item) => item.discovery.id === discoveryId);
         if (target && target.relatedQuests.length > 1) {
@@ -216,12 +229,14 @@ export function DiscoveriesPage({
   );
 
   const setReported = useCallback(
-    async (discoveryId: number, reported: boolean) =>
-      runUpdate(
+    async (discoveryId: number, reported: boolean) => {
+      if (!reported && !window.confirm("再発見後の未報告状態を記録します。過去の報告履歴と旧算入資格を保持します。")) return;
+      return runUpdate(
         discoveryId,
         (profileId) => discoveryProgressRepository.setReported(profileId, discoveryId, reported),
         (progress) => (progress ? { ...progress, reported, updatedAt: new Date().toISOString() } : null),
-      ),
+      );
+    },
     [discoveryProgressRepository, runUpdate],
   );
 
@@ -237,10 +252,19 @@ export function DiscoveriesPage({
 
   const rows = useMemo<DiscoveryRowViewModel[]>(
     () =>
-      discoveries.map(({ discovery, category, relatedQuests }) => {
+      discoveries.filter(({ discovery }) => discovery.isActive).map(({ discovery, category, relatedQuests, automaticReporting }) => {
         const progress = progressById.get(discovery.id) ?? null;
         const capabilities = discoveryCapabilities(category);
+        const effectiveReported = capabilities.canReport && progress !== null && (automaticReporting || progress.reported);
+        const reporting = reportHold.summaries.get(discovery.id);
         return {
+          firstReportStatus: reporting?.firstReportStatus,
+          historyPresent: reporting ? reporting.historyUpdatedAt !== null : undefined,
+          legacyMeritCredit: Boolean(reporting?.legacyMeritCredit),
+          mapRelated: Boolean(reportHold.summaries.get(discovery.id)?.mapRelated),
+          mapNeedsReview: Boolean(reportHold.summaries.get(discovery.id)?.mapNeedsReview),
+          automaticReporting: capabilities.canReport && automaticReporting,
+          effectiveReported,
           id: discovery.id,
           name: discovery.name,
           description: discovery.description,
@@ -253,13 +277,13 @@ export function DiscoveriesPage({
           experience: discovery.experience,
           relatedQuests,
           ...capabilities,
-          status: progress === null ? "undiscovered" : progress.reported ? "reported" : "unreported",
+          status: progress === null ? "undiscovered" : effectiveReported ? "reported" : "unreported",
           progress,
           updating:
-            selectedProfileId !== null && pendingUpdates.has(`${selectedProfileId}:${discovery.id}`),
+            selectedProfileId !== null && (pendingUpdates.has(`${selectedProfileId}:${discovery.id}`) || reportHold.busy || (reportHold.dialog !== null || reportHold.selection !== null)),
         };
       }),
-    [discoveries, pendingUpdates, progressById, selectedProfileId],
+    [discoveries, pendingUpdates, progressById, selectedProfileId, reportHold.busy, reportHold.dialog, reportHold.selection, reportHold.summaries],
   );
 
   if (isProfileLoading) return <div className="state-panel" role="status">プロフィールを読み込んでいます…</div>;
@@ -270,6 +294,8 @@ export function DiscoveriesPage({
   return (
     <section className="workspace-page" aria-labelledby="discoveries-title">
       <div className="page-heading"><div><p className="page-eyebrow">進捗管理</p><h2 id="discoveries-title">発見物</h2><p>発見・報告・カード所有の状態を個別に管理します。</p></div></div>
+      <ReportHoldFeedback controller={reportHold} />
+      <ReportHoldDialogs controller={reportHold} />
       {masterError && <ErrorBanner message={masterError} onRetry={() => setMasterReload((value) => value + 1)} />}
       {progressError && <ErrorBanner message={progressError} onRetry={() => setProgressReload((value) => value + 1)} />}
       {updateError && <div className="error-banner" role="alert">{updateError}</div>}
@@ -280,9 +306,10 @@ export function DiscoveriesPage({
         <div className="state-panel empty-state"><h3>発見物のマスターデータがありません</h3><p>マスターデータを取り込んでからご利用ください。</p></div>
       ) : progressError ? null : (
         <DiscoveryTable
+          reportHold={reportHold}
           rows={rows}
-          initialCategoryId={initialCategoryId}
-          onCategoryNavigationConsumed={onCategoryNavigationConsumed}
+          initialFilter={initialFilter}
+          onNavigationConsumed={onNavigationConsumed}
           paginationResetKey={selectedProfileId}
           onToggleDiscovered={toggleDiscovered}
           onSetReported={setReported}

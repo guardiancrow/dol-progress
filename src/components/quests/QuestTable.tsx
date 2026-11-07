@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { DiscoveryStateControl } from "../discoveries/ReportHoldControls";
+import type { ReportHoldController } from "../../discoveries/useReportHold";
+import { mapStatus } from "../../quests/mapState";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   columnFilteringFeature,
   columnVisibilityFeature,
@@ -18,6 +21,7 @@ import {
 import type { QuestRowViewModel } from "../../quests/types";
 import { MasterInfoButton, MasterInfoProvider } from "../MasterInfoPopover";
 import { getRequiredSkillRank } from "../../quests/requiredSkillRank";
+import { getMapOfferCities } from "../../quests/mapOfferCities";
 import {
   buildOfferMethodOptions,
   isOfferMethodSelectionAvailable,
@@ -45,12 +49,15 @@ const columnHelper = createColumnHelper<
 const collator = new Intl.Collator("ja", { numeric: true });
 
 interface QuestTableProps {
+  reportHold?: ReportHoldController;
   rows: QuestRowViewModel[];
   paginationResetKey: number;
   onToggleCompletion(questId: number, completed: boolean): Promise<void>;
 }
 
-export function QuestTable({ rows, paginationResetKey, onToggleCompletion }: QuestTableProps) {
+export function QuestTable({ rows, paginationResetKey, onToggleCompletion, reportHold }: QuestTableProps) {
+  const reportHoldRef = useRef(reportHold);
+  reportHoldRef.current = reportHold;
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState<PaginationState>({
@@ -80,7 +87,7 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion }: Que
       columnHelper.columns([
         columnHelper.accessor("completed", {
           id: "completed",
-          header: "達成状態",
+          header: "達成",
           filterFn: (row, columnId, value) =>
             value === undefined || row.getValue<boolean>(columnId) === value,
           sortFn: (rowA, rowB, columnId) =>
@@ -100,6 +107,21 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion }: Que
               }
             />
           ),
+        }),
+        columnHelper.accessor(row => reportHoldRef.current ? mapStatus(row,reportHoldRef.current.summaries) : "unavailable", {
+          id: "mapState", header: "地図の状態", enableSorting: false,
+          filterFn: (row,id,value) => !value || value === "all" || (value === "candidate" ? ["undiscovered","reported"].includes(row.getValue<string>(id)) : value === "suppressed" && row.getValue<string>(id) === "unreported"),
+          cell: ({row}) => {
+            const reportHold = reportHoldRef.current;
+            if (!matchesOfferMethod(row.original.offerMethod,"group:map")) return <span className="map-state-unavailable" aria-label="地図の状態の操作はありません">—</span>;
+            if (!reportHold || mapStatus(row.original,reportHold.summaries) === "unavailable") return <span>要確認</span>;
+            const related = row.original.discoveries.filter(d=>reportHold.summaries.get(d.id)?.active);
+            if (!related.length) return <span>確認が必要</span>;
+            if (row.original.discoveries.length === 1) return <DiscoveryStateControl id={related[0]!.id} name={row.original.title} controller={reportHold} disabled={row.original.updating} mapId={row.original.id} />;
+            const status = mapStatus(row.original,reportHold.summaries);
+            return <button type="button" className="map-related-button" aria-label={`${row.original.title}の関連発見物を確認`} disabled={row.original.updating || reportHold.busy || reportHold.dialog !== null || reportHold.selection !== null}
+              onClick={e=>reportHold.openSelection("multi",row.original.title,related.map(d=>({id:d.id,name:d.name})),e.currentTarget)}>{status === "mixed" ? "状態混在" : "要確認"}</button>;
+          },
         }),
         columnHelper.accessor("prerequisiteStatus", {
           id: "prerequisiteStatus",
@@ -131,7 +153,7 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion }: Que
             ),
           cell: ({ row, getValue }) => (
             <span className="master-info-name">
-              <span className="quest-title">{getValue<string>()}</span>
+              <span className="quest-title" title={getValue<string>()}>{getValue<string>()}</span>
               <MasterInfoButton rowId={row.original.id} />
             </span>
           ),
@@ -205,11 +227,14 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion }: Que
               row.original.discoveries.length === 0 ? (
                 "—"
               ) : (
-                <span className="quest-long-text">
-                  {row.original.discoveries
-                    .map((discovery) => discovery.name)
-                    .join("、")}
-                </span>
+                  <div className="quest-long-text">
+                    {row.original.discoveries.map((discovery) => (
+                      <span className="master-info-name" key={discovery.id}>
+                        <span className="quest-title">{discovery.name}</span>
+                        <MasterInfoButton rowId={`discovery:${row.original.id}:${discovery.id}`} />
+                      </span>
+                    ))}
+                  </div>
               ),
           },
         ),
@@ -338,13 +363,27 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion }: Que
 
   return (
     <MasterInfoProvider
-      items={table.getRowModel().rows.map(({ original }) => ({
-        id: original.id, title: original.title, notes: original.notes,
-      }))}
+      items={table.getRowModel().rows.flatMap(({ original }) => {
+        const cities = getMapOfferCities(original);
+        return [
+          {
+            id: original.id, title: original.title, notes: original.notes,
+            details: cities ? [{ label: "オファー都市", value: cities }] : undefined,
+            hint: cities
+              ? original.notes?.trim() ? "オファー都市・備考を表示" : "オファー都市を表示"
+              : undefined,
+          },
+          ...original.discoveries.map((discovery) => ({
+            id: `discovery:${original.id}:${discovery.id}`, title: discovery.name,
+            description: discovery.description, notes: discovery.notes, hint: "説明・備考を表示",
+          })),
+        ];
+      })}
       resetKey={JSON.stringify([paginationResetKey, columnFilters, sorting, pagination])}
       hint="備考を表示"
     >
     <div className="workspace-table">
+      <details className="map-filter-help"><summary>地図の入手について</summary><p>発見済み・未報告の書庫地図は、再入手が抑止されます。表示対象は書庫地図の完全な一覧ではなく、すべてが再調査報酬になるとは限りません。都市の絞り込みにはCSVのオファー都市を使用します。</p></details>
       <div className="quest-filters">
         <label>
           クエスト名／地図名を検索
@@ -494,6 +533,7 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion }: Que
             )}
           </select>
         </label>
+        <label>地図の入手<select value={String(table.getColumn("mapState")?.getFilterValue() ?? "all")} onChange={e=>setFilter("mapState",e.target.value === "all" ? undefined : e.target.value)}><option value="all">すべて</option><option value="candidate">入手候補</option><option value="suppressed">入手抑止</option></select></label>
       </div>
 
       <div className="quest-summary" aria-live="polite">
@@ -516,7 +556,7 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion }: Que
                     const canSort = header.column.getCanSort();
                     const direction = header.column.getIsSorted();
                     return (
-                      <th key={header.id} scope="col" aria-sort={
+                      <th data-column={header.column.id} key={header.id} scope="col" aria-sort={
                         direction === "asc"
                           ? "ascending"
                           : direction === "desc"
@@ -548,7 +588,7 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion }: Que
               {table.getRowModel().rows.map((row) => (
                 <tr key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id}>
+                    <td data-column={cell.column.id} key={cell.id}>
                       <table.FlexRender cell={cell} />
                     </td>
                   ))}

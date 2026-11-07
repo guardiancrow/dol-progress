@@ -5,6 +5,7 @@ mod data_root;
 mod database_commands;
 mod discovery_capabilities;
 mod discovery_progress;
+mod discovery_state;
 mod external_links;
 mod import;
 mod migrations;
@@ -81,6 +82,9 @@ pub fn run() {
             database_commands::database_select,
             database_commands::database_execute,
             discovery_progress::mark_discovery_discovered,
+            discovery_state::get_discovery_state,
+            discovery_state::update_discovery_state,
+            discovery_progress::remove_discovery_progress,
             discovery_progress::set_discovery_reported,
             discovery_progress::set_discovery_card_owned,
             data_root::data_root_status,

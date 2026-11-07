@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use sqlx::{Row, SqliteConnection};
+use sqlx::{Connection, Row, SqliteConnection};
 use tauri::State;
 
 use crate::{active_database::ActiveDatabase, discovery_capabilities};
@@ -31,8 +31,8 @@ impl DiscoveryProgressCommandError {
     fn unsupported(operation: &str, discovery_id: i64) -> Self {
         Self {
             kind: "UnsupportedDiscoveryOperation",
-            user_message: "レリックではこの操作は利用できません。".into(),
-            detail: format!("{operation} is not applicable to relic discovery {discovery_id}"),
+            user_message: "この発見物ではこの操作は利用できません。".into(),
+            detail: format!("{operation} is not supported for discovery {discovery_id}"),
         }
     }
 
@@ -90,19 +90,9 @@ pub(crate) async fn mark_discovered(
     profile_id: i64,
     discovery_id: i64,
 ) -> Result<(), DiscoveryProgressCommandError> {
-    sqlx::query(
-        "INSERT INTO discovery_progress (profile_id, discovery_id, reported, card_owned) \
-         VALUES (?, ?, 0, CASE WHEN (SELECT c.name FROM discoveries d \
-                                    LEFT JOIN discovery_categories c ON c.id = d.category_id \
-                                    WHERE d.id = ?) = ? THEN 0 ELSE 1 END) \
-         ON CONFLICT(profile_id, discovery_id) DO NOTHING",
-    )
-    .bind(profile_id)
-    .bind(discovery_id)
-    .bind(discovery_id)
-    .bind(discovery_capabilities::RELIC_CATEGORY_NAME)
-    .execute(connection)
-    .await?;
+    crate::progress_link::discover(connection, profile_id, discovery_id, None)
+        .await
+        .map_err(|e| DiscoveryProgressCommandError::database(format!("{e:?}")))?;
     Ok(())
 }
 
@@ -122,13 +112,45 @@ pub(crate) async fn set_discovery_card_owned(
     .await
 }
 
+#[tauri::command]
+pub(crate) async fn remove_discovery_progress(
+    database: State<'_, ActiveDatabase>,
+    request: DiscoveryProgressRequest,
+) -> Result<crate::discovery_state::DiscoveryState, crate::discovery_state::StateError> {
+    let pool = database.pool().await;
+    let mut connection = pool.acquire().await?;
+    crate::discovery_state::update_compat(
+        &mut connection,
+        request.profile_id,
+        request.discovery_id,
+        crate::discovery_state::Operation::RemoveCurrent,
+    )
+    .await
+}
+
 pub(crate) async fn set_reported(
     connection: &mut SqliteConnection,
     profile_id: i64,
     discovery_id: i64,
     value: bool,
 ) -> Result<(), DiscoveryProgressCommandError> {
-    set_flag(connection, "reported", profile_id, discovery_id, value).await
+    crate::discovery_state::update_compat(
+        connection,
+        profile_id,
+        discovery_id,
+        if value {
+            crate::discovery_state::Operation::Report
+        } else {
+            crate::discovery_state::Operation::Rediscover { hold: false }
+        },
+    )
+    .await
+    .map_err(|e| DiscoveryProgressCommandError {
+        kind: e.kind,
+        user_message: "報告状態を更新できませんでした。再読み込みしてください。".into(),
+        detail: format!("{e:?}"),
+    })?;
+    Ok(())
 }
 
 pub(crate) async fn set_card_owned(
@@ -147,6 +169,29 @@ async fn set_flag(
     discovery_id: i64,
     value: bool,
 ) -> Result<(), DiscoveryProgressCommandError> {
+    let mut transaction = connection.begin_with("BEGIN IMMEDIATE").await?;
+    match set_flag_transaction(&mut transaction, column, profile_id, discovery_id, value).await {
+        Ok(()) => {
+            transaction.commit().await?;
+            Ok(())
+        }
+        Err(error) => {
+            transaction.rollback().await?;
+            Err(error)
+        }
+    }
+}
+
+async fn set_flag_transaction(
+    connection: &mut SqliteConnection,
+    column: &'static str,
+    profile_id: i64,
+    discovery_id: i64,
+    value: bool,
+) -> Result<(), DiscoveryProgressCommandError> {
+    crate::discovery_state::read_state(connection, profile_id, discovery_id)
+        .await
+        .map_err(|e| DiscoveryProgressCommandError::database(format!("{e:?}")))?;
     let category_name: Option<String> = sqlx::query(
         "SELECT c.name FROM discoveries d \
          LEFT JOIN discovery_categories c ON c.id = d.category_id \
@@ -167,6 +212,22 @@ async fn set_flag(
             column,
             discovery_id,
         ));
+    }
+
+    if column == "reported" {
+        let automatic: bool = sqlx::query_scalar(&format!(
+            "SELECT ? IN ({})",
+            discovery_capabilities::automatic_reporting_discoveries_sql()
+        ))
+        .bind(discovery_id)
+        .fetch_one(&mut *connection)
+        .await?;
+        if automatic {
+            return Err(DiscoveryProgressCommandError::unsupported(
+                column,
+                discovery_id,
+            ));
+        }
     }
 
     let result = sqlx::query(&format!(
@@ -196,6 +257,10 @@ mod tests {
         let mut connection = SqliteConnection::connect("sqlite::memory:").await.unwrap();
         connection.execute(INITIAL_SCHEMA).await.unwrap();
         connection
+            .execute(crate::migrations::MAP_REPORT_HOLD_SCHEMA)
+            .await
+            .unwrap();
+        connection
             .execute("INSERT INTO profiles (id, name) VALUES (1, 'A')")
             .await
             .unwrap();
@@ -217,6 +282,42 @@ mod tests {
         set_card_owned(&mut db, 1, 1, false).await.unwrap();
         let state: (i64, i64) = sqlx::query_as("SELECT reported, card_owned FROM discovery_progress WHERE profile_id = 1 AND discovery_id = 1").fetch_one(&mut db).await.unwrap();
         assert_eq!(state, (1, 0));
+    }
+
+    #[tokio::test]
+    async fn automatic_reporting_rejects_manual_changes_but_keeps_cards_independent() {
+        let mut db = database().await;
+        db.execute("INSERT INTO quests (id, gvdb_id, title, offer_method, raw_row_json) VALUES (1, 1, 'Special', '追究クエスト', '{}'), (2, 2, 'Other', NULL, '{}')").await.unwrap();
+        db.execute("INSERT INTO quest_discoveries VALUES (1, 1)")
+            .await
+            .unwrap();
+        for value in [false, true] {
+            assert_eq!(
+                set_reported(&mut db, 1, 1, value).await.unwrap_err().kind,
+                "UnsupportedDiscoveryOperation"
+            );
+        }
+        set_card_owned(&mut db, 1, 1, false).await.unwrap();
+        let reported: i64 =
+            sqlx::query_scalar("SELECT reported FROM discovery_progress WHERE discovery_id = 1")
+                .fetch_one(&mut db)
+                .await
+                .unwrap();
+        assert_eq!(reported, 0);
+        // Multiple active relations disable inference, regardless of completed quests.
+        db.execute("INSERT INTO quest_discoveries VALUES (2, 1)")
+            .await
+            .unwrap();
+        set_reported(&mut db, 1, 1, true).await.unwrap();
+        db.execute("UPDATE quests SET is_active = 0 WHERE id = 2")
+            .await
+            .unwrap();
+        assert!(set_reported(&mut db, 1, 1, false).await.is_err());
+        // Changes to master data never repair stored user values.
+        db.execute("UPDATE quests SET offer_method = '通常' WHERE id = 1")
+            .await
+            .unwrap();
+        set_reported(&mut db, 1, 1, false).await.unwrap();
     }
 
     #[tokio::test]

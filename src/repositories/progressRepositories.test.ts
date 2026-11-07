@@ -170,6 +170,7 @@ class ProgressMemoryDatabase implements DatabaseClient {
       if (!state) this.discoveryProgress.set(key, { reported: 0, cardOwned: 1, memo: null });
       return undefined as T;
     }
+    if (command === "remove_discovery_progress") { this.discoveryProgress.delete(key); return undefined as T; }
     if (!state) throw new Error("Discovery progress was not found");
     if (command === "set_discovery_reported") {
       state.reported = request.value ? 1 : 0;

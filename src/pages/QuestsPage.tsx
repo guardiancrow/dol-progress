@@ -1,3 +1,5 @@
+import { useReportHold } from "../discoveries/useReportHold";
+import { ReportHoldDialogs, ReportHoldFeedback } from "../components/discoveries/ReportHoldControls";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { QuestTable } from "../components/quests/QuestTable";
@@ -35,6 +37,7 @@ export function QuestsPage({
   const [masterError, setMasterError] = useState<string | null>(null);
   const [progressError, setProgressError] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateDiagnostic, setUpdateDiagnostic] = useState<string | null>(null);
   const [updateFeedback, setUpdateFeedback] = useState<string | null>(null);
   const [masterReload, setMasterReload] = useState(0);
   const [progressReload, setProgressReload] = useState(0);
@@ -42,6 +45,14 @@ export function QuestsPage({
   const selectedProfileRef = useRef(selectedProfileId);
   const pendingUpdatesRef = useRef<Set<string>>(new Set());
 
+  const reportHold = useReportHold(selectedProfileId, () => {
+    const id = selectedProfileId;
+    const generation = progressGeneration.current;
+    if (id === null) return;
+    void Promise.all([questProgressRepository.listCompletedQuestIds(id),questRepository.listWithDiscoveries()]).then(([ids,master])=>{
+      if (selectedProfileRef.current === id && progressGeneration.current === generation) { setCompletedQuestIds(new Set(ids)); setQuests(master); }
+    }).catch(()=>{ if(selectedProfileRef.current === id && progressGeneration.current === generation) setUpdateError("進捗の再取得に失敗しました。再読み込みしてください。"); });
+  });
   useEffect(() => {
     selectedProfileRef.current = selectedProfileId;
   }, [selectedProfileId]);
@@ -80,6 +91,7 @@ export function QuestsPage({
     setCompletedQuestIds(new Set());
     setProgressError(null);
     setUpdateError(null);
+    setUpdateDiagnostic(null);
     setUpdateFeedback(null);
     if (selectedProfileId === null) {
       setIsProgressLoading(false);
@@ -111,13 +123,17 @@ export function QuestsPage({
     async (questId: number, completed: boolean) => {
       const profileId = selectedProfileRef.current;
       if (profileId === null) return;
+      const generation = progressGeneration.current;
       const updateKey = `${profileId}:${questId}`;
       if (pendingUpdatesRef.current.has(updateKey)) return;
 
       pendingUpdatesRef.current.add(updateKey);
       setPendingUpdates(new Set(pendingUpdatesRef.current));
       setUpdateError(null);
+      setUpdateDiagnostic(null);
       setUpdateFeedback(null);
+      const started = performance.now();
+      const operation = completed ? "cancel" : "complete";
       try {
         if (completed) {
           await questProgressRepository.markIncomplete(profileId, questId);
@@ -127,7 +143,7 @@ export function QuestsPage({
             questId,
           );
           if (
-            selectedProfileRef.current === profileId &&
+            selectedProfileRef.current === profileId && progressGeneration.current === generation &&
             result.discoveriesCreated > 0
           ) {
             setUpdateFeedback(
@@ -135,7 +151,8 @@ export function QuestsPage({
             );
           }
         }
-        if (selectedProfileRef.current === profileId) {
+        if (selectedProfileRef.current === profileId && progressGeneration.current === generation) {
+          void reportHold.reload().catch(()=>{if(selectedProfileRef.current === profileId && progressGeneration.current === generation) setUpdateError("地図状態の再取得に失敗しました。");});
           setCompletedQuestIds((current) => {
             const next = new Set(current);
             if (completed) next.delete(questId);
@@ -144,16 +161,28 @@ export function QuestsPage({
           });
         }
       } catch (error: unknown) {
-        console.error("Quest progress update failed", error);
-        if (selectedProfileRef.current === profileId) {
-          setUpdateError("達成状態を更新できませんでした。もう一度お試しください。");
+        const diagnostic = `${operation} / ${classifyQuestUpdateError(error)} / ${Math.round(performance.now()-started)}ms`;
+        console.error("Quest progress update failed", diagnostic);
+        if (selectedProfileRef.current === profileId && progressGeneration.current === generation) {
+          setUpdateError("達成状態を更新できませんでした。現在の状態を再取得します。");
+          setUpdateDiagnostic(diagnostic);
+          const recoveryStarted=performance.now();
+          try {
+            const ids=await questProgressRepository.listCompletedQuestIds(profileId);
+            await reportHold.reload();
+            if(selectedProfileRef.current === profileId && progressGeneration.current === generation) setCompletedQuestIds(new Set(ids));
+            if(selectedProfileRef.current === profileId && progressGeneration.current === generation) setUpdateDiagnostic(`${diagnostic} / reload:ok:${Math.round(performance.now()-recoveryStarted)}ms`);
+          } catch (recoveryError: unknown) {if(selectedProfileRef.current === profileId && progressGeneration.current === generation) {
+            setProgressError("進捗の再取得に失敗しました。再読み込みしてください。");
+            setUpdateDiagnostic(`${diagnostic} / reload:${classifyQuestUpdateError(recoveryError)}:${Math.round(performance.now()-recoveryStarted)}ms`);
+          }}
         }
       } finally {
         pendingUpdatesRef.current.delete(updateKey);
         setPendingUpdates(new Set(pendingUpdatesRef.current));
       }
     },
-    [progressLinkService, questProgressRepository],
+    [progressLinkService, questProgressRepository, reportHold.reload],
   );
 
   const directPrerequisites = useMemo(
@@ -181,14 +210,15 @@ export function QuestsPage({
           requiredRank,
         })),
         discoveries,
+        mapActive: quest.isActive,
         completed: completedQuestIds.has(quest.id),
         prerequisiteStatus: statuses.get(quest.id) ?? "UNKNOWN",
         directPrerequisites: directPrerequisites.get(quest.id) ?? [],
         updating:
           selectedProfileId !== null &&
-          pendingUpdates.has(`${selectedProfileId}:${quest.id}`),
+          (pendingUpdates.has(`${selectedProfileId}:${quest.id}`) || reportHold.busy || (reportHold.dialog !== null || reportHold.selection !== null)),
       }));
-  }, [completedQuestIds, dependencies, directPrerequisites, pendingUpdates, quests, selectedProfileId]);
+  }, [completedQuestIds, dependencies, directPrerequisites, pendingUpdates, quests, selectedProfileId, reportHold.busy, reportHold.dialog, reportHold.selection, reportHold.summaries]);
 
   if (isProfileLoading) {
     return <div className="state-panel" role="status">プロフィールを読み込んでいます…</div>;
@@ -212,6 +242,8 @@ export function QuestsPage({
         </div>
       </div>
 
+      <ReportHoldFeedback controller={reportHold} />
+      <ReportHoldDialogs controller={reportHold} />
       {masterError && (
         <ErrorBanner
           message={masterError}
@@ -225,6 +257,7 @@ export function QuestsPage({
         />
       )}
       {updateError && <div className="error-banner" role="alert">{updateError}</div>}
+      {updateDiagnostic && <p>診断情報：<code>{updateDiagnostic}</code></p>}
       {updateFeedback && <div className="progress-feedback" role="status">{updateFeedback}</div>}
 
       {isMasterLoading || isProgressLoading ? (
@@ -236,6 +269,7 @@ export function QuestsPage({
         </div>
       ) : progressError ? null : (
         <QuestTable
+          reportHold={reportHold}
           rows={rows}
           paginationResetKey={selectedProfileId}
           onToggleCompletion={toggleCompletion}
@@ -243,6 +277,23 @@ export function QuestsPage({
       )}
     </section>
   );
+}
+
+// 生のSQL・DB内容・パスを表示せず、取得したエラーの分類だけを残す。
+function classifyQuestUpdateError(error: unknown): string {
+  const value = typeof error === "object" && error !== null ? error : {};
+  const kind = "kind" in value && value.kind === "InvalidSelection" ? "InvalidSelection" : "DatabaseError";
+  const text = typeof error === "string" ? error : error instanceof Error ? error.message
+    : "detail" in value && typeof value.detail === "string" ? value.detail : "";
+  const code = /(?:code:\s*|SQLITE_)(\d+)/i.exec(text)?.[1];
+  const reason = /pool timed out|pool.*timeout/i.test(text) ? "pool_timeout"
+    : /database is locked|SQLITE_BUSY/i.test(text) ? "sqlite_busy"
+    : /database table is locked|SQLITE_LOCKED/i.test(text) ? "sqlite_locked"
+    : /constraint failed|SQLITE_CONSTRAINT/i.test(text) ? "constraint"
+    : /no such (?:table|column)/i.test(text) ? "schema"
+    : /readonly|read.only|unable to open/i.test(text) ? "storage"
+    : "unclassified";
+  return `${kind}:${reason}${code ? `:sqlite_${code}` : ""}`;
 }
 
 function ErrorBanner({ message, onRetry }: { message: string; onRetry(): void }) {

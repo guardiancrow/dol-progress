@@ -25,6 +25,7 @@ export interface QuestRowViewModel {
   requiredSkillNames: string[];
   requiredSkillsNormalized: Array<Pick<QuestRequiredSkill, "skillName" | "requiredRank">>;
   discoveries: QuestDiscoverySummary[];
+  mapActive?: boolean;
   completed: boolean;
   updating: boolean;
   prerequisiteStatus: PrerequisiteStatus;

@@ -1,6 +1,7 @@
 import type {
   DiscoveryProgress,
   DiscoveryWithRelations,
+  DiscoveryRelatedQuestSummary,
 } from "../domain/models";
 
 export interface DiscoveryRepositoryPort {
@@ -25,7 +26,19 @@ export interface DiscoveryProgressRepositoryPort {
 
 export type DiscoveryStatus = "undiscovered" | "unreported" | "reported";
 
+export type DiscoveryInitialFilter =
+  | { kind: "category"; categoryId: number }
+  | { kind: "unreported" }
+  | { kind: "card-not-owned" };
+
 export interface DiscoveryRowViewModel {
+  firstReportStatus?: import("./stateService").FirstReportStatus;
+  historyPresent?: boolean;
+  legacyMeritCredit?: boolean;
+  mapRelated?: boolean;
+  mapNeedsReview?: boolean;
+  automaticReporting: boolean;
+  effectiveReported: boolean;
   id: number;
   name: string;
   description: string | null;
@@ -36,7 +49,7 @@ export interface DiscoveryRowViewModel {
   points: number | null;
   difficulty: number | null;
   experience: number | null;
-  relatedQuests: Array<{ id: number; title: string }>;
+  relatedQuests: DiscoveryRelatedQuestSummary[];
   canReport: boolean;
   hasCard: boolean;
   status: DiscoveryStatus;

@@ -39,6 +39,8 @@ export interface Quest {
 export interface QuestDiscoverySummary {
   id: number;
   name: string;
+  description: string | null;
+  notes: string | null;
   categoryId: number | null;
   categoryName: string | null;
   categorySortOrder: number | null;
@@ -91,9 +93,11 @@ export interface DiscoveryCategorySummary {
 export interface DiscoveryRelatedQuestSummary {
   id: number;
   title: string;
+  notes: string | null;
 }
 
 export interface DiscoveryWithRelations {
+  automaticReporting: boolean;
   discovery: Discovery;
   category: DiscoveryCategorySummary | null;
   relatedQuests: DiscoveryRelatedQuestSummary[];

@@ -88,6 +88,29 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .dialog-card label { margin-top: .35rem; font-weight: 700; }
 .dialog-card input, .dialog-card textarea { width: 100%; padding: .65rem; color: #1f2937; background: #fff; border: 1px solid #9fadb8; border-radius: .4rem; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.25rem; }
+
+.report-dialog { max-height: calc(100dvh - 3rem); overflow: auto; }
+.report-dialog fieldset { display: grid; gap: .65rem; min-width: 0; }
+.report-dialog label { display: grid; gap: .35rem; }
+.report-dialog select { max-width: 100%; min-height: 2.3rem; }
+.report-dialog input[type="checkbox"] { width: 1.2rem; height: 1.2rem; }
+.report-dialog :focus-visible { outline: 3px solid #176b99; outline-offset: 2px; }
+.quest-table.quest-master-table th[data-column="mapState"] { width: 6.5rem; }
+.quest-table.quest-master-table th[data-column="title"] { width: 18rem; }
+.quest-table.quest-master-table th[data-column="difficulty"] { width: 5.5rem; }
+.quest-table.quest-master-table th[data-column="offerMethod"], .quest-table.quest-master-table th[data-column="offerCity"] { width: 10rem; }
+.quest-table.quest-master-table th[data-column="requiredSkills"] { width: 13rem; }
+.quest-table.quest-master-table th[data-column="discoveries"] { width: 16rem; }
+.quest-table.discovery-table th[data-column="status"] { width: 9rem; }
+.quest-table.discovery-table th[data-column="name"] { width: 15rem; }
+.quest-table.discovery-table th[data-column="category"], .quest-table.discovery-table th[data-column="era"] { width: 8rem; }
+.quest-table.discovery-table th[data-column="rank"], .quest-table.discovery-table th[data-column="points"], .quest-table.discovery-table th[data-column="difficulty"], .quest-table.discovery-table th[data-column="experience"] { width: 5.5rem; }
+.quest-table.discovery-table th[data-column="relatedQuests"] { width: 16rem; }
+.quest-table.discovery-table th[data-column="reported"], .quest-table.discovery-table th[data-column="cardOwned"] { width: 8rem; }
+.quest-table.discovery-table th[data-column="firstReport"] { width: 7rem; }
+.discovery-table td[data-column="firstReport"] { text-align: center; white-space: nowrap; }
+.first-report-action { padding: 0 4px; min-height: 24px; font: inherit; color: inherit; background: transparent; border: 1px solid var(--border-color, #cbd5e1); border-radius: 4px; cursor: pointer; }
+.first-report-action:disabled { cursor: default; opacity: .6; }
 .related-quest-options { display: grid; gap: .65rem; max-height: 18rem; margin-top: 1rem; padding: .9rem; overflow-y: auto; border: 1px solid #c8d1d9; border-radius: .45rem; }
 .related-quest-options label { display: flex; align-items: flex-start; gap: .55rem; margin: 0; font-weight: 500; }
 .related-quest-options input { width: auto; margin-top: .2rem; }
@@ -159,9 +182,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   display: grid;
   gap: 1rem;
 }
-.overview-summary-grid--primary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.overview-summary-grid--secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 1rem; }
+.overview-summary-grid--primary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.overview-summary-grid--secondary { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 1rem; }
 .overview-card {
+  position: relative;
   min-height: 13rem;
   padding: 1.25rem;
   background: #fff;
@@ -173,6 +197,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .overview-value { margin: 0; color: #294d69; font-size: 1.15rem; font-weight: 700; }
 .overview-rate { margin: .35rem 0 .7rem; color: #176b99; font-size: 1.8rem; font-weight: 800; }
 .overview-detail { margin: .8rem 0 0; color: #627181; font-size: .8rem; }
+.overview-unreported-breakdown { margin: .7rem 0 0; color: #425566; font-size: .85rem; }
+.overview-unreported-breakdown > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .75rem; padding: .15rem 0; }
+.overview-unreported-breakdown > div:first-child { color: #17324d; font-weight: 700; }
+.overview-unreported-breakdown dt { min-width: 0; }
+.overview-unreported-breakdown dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.overview-unreported-breakdown--compact { display: flex; flex-wrap: wrap; gap: .1rem 1rem; margin-top: .35rem; font-size: .78rem; }
+.overview-unreported-breakdown--compact > div { gap: .35rem; max-width: 100%; }
 .overview-card progress, .category-row progress { width: 100%; height: .8rem; accent-color: #176b99; }
 .metric-card .overview-value { margin-top: 1.4rem; font-size: 2rem; }
 .category-progress { margin-top: 2rem; }
@@ -248,12 +279,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .discovery-table th:nth-child(8) { width: 5.5rem; }
 .discovery-table th:nth-child(5) { width: 8rem; }
 .discovery-table th:nth-child(9) { width: 16rem; }
-.discovery-table th:nth-child(10),
-.discovery-table th:nth-child(11) { width: 8rem; }
+.discovery-table th[data-column="reported"],
+.discovery-table th[data-column="cardOwned"] { width: 8rem; }
 
 @media (max-height: 42rem) {
   .main-content--workspace { overflow: auto; }
   .main-content--workspace .quest-table-scroll { min-height: 10rem; }
+}
+
+@media (max-width: 1100px) {
+  .overview-summary-grid--secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 800px) {
@@ -267,3 +302,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .category-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .master-dataset-grid, .backup-restore-grid { grid-template-columns: 1fr; }
 }
+
+/* 地図状態は一段で表示し、セル余白も通常行の密度に合わせる。 */
+.map-state-select { width: 6.5rem; max-width: 100%; height: 28px; min-height: 28px; padding: 2px 3px; font: inherit; }
+.quest-table.quest-master-table td, .quest-table.discovery-table td { height: 44px; padding-top: 6px; padding-bottom: 6px; line-height: 16px; }
+.quest-master-table .quest-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; line-height: 16px; }
+.discovery-name-content { min-width: 0; flex: 1; }
+.discovery-name-content > .quest-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-related-badge { display: block; white-space: nowrap; color: #34596c; font-size: .7rem; line-height: 16px; }
+.map-related-button { padding: 3px 5px; white-space: nowrap; }
+.map-related-dialog { display: grid; gap: .7rem; }
+.map-related-dialog label { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }
+.map-state-unavailable { color: #64748b; }
+.map-filter-help { flex: 0 0 auto; margin-bottom: .4rem; font-size: .8rem; }
+.map-filter-help p { max-width: 45rem; margin: .4rem 0; }
+.map-state-select:focus-visible { outline: 3px solid #176b99; outline-offset: 2px; }

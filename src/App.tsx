@@ -32,6 +32,7 @@ import type {
 import type {
   DiscoveryProgressRepositoryPort,
   DiscoveryRepositoryPort,
+  DiscoveryInitialFilter,
 } from "./discoveries/types";
 import { BackupRestoreService, type BackupRestoreServicePort } from "./backupRestore";
 import { ProgressLinkService, type ProgressLinkServicePort } from "./progressLink";
@@ -75,16 +76,16 @@ function App({
   dataRootInfo = { mode: "default", dataRoot: "", databasePath: "", portableRoot: "", defaultDataRoot: "", configRoot: "", defaultDatabasePath: "", defaultDatabaseExists: false },
 }: AppProps) {
   const [page, setPage] = useState<AppPage>("profiles");
-  const [discoveryCategoryId, setDiscoveryCategoryId] = useState<number | undefined>();
-  const consumeDiscoveryCategory = useCallback(() => setDiscoveryCategoryId(undefined), []);
+  const [discoveryFilter, setDiscoveryFilter] = useState<DiscoveryInitialFilter | undefined>();
+  const consumeDiscoveryNavigation = useCallback(() => setDiscoveryFilter(undefined), []);
 
   function navigate(nextPage: AppPage) {
-    setDiscoveryCategoryId(undefined);
+    setDiscoveryFilter(undefined);
     setPage(nextPage);
   }
 
-  function openDiscoveryCategory(categoryId: number) {
-    setDiscoveryCategoryId(categoryId);
+  function openDiscoveries(filter: DiscoveryInitialFilter) {
+    setDiscoveryFilter(filter);
     setPage("discoveries");
   }
 
@@ -92,7 +93,7 @@ function App({
     <ProfileProvider repository={profileRepository}>
       <AppShell currentPage={page} onNavigate={navigate}>
         {page === "overview" ? (
-          <OverviewPage statsRepository={progressStatsRepository} onOpenDiscoveryCategory={openDiscoveryCategory} />
+          <OverviewPage statsRepository={progressStatsRepository} onOpenDiscoveries={openDiscoveries} />
         ) : page === "profiles" ? (
           <ProfilesPage />
         ) : page === "quests" ? (
@@ -103,8 +104,8 @@ function App({
           />
         ) : page === "discoveries" ? (
           <DiscoveriesPage
-            initialCategoryId={discoveryCategoryId}
-            onCategoryNavigationConsumed={consumeDiscoveryCategory}
+            initialFilter={discoveryFilter}
+            onNavigationConsumed={consumeDiscoveryNavigation}
             discoveryRepository={discoveryRepository}
             discoveryProgressRepository={discoveryProgressRepository}
             progressLinkService={progressLinkService}

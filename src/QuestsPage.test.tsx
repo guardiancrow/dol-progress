@@ -24,6 +24,8 @@ import type { QuestDependency } from "./quests/prerequisites";
 import type { UpdateProfileInput } from "./repositories/profileRepository";
 import type { ProgressLinkServicePort } from "./progressLink";
 
+vi.mock("./discoveries/stateReader", async (importOriginal) => ({...await importOriginal<typeof import("./discoveries/stateReader")>(),discoveryStateReader: {list: vi.fn().mockResolvedValue([])}}));
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -561,6 +563,28 @@ describe("Quest UI", () => {
     expect(checkbox).not.toBeChecked();
   });
 
+  it("recovers a failed map completion exactly once without retrying its write", async () => {
+    vi.spyOn(console,"error").mockImplementation(()=>undefined);
+    const {discoveryStateReader} = await import("./discoveries/stateReader");
+    const read = vi.mocked(discoveryStateReader.list);
+    read.mockClear();
+    const repositories=createRepositories([profile(1,"synthetic")],[quest(1,"地図",{offerMethod:"地理学"})]);
+    repositories.link.completeQuestWithLinkedDiscoveries.mockRejectedValue({kind:"DatabaseError",detail:"(code: 5) database is locked: synthetic-private-content"});
+    const user=await openQuests(repositories);
+    const initialReads=read.mock.calls.length;
+    const progressReads=repositories.progress.listCompletedQuestIds.mock.calls.length;
+    await user.click(screen.getByRole("checkbox",{name:"地図の達成状態"}));
+    await screen.findByText("達成状態を更新できませんでした。現在の状態を再取得します。");
+    await waitFor(()=>expect(screen.getByRole("checkbox",{name:"地図の達成状態"})).toBeEnabled());
+    expect(screen.getByRole("checkbox",{name:"地図の達成状態"})).not.toBeChecked();
+    expect(repositories.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledTimes(1);
+    expect(repositories.progress.markIncomplete).not.toHaveBeenCalled();
+    expect(read).toHaveBeenCalledTimes(initialReads+1);
+    expect(repositories.progress.listCompletedQuestIds).toHaveBeenCalledTimes(progressReads+1);
+    expect(screen.getByText(/complete \/ DatabaseError:sqlite_busy:sqlite_5/)).toHaveTextContent("reload:ok:");
+    expect(screen.queryByText(/synthetic-private-content/)).not.toBeInTheDocument();
+  });
+
   it("prevents duplicate updates while a quest write is pending", async () => {
     const user = userEvent.setup();
     let resolveUpdate: (() => void) | undefined;
@@ -731,7 +755,7 @@ describe("Quest UI", () => {
     );
     const user = await openQuests(repositories);
     const filter = screen.getByLabelText("前提クエスト");
-    expect(screen.getAllByRole("columnheader")).toHaveLength(8);
+    expect(screen.getAllByRole("columnheader")).toHaveLength(9);
 
     await user.selectOptions(filter, "satisfied");
     expect(screen.getByText("5件中 3件表示")).toBeInTheDocument();
@@ -913,10 +937,10 @@ describe("Quest UI", () => {
     await user.selectOptions(rank, "none");
     await user.click(titleSort);
     await user.keyboard("{Shift>}");
-    await user.click(screen.getByRole("button", { name: "達成状態で並べ替え" }));
+    await user.click(screen.getByRole("button", { name: "達成で並べ替え" }));
     await user.keyboard("{/Shift}");
     expect(titleSort.closest("th")).toHaveAttribute("aria-sort", "ascending");
-    expect(screen.getByRole("button", { name: "達成状態で並べ替え" }).closest("th"))
+    expect(screen.getByRole("button", { name: "達成で並べ替え" }).closest("th"))
       .toHaveAttribute("aria-sort", "descending");
     expect(rank).toHaveValue("none");
   });
@@ -1056,7 +1080,7 @@ function linkedDiscovery(
   id: number, name: string, categoryId: number | null,
   categoryName: string | null, categorySortOrder: number | null,
 ): QuestDiscoverySummary {
-  return { id, name, categoryId, categoryName, categorySortOrder };
+  return { id, name, description: null, notes: null, categoryId, categoryName, categorySortOrder };
 }
 
 function rankedQuest(

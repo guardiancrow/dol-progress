@@ -4,7 +4,14 @@ export interface QuestProgressStats {
   incomplete: number;
 }
 
+export interface UnreportedBreakdown {
+  notReported: number;
+  confirmed: number;
+  unknown: number;
+}
+
 export interface DiscoveryProgressStats {
+  unreportedBreakdown?: UnreportedBreakdown;
   total: number;
   discovered: number;
   undiscovered: number;
@@ -22,6 +29,7 @@ export interface AdventureMeritStats {
 }
 
 export interface DiscoveryCategoryProgressStats {
+  unreportedBreakdown?: UnreportedBreakdown;
   categoryId: number;
   categoryName: string;
   sortOrder: number;

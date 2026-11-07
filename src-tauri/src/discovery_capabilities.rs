@@ -1,5 +1,13 @@
 pub(crate) const RELIC_CATEGORY_NAME: &str = "レリック";
 
+pub(crate) const SPECIAL_REPORTING_QUESTS_SQL: &str =
+    include_str!("../../src/discoveries/specialReportingQuests.sql");
+
+pub(crate) fn automatic_reporting_discoveries_sql() -> String {
+    include_str!("../../src/discoveries/automaticReportingDiscoveries.sql")
+        .replace("__SPECIAL_REPORTING_QUESTS__", SPECIAL_REPORTING_QUESTS_SQL)
+}
+
 pub(crate) fn can_report(category_name: Option<&str>) -> bool {
     category_name != Some(RELIC_CATEGORY_NAME)
 }

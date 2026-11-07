@@ -4,6 +4,24 @@ import { StubDatabase } from "../test/stubDatabase";
 import { ProgressStatsRepository } from "./progressStatsRepository";
 
 describe("ProgressStatsRepository", () => {
+  it.each([
+    [1,1,1,{notReported:1,confirmed:1,unknown:1}],
+    [undefined,undefined,undefined,undefined],
+    [1,0,0,undefined],
+  ])("maps an existing category breakdown only when it matches its total (%j/%j/%j)", async (first,repeat,unknown,expected) => {
+    const database=new StubDatabase();
+    database.selectResults.push([{total:0,completed:0}],[{
+      scope:"category",categoryId:1,categoryName:"地理",sortOrder:1,total:5,discovered:3,
+      unreported:3,unreportedNotReported:first,unreportedConfirmed:repeat,unreportedUnknown:unknown,
+      reported:0,cardOwned:0,cardCapableDiscovered:3,canReport:1,hasCard:1,
+    }]);
+    const result=await new ProgressStatsRepository(async()=>database).getForProfile(1);
+    expect(result.categories[0]?.unreported).toBe(3);
+    expect(result.categories[0]?.unreportedBreakdown).toEqual(expected);
+    expect(database.selectCalls).toHaveLength(3);
+    expect(database.executeCalls).toHaveLength(0);
+  });
+
   it("maps quest, discovery, category, and adventure merit aggregates", async () => {
     const database = new StubDatabase();
     database.selectResults.push(
@@ -42,11 +60,11 @@ describe("ProgressStatsRepository", () => {
     expect(database.selectCalls[1]?.sql).toContain("GROUP BY d.category_id");
     expect(database.selectCalls[1]?.sql).toContain("c.name IS NOT 'レリック'");
     expect(database.selectCalls[1]?.sql).not.toContain("42");
-    expect(database.selectCalls[2]?.sql).toContain("FROM discovery_progress dp");
-    expect(database.selectCalls[2]?.sql).toContain("dp.reported = 1");
+    expect(database.selectCalls[2]?.sql).toContain("FROM discovery_reporting_history");
+    expect(database.selectCalls[2]?.sql).toContain("legacy_merit_credit = 1");
     expect(database.selectCalls[2]?.sql).toContain("c.name IS NOT $2");
-    expect(database.selectCalls[2]?.sql).not.toContain("d.is_active = 1");
-    expect(database.selectCalls[2]?.sql).not.toContain("レリック");
+    expect(database.selectCalls[2]?.sql).not.toContain("AND d.is_active = 1");
+    expect(database.selectCalls[2]?.sql).toContain("UNION");
     expect(database.selectCalls[2]?.parameters).toEqual([42, "レリック"]);
     expect(database.executeCalls).toHaveLength(0);
   });

@@ -10,6 +10,8 @@ import type { Profile } from "./domain/models";
 import type { ProgressStats, ProgressStatsRepositoryPort } from "./overview/types";
 import type { ProfileRepositoryPort } from "./profiles/ProfileContext";
 import type { UpdateProfileInput } from "./repositories/profileRepository";
+import * as databaseConnection from "./db/connection";
+import { StubDatabase } from "./test/stubDatabase";
 
 afterEach(() => {
   cleanup();
@@ -17,6 +19,97 @@ afterEach(() => {
 });
 
 describe("Overview UI", () => {
+  it("keeps the current unreported total and shows all three history groups",async()=>{
+    const data=stats({unreported:6});
+    data.discoveries.unreportedBreakdown={notReported:1,confirmed:2,unknown:3};
+    await openOverview(setup([profile(1)],data));
+    expect(card("現在未報告")).toHaveTextContent("6件");
+    const breakdown=within(card("現在未報告")).getByLabelText("現在未報告の内訳");
+    expect(breakdown).toHaveTextContent("初回未報告1件再報告待ち2件履歴未確定3件");
+    expect(card("現在未報告")).toHaveTextContent("初回未報告は初回報告前、再報告待ちは初回報告済みです。");
+    expect(card("冒険勲功値")).not.toHaveTextContent(/初回未報告|再報告待ち|履歴未確定/);
+  });
+
+  it.each([
+    [0, 0, 0, 0],
+    [42, 7, 35, 0],
+    [123456789, 100000000, 23456788, 1],
+  ])("shows totals and zero or large breakdown counts (%i)", async (total, first, repeat, unknown) => {
+    const data=stats({unreported:total});
+    data.discoveries.unreportedBreakdown={notReported:first,confirmed:repeat,unknown};
+    const repositories=setup([profile(1)],data);
+    const user=await openOverview(repositories);
+    const current=card("現在未報告");
+    expect(within(current).getByText(`${total.toLocaleString("ja-JP")}件`, {selector:".overview-value"})).toBeInTheDocument();
+    const breakdown=within(current).getByLabelText("現在未報告の内訳");
+    expect(within(breakdown).getByText("初回未報告").nextElementSibling).toHaveTextContent(`${first.toLocaleString("ja-JP")}件`);
+    expect(within(breakdown).getByText("再報告待ち").nextElementSibling).toHaveTextContent(`${repeat.toLocaleString("ja-JP")}件`);
+    expect(within(breakdown).queryByText("履歴未確定") !== null).toBe(unknown > 0);
+    await user.click(screen.getByRole("button",{name:"未報告の発見物一覧を開く"}));
+    expect(await screen.findByRole("heading",{name:"発見物"})).toBeInTheDocument();
+  });
+
+  it.each([undefined, {notReported:1,confirmed:1,unknown:1}, {notReported:-1,confirmed:2,unknown:5}])(
+    "keeps the total and explains unavailable or invalid breakdown (%j)", async (breakdown) => {
+      const data=stats({unreported:6});
+      data.discoveries.unreportedBreakdown=breakdown;
+      await openOverview(setup([profile(1)],data));
+      const current=card("現在未報告");
+      expect(within(current).getByText("6件",{selector:".overview-value"})).toBeInTheDocument();
+      expect(current).toHaveTextContent("未報告の内訳を確認できません。");
+      expect(within(current).queryByLabelText("現在未報告の内訳")).not.toBeInTheDocument();
+    },
+  );
+  it.each([
+    [10, 6, 2, 1, "62.5%"],
+    [10, 0, 2, 0, "0.0%"],
+    [10, 10, 2, 2, "100.0%"],
+    [10, 6, 0, 0, "60.0%"],
+    [2, 1, 2, 1, "0.0%"],
+    [0, 0, 0, 0, "0.0%"],
+  ])("separates regular, relic and combined progress (%i/%i; relic %i/%i)", async (total, discovered, relicTotal, relicDiscovered, rate) => {
+    const data = stats({ discoveryTotal: total, discovered });
+    if (relicTotal > 0) data.categories = [{
+      categoryId: 20, categoryName: "レリック", sortOrder: 20,
+      total: relicTotal, discovered: relicDiscovered, undiscovered: relicTotal - relicDiscovered,
+      unreported: 0, cardOwned: 0, canReport: false, hasCard: false,
+    }];
+    await openOverview(setup([profile(1)], data));
+    const discovery = within(card("発見物"));
+    expect(discovery.getByText(`発見済み ${discovered - relicDiscovered} / ${total - relicTotal}`)).toBeInTheDocument();
+    expect(discovery.getByText(rate)).toBeInTheDocument();
+    const bar = discovery.getByRole("progressbar");
+    expect(bar).toHaveAttribute("value", String(discovered - relicDiscovered));
+    expect(bar).toHaveAttribute("max", String(total - relicTotal || 1));
+    expect(discovery.getByText(`レリック ${relicDiscovered} / ${relicTotal}`)).toBeInTheDocument();
+    expect(discovery.getByText(`総発見数 ${discovered} / ${total}`)).toBeInTheDocument();
+    expect(card("発見物")).not.toHaveTextContent(/レリックを除く|ゲーム内|参考|アプリ独自/);
+    expect(card("発見物")).not.toHaveTextContent("NaN");
+    expect(card("発見物")).not.toHaveTextContent("Infinity");
+  });
+
+  it("keeps historical categories in regular counts and preserves other summaries and navigation", async () => {
+    // Includes the categories used by non-relic treasure hunts; offer methods are not a classification input.
+    const data = stats({ discoveryTotal: 7, discovered: 4, unreported: 1, reported: 2,
+      cardCapableDiscovered: 3, cardOwned: 2, knownMerit: 550 });
+    data.categories = [
+      { categoryId: 1, categoryName: "史跡", sortOrder: 1, total: 2, discovered: 1, undiscovered: 1, unreported: 1, cardOwned: 0, canReport: true, hasCard: true },
+      { categoryId: 2, categoryName: "歴史遺物", sortOrder: 2, total: 3, discovered: 2, undiscovered: 1, unreported: 0, cardOwned: 2, canReport: true, hasCard: true },
+      { categoryId: 20, categoryName: "レリック", sortOrder: 20, total: 2, discovered: 1, undiscovered: 1, unreported: 0, cardOwned: 0, canReport: false, hasCard: false },
+    ];
+    await openOverview(setup([profile(1)], data));
+    expect(card("発見物")).toHaveTextContent("発見済み 3 / 5");
+    expect(card("発見物")).toHaveTextContent("60.0%");
+    expect(card("カード所有")).toHaveTextContent("所有 2 / 3");
+    expect(card("カード所有")).toHaveTextContent("66.7%");
+    expect(card("現在未報告")).toHaveTextContent("1件");
+    expect(card("冒険勲功値")).toHaveTextContent("550");
+    expect(card("史跡")).toHaveTextContent("1 / 2");
+    expect(card("歴史遺物")).toHaveTextContent("2 / 3");
+    for (const label of ["未報告の発見物一覧を開く", "カード未所有の発見物一覧を開く", "レリックの発見物一覧を開く"]) {
+      expect(screen.getByRole("button", { name: label })).toBeEnabled();
+    }
+  });
   it("asks for a profile when selectedProfileId is null", async () => {
     const repositories = setup([], zeroStats());
     await openOverview(repositories);
@@ -41,8 +134,8 @@ describe("Overview UI", () => {
   it("handles a zero Discovery master and empty categories safely", async () => {
     const repositories = setup([profile(1)], zeroStats());
     await openOverview(repositories);
-    expect(screen.getByText("発見 0 / 0")).toBeInTheDocument();
-    expect(card("冒険勲功値（判明分）")).toHaveTextContent("経験値不明 0件");
+    expect(screen.getByText("発見済み 0 / 0")).toBeInTheDocument();
+    expect(card("冒険勲功値")).toHaveTextContent("経験値不明 0件");
     expect(screen.getByText("集計対象の発見物分類がありません。")).toBeInTheDocument();
   });
 
@@ -50,7 +143,7 @@ describe("Overview UI", () => {
     const repositories = setup([profile(1)], stats({ questTotal: 8, discoveryTotal: 10 }));
     await openOverview(repositories);
     expect(screen.getByText("達成 0 / 8")).toBeInTheDocument();
-    expect(screen.getByText("発見 0 / 10")).toBeInTheDocument();
+    expect(screen.getByText("発見済み 0 / 10")).toBeInTheDocument();
   });
 
   it("shows Quest completed, incomplete, and completion rate", async () => {
@@ -64,7 +157,7 @@ describe("Overview UI", () => {
   it("shows Discovery discovered and undiscovered totals", async () => {
     const repositories = setup([profile(1)], stats({ discoveryTotal: 10, discovered: 6 }));
     await openOverview(repositories);
-    expect(screen.getByText("発見 6 / 10")).toBeInTheDocument();
+    expect(screen.getByText("発見済み 6 / 10")).toBeInTheDocument();
     expect(screen.getByText(/未発見 4件/)).toBeInTheDocument();
     expect(screen.getByText("60.0%")).toBeInTheDocument();
   });
@@ -72,7 +165,7 @@ describe("Overview UI", () => {
   it("shows unreported count", async () => {
     const repositories = setup([profile(1)], stats({ discoveryTotal: 10, discovered: 6, unreported: 2, reported: 4 }));
     await openOverview(repositories);
-    expect(within(card("未報告")).getByText("2件")).toBeInTheDocument();
+    expect(within(card("現在未報告")).getByText("2件", { selector: ".overview-value" })).toBeInTheDocument();
   });
 
   it("shows reported count", async () => {
@@ -84,12 +177,12 @@ describe("Overview UI", () => {
   it("shows the known adventure merit summary and reported experience counts", async () => {
     const repositories = setup([profile(1)], stats({ knownMerit: 116359, meritReportedCount: 221, knownExperienceCount: 211, unknownExperienceCount: 10 }));
     await openOverview(repositories);
-    const merit = card("冒険勲功値（判明分）");
+    const merit = card("冒険勲功値");
     expect(within(merit).getByText("116,359")).toBeInTheDocument();
-    expect(merit).toHaveTextContent("報告済み発見物 221件");
+    expect(merit).toHaveTextContent("勲功値の算入対象発見物 221件");
     expect(merit).toHaveTextContent("経験値判明 211件");
     expect(merit).toHaveTextContent("経験値不明 10件");
-    expect(merit).toHaveTextContent("大航海時代データベースに記載された報告済み発見物の経験値から算出した参考値");
+    expect(merit).toHaveTextContent("大航海時代データベースに記載された勲功値の算入対象発見物の経験値から算出した参考値");
   });
 
   it("groups primary and secondary Overview summaries separately", async () => {
@@ -98,22 +191,23 @@ describe("Overview UI", () => {
 
     const primary = screen.getByRole("group", { name: "主要な進捗" });
     const secondary = screen.getByRole("group", { name: "補助的な進捗" });
-    expect(within(primary).getByRole("heading", { name: "Quest" })).toBeInTheDocument();
-    expect(within(primary).getByRole("heading", { name: "Discovery" })).toBeInTheDocument();
-    expect(within(primary).getByRole("heading", { name: "冒険勲功値（判明分）" })).toBeInTheDocument();
-    expect(within(secondary).getByRole("heading", { name: "未報告" })).toBeInTheDocument();
+    expect(within(primary).getByRole("heading", { name: "クエスト" })).toBeInTheDocument();
+    expect(within(primary).getByRole("heading", { name: "発見物" })).toBeInTheDocument();
+    expect(within(primary).getAllByRole("heading").map((heading) => heading.textContent)).toEqual(["クエスト", "発見物"]);
+    expect(within(secondary).getAllByRole("heading").map((heading) => heading.textContent)).toEqual(["冒険勲功値", "現在未報告", "カード所有"]);
+    expect(within(secondary).getByRole("heading", { name: "現在未報告" })).toBeInTheDocument();
     expect(within(secondary).getByRole("heading", { name: "カード所有" })).toBeInTheDocument();
   });
 
   it("explains that unregistered experience is excluded only when unknown rows exist", async () => {
     const withUnknown = setup([profile(1)], stats({ unknownExperienceCount: 1 }));
     await openOverview(withUnknown);
-    expect(card("冒険勲功値（判明分）")).toHaveTextContent("経験値未登録の発見物は合計に含まれていません");
+    expect(card("冒険勲功値")).toHaveTextContent("経験値未登録の発見物は合計に含まれていません");
 
     cleanup();
     const withoutUnknown = setup([profile(1)], stats({ unknownExperienceCount: 0 }));
     await openOverview(withoutUnknown);
-    expect(card("冒険勲功値（判明分）")).not.toHaveTextContent("経験値未登録の発見物は合計に含まれていません");
+    expect(card("冒険勲功値")).not.toHaveTextContent("経験値未登録の発見物は合計に含まれていません");
   });
 
   it("shows card-owned count", async () => {
@@ -144,6 +238,107 @@ describe("Overview UI", () => {
     await openOverview(repositories);
     expect(card("レリック")).toHaveTextContent("報告: 対象外");
     expect(card("レリック")).toHaveTextContent("カード: 対象外");
+    expect(within(card("レリック")).queryByLabelText("レリックの現在未報告の内訳")).not.toBeInTheDocument();
+    expect(card("レリック")).not.toHaveTextContent("内訳を確認できません");
+  });
+
+  it.each([
+    [6, 1, 2, 3], [2, 1, 1, 0], [0, 0, 0, 0], [123456789, 100000000, 23456788, 1],
+  ])("shows compact category history counts while retaining the original total (%i)", async (total, first, repeat, unknown) => {
+    const data=statsWithCategory();
+    data.categories[0]={...data.categories[0]!,unreported:total,
+      unreportedBreakdown:{notReported:first,confirmed:repeat,unknown}};
+    await openOverview(setup([profile(1)],data));
+    const category=card("地理");
+    expect(category).toHaveTextContent(`未報告 ${total.toLocaleString("ja-JP")}件`);
+    const breakdown=within(category).getByLabelText("地理の現在未報告の内訳");
+    expect(within(breakdown).getByText("初回未報告").nextElementSibling).toHaveTextContent(`${first.toLocaleString("ja-JP")}件`);
+    expect(within(breakdown).getByText("再報告待ち").nextElementSibling).toHaveTextContent(`${repeat.toLocaleString("ja-JP")}件`);
+    expect(within(breakdown).queryByText("履歴未確定") !== null).toBe(unknown>0);
+    expect(category).not.toHaveTextContent("初回未報告は初回報告前");
+    expect(within(category).getByRole("button",{name:"地理の発見物一覧を開く"})).toHaveProperty("tabIndex",0);
+  });
+
+  it.each([undefined,{notReported:1,confirmed:1,unknown:1},{notReported:-1,confirmed:2,unknown:5}])(
+    "keeps the category total and flags an unavailable or invalid breakdown (%j)", async (breakdown) => {
+      const data=statsWithCategory();
+      data.categories[0]={...data.categories[0]!,unreported:6,unreportedBreakdown:breakdown};
+      await openOverview(setup([profile(1)],data));
+      const category=card("地理");
+      expect(category).toHaveTextContent("未報告 6件");
+      expect(category).toHaveTextContent("未報告の内訳を確認できません。");
+      expect(within(category).queryByLabelText("地理の現在未報告の内訳")).not.toBeInTheDocument();
+    },
+  );
+
+  it("preserves category order and keyboard navigation with history breakdowns", async () => {
+    vi.spyOn(databaseConnection,"getDatabase").mockResolvedValue(new StubDatabase());
+    const data=statsWithCategory();
+    data.categories[0]={...data.categories[0]!,unreportedBreakdown:{notReported:1,confirmed:0,unknown:0}};
+    data.categories.push({...data.categories[0]!,categoryId:2,categoryName:"史跡",sortOrder:20});
+    const user=await openOverview(setup([profile(1)],data));
+    expect(screen.getAllByRole("listitem").map((item)=>within(item).getByRole("heading").textContent)).toEqual(["地理","史跡"]);
+    const action=within(card("地理")).getByRole("button",{name:"地理の発見物一覧を開く"});
+    action.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("heading",{name:"発見物"})).toBeInTheDocument();
+  });
+
+  it.each([
+    ["港・集落",0],["港・集落",1],["伝承",0],["伝承",1],
+  ])("omits zero repeat reports only in category %s while preserving first/unknown and the C7 card (%i)", async (name,unknown) => {
+    const data=statsWithCategory();
+    const breakdown={notReported:2,confirmed:0,unknown};
+    data.discoveries={...data.discoveries,unreported:2+unknown,unreportedBreakdown:breakdown};
+    data.categories[0]={...data.categories[0]!,categoryId:901,categoryName:name,unreported:2+unknown,unreportedBreakdown:breakdown};
+    const before=structuredClone(data);
+    await openOverview(setup([profile(1)],data));
+    const category=card(name);
+    const details=within(category).getByLabelText(`${name}の現在未報告の内訳`);
+    expect(within(details).getByText("初回未報告").nextElementSibling).toHaveTextContent("2件");
+    expect(within(details).queryByText(/再報告待ち/)).not.toBeInTheDocument();
+    expect(within(details).queryByText("履歴未確定")!==null).toBe(unknown>0);
+    expect(category).toHaveTextContent(`未報告 ${2+unknown}件`);
+    expect(category).not.toHaveTextContent("要確認");
+    const overall=within(card("現在未報告")).getByLabelText("現在未報告の内訳");
+    expect(within(overall).getByText("再報告待ち").nextElementSibling).toHaveTextContent("0件");
+    expect(data).toEqual(before);
+  });
+
+  it.each(["港・集落","伝承"])("retains an unexpected positive repeat count for %s with a visible review reason", async (name) => {
+    const data=statsWithCategory();
+    const breakdown={notReported:1,confirmed:2,unknown:1};
+    data.discoveries={...data.discoveries,unreported:4,unreportedBreakdown:breakdown};
+    data.categories[0]={...data.categories[0]!,categoryId:902,categoryName:name,unreported:4,unreportedBreakdown:breakdown};
+    const before=structuredClone(data);
+    await openOverview(setup([profile(1)],data));
+    const category=card(name);
+    const details=within(category).getByLabelText(`${name}の現在未報告の内訳`);
+    expect(within(details).getByText("再報告待ち（要確認）").nextElementSibling).toHaveTextContent("2件");
+    expect(within(details).getByText("初回未報告").nextElementSibling).toHaveTextContent("1件");
+    expect(within(details).getByText("履歴未確定").nextElementSibling).toHaveTextContent("1件");
+    expect(category).toHaveTextContent("未報告 4件");
+    expect(category).toHaveTextContent("この分類には再報告の概念がないため、現在の報告状態と初回報告履歴を確認してください。");
+    const overall=card("現在未報告");
+    expect(within(overall).getByLabelText("現在未報告の内訳")).toHaveTextContent("初回未報告1件再報告待ち2件履歴未確定1件");
+    expect(overall).not.toHaveTextContent("要確認");
+    expect(card("冒険勲功値")).not.toHaveTextContent("要確認");
+    expect(data).toEqual(before);
+  });
+
+  it.each([
+    ["気象・現象",0],["気象・現象",2],["地理",0],["地理",2],
+    ["伝承（合成）",0],["伝承（合成）",2],["港・集落（合成）",0],["港・集落（合成）",2],
+  ])("retains normal repeat-report presentation for exact category %s (%i), without inferring map relations", async (name,confirmed) => {
+    const data=statsWithCategory();
+    data.categories[0]={...data.categories[0]!,categoryId:901,categoryName:name,unreported:confirmed,
+      unreportedBreakdown:{notReported:0,confirmed,unknown:0}};
+    await openOverview(setup([profile(1)],data));
+    const category=card(name);
+    const details=within(category).getByLabelText(`${name}の現在未報告の内訳`);
+    expect(within(details).getByText("再報告待ち").nextElementSibling).toHaveTextContent(`${confirmed}件`);
+    expect(category).not.toHaveTextContent("要確認");
+    expect(category).not.toHaveTextContent("再報告の概念がない");
   });
 
   it("shows category total and discovered count", async () => {
@@ -175,8 +370,8 @@ describe("Overview UI", () => {
   it("renders accessible progress values and percentages", async () => {
     const repositories = setup([profile(1)], stats({ questTotal: 8, questCompleted: 2, discoveryTotal: 10, discovered: 6 }));
     await openOverview(repositories);
-    expect(screen.getByRole("progressbar", { name: "Quest: 達成 2 / 8、25.0%" })).toBeInTheDocument();
-    expect(screen.getByRole("progressbar", { name: "Discovery: 発見 6 / 10、60.0%" })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "クエスト: 達成 2 / 8、25.0%" })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "発見物: 発見済み 6 / 10、60.0%" })).toBeInTheDocument();
   });
 
   it("never renders NaN or Infinity when denominators are zero", async () => {
@@ -188,15 +383,22 @@ describe("Overview UI", () => {
   });
 
   it("keeps profile A and B aggregates independent", async () => {
+    const a=stats({questTotal:10,questCompleted:3,unreported:5});
+    a.discoveries.unreportedBreakdown={notReported:1,confirmed:3,unknown:1};
+    const b=stats({questTotal:10,questCompleted:7,unreported:2});
+    b.discoveries.unreportedBreakdown={notReported:0,confirmed:2,unknown:0};
     const byProfile = new Map([
-      [1, stats({ questTotal: 10, questCompleted: 3 })],
-      [2, stats({ questTotal: 10, questCompleted: 7 })],
+      [1, a],
+      [2, b],
     ]);
     const repositories = setup([profile(1, "A"), profile(2, "B")], zeroStats(), byProfile);
     const user = await openOverview(repositories);
     expect(screen.getByText("達成 3 / 10")).toBeInTheDocument();
+    expect(card("現在未報告")).toHaveTextContent("初回未報告1件再報告待ち3件履歴未確定1件");
     await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
     expect(await screen.findByText("達成 7 / 10")).toBeInTheDocument();
+    expect(card("現在未報告")).toHaveTextContent("初回未報告0件再報告待ち2件");
+    expect(within(card("現在未報告")).queryByText("履歴未確定")).not.toBeInTheDocument();
   });
 
   it("reloads current SQLite aggregation whenever Overview is revisited", async () => {
@@ -293,7 +495,9 @@ function stats(values: { questTotal?: number; questCompleted?: number; discovery
   const discovered = values.discovered ?? 0;
   return {
     quests: { total: questTotal, completed: questCompleted, incomplete: questTotal - questCompleted },
-    discoveries: { total: discoveryTotal, discovered, undiscovered: discoveryTotal - discovered, unreported: values.unreported ?? 0, reported: values.reported ?? 0, cardOwned: values.cardOwned ?? 0, cardCapableDiscovered: values.cardCapableDiscovered ?? discovered },
+    discoveries: { total: discoveryTotal, discovered, undiscovered: discoveryTotal - discovered, unreported: values.unreported ?? 0,
+      unreportedBreakdown: {notReported:0,confirmed:0,unknown:values.unreported ?? 0},
+      reported: values.reported ?? 0, cardOwned: values.cardOwned ?? 0, cardCapableDiscovered: values.cardCapableDiscovered ?? discovered },
     adventureMerit: { knownMerit: values.knownMerit ?? 0, reportedCount: values.meritReportedCount ?? 0, knownExperienceCount: values.knownExperienceCount ?? 0, unknownExperienceCount: values.unknownExperienceCount ?? 0 },
     categories: [],
   };
@@ -302,6 +506,7 @@ function stats(values: { questTotal?: number; questCompleted?: number; discovery
 function statsWithCategory(): ProgressStats {
   return {
     ...stats({ discoveryTotal: 5, discovered: 3, unreported: 1, reported: 2, cardOwned: 2 }),
-    categories: [{ categoryId: 1, categoryName: "地理", sortOrder: 1, total: 5, discovered: 3, undiscovered: 2, unreported: 1, cardOwned: 2, canReport: true, hasCard: true }],
+    categories: [{ categoryId: 1, categoryName: "地理", sortOrder: 1, total: 5, discovered: 3, undiscovered: 2, unreported: 1,
+      unreportedBreakdown:{notReported:0,confirmed:0,unknown:1},cardOwned: 2, canReport: true, hasCard: true }],
   };
 }

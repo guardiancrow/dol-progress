@@ -95,8 +95,8 @@ describe("QuestRepository", () => {
     const database = new StubDatabase();
     database.selectResults.push(
       [
-        { ...questRow, discoveryId: 20, discoveryName: "発見物A", categoryId: 3, categoryName: "史跡", categorySortOrder: 2 },
-        { ...questRow, discoveryId: 21, discoveryName: "発見物B", categoryId: 4, categoryName: "天文", categorySortOrder: 1 },
+        { ...questRow, discoveryId: 20, discoveryName: "発見物A", discoveryDescription: "合成の説明", discoveryNotes: "合成の備考", categoryId: 3, categoryName: "史跡", categorySortOrder: 2 },
+        { ...questRow, discoveryId: 21, discoveryName: "発見物B", discoveryDescription: null, discoveryNotes: null, categoryId: 4, categoryName: "天文", categorySortOrder: 1 },
         {
           ...questRow,
           id: 11,
@@ -118,8 +118,8 @@ describe("QuestRepository", () => {
       {
         quest: expect.objectContaining({ id: 10, title: "テスト依頼A" }),
         discoveries: [
-          { id: 20, name: "発見物A", categoryId: 3, categoryName: "史跡", categorySortOrder: 2 },
-          { id: 21, name: "発見物B", categoryId: 4, categoryName: "天文", categorySortOrder: 1 },
+          { id: 20, name: "発見物A", description: "合成の説明", notes: "合成の備考", categoryId: 3, categoryName: "史跡", categorySortOrder: 2 },
+          { id: 21, name: "発見物B", description: null, notes: null, categoryId: 4, categoryName: "天文", categorySortOrder: 1 },
         ],
         requiredSkillsNormalized: [
           { position: 0, skillName: "日本語", requiredRank: null, isLanguage: true },
@@ -134,6 +134,8 @@ describe("QuestRepository", () => {
       },
     ]);
     expect(database.selectCalls).toHaveLength(3);
+    expect(database.selectCalls[0]?.sql).toContain("d.description AS discoveryDescription");
+    expect(database.selectCalls[0]?.sql).toContain("d.notes AS discoveryNotes");
     expect(database.selectCalls[0]?.sql).toContain("LEFT JOIN quest_discoveries");
     expect(database.selectCalls[0]?.sql).toContain("LEFT JOIN discovery_categories");
     expect(database.selectCalls[0]?.sql).not.toContain("d.is_active = 1");
@@ -194,6 +196,7 @@ describe("DiscoveryRepository", () => {
         categorySortOrder: 4,
         relatedQuestId: 10,
         relatedQuestTitle: "テスト依頼A",
+        relatedQuestNotes: "合成の備考",
       },
       {
         ...discoveryRow,
@@ -201,17 +204,19 @@ describe("DiscoveryRepository", () => {
         categorySortOrder: 4,
         relatedQuestId: 11,
         relatedQuestTitle: "古代の調査",
+        relatedQuestNotes: null,
       },
     ]);
     const repository = new DiscoveryRepository(async () => database);
 
     await expect(repository.listWithRelations()).resolves.toEqual([
       {
+        automaticReporting: false,
         discovery: expect.objectContaining({ id: 20, name: "発見物" }),
         category: { id: 3, name: "史跡", sortOrder: 4 },
         relatedQuests: [
-          { id: 10, title: "テスト依頼A" },
-          { id: 11, title: "古代の調査" },
+          { id: 10, title: "テスト依頼A", notes: "合成の備考" },
+          { id: 11, title: "古代の調査", notes: null },
         ],
       },
     ]);

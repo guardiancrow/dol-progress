@@ -13,24 +13,26 @@ import {
 import { createPortal } from "react-dom";
 
 interface MasterInfoItem {
-  id: number;
+  id: number | string;
   title: string;
   description?: string | null;
   notes: string | null;
+  hint?: string;
+  details?: ReadonlyArray<{ label: string; value: string }>;
 }
 
 interface Selection {
-  rowId: number;
+  rowId: number | string;
   anchor: HTMLButtonElement;
   resetKey: string;
 }
 
 interface MasterInfoContextValue {
-  items: Map<number, MasterInfoItem>;
-  activeRowId: number | null;
+  items: Map<number | string, MasterInfoItem>;
+  activeRowId: number | string | null;
   dialogId: string;
   hint: string;
-  toggle(rowId: number, anchor: HTMLButtonElement): void;
+  toggle(rowId: number | string, anchor: HTMLButtonElement): void;
 }
 
 const MasterInfoContext = createContext<MasterInfoContextValue | null>(null);
@@ -40,7 +42,8 @@ function hasText(text: string | null | undefined): text is string {
 }
 
 function hasContent(item: MasterInfoItem): boolean {
-  return hasText(item.description) || hasText(item.notes);
+  return hasText(item.description) || hasText(item.notes) ||
+    (item.details?.some((detail) => hasText(detail.value)) ?? false);
 }
 
 export function MasterInfoProvider({
@@ -66,7 +69,7 @@ export function MasterInfoProvider({
     if (selection && !activeItem) setSelection(null);
   }, [activeItem, selection]);
 
-  const toggle = useCallback((rowId: number, anchor: HTMLButtonElement) => {
+  const toggle = useCallback((rowId: number | string, anchor: HTMLButtonElement) => {
     setSelection((current) => current?.rowId === rowId && current.resetKey === resetKey
       ? null
       : { rowId, anchor, resetKey });
@@ -102,18 +105,19 @@ export function MasterInfoProvider({
   );
 }
 
-export function MasterInfoButton({ rowId }: { rowId: number }) {
+export function MasterInfoButton({ rowId }: { rowId: number | string }) {
   const context = useContext(MasterInfoContext);
   if (!context) throw new Error("MasterInfoButton requires MasterInfoProvider");
   const item = context.items.get(rowId);
   if (!item || !hasContent(item)) return null;
   const open = context.activeRowId === rowId;
+  const hint = item.hint ?? context.hint;
   return (
     <button
       type="button"
       className="master-info-button"
-      title={context.hint}
-      aria-label={`${item.title}の${context.hint}`}
+      title={hint}
+      aria-label={`${item.title}の${hint}`}
       aria-haspopup="dialog"
       aria-expanded={open}
       aria-controls={open ? context.dialogId : undefined}
@@ -236,6 +240,9 @@ function MasterInfoPanel({ item, anchor, dialogId, onClose }: {
         </button>
       </div>
       <div className="master-info-body">
+        {item.details?.filter((detail) => hasText(detail.value)).map((detail) => (
+          <section key={detail.label}><h3>{detail.label}</h3><p>{detail.value}</p></section>
+        ))}
         {hasText(item.description) && <section><h3>説明</h3><p>{item.description}</p></section>}
         {hasText(item.notes) && <section><h3>備考</h3><p>{item.notes}</p></section>}
       </div>

@@ -135,6 +135,20 @@ const REQUIRED_COLUMNS_V3: &[(&str, &[&str])] = &[
     ("discoveries", &["source_order"]),
 ];
 
+const REQUIRED_COLUMNS_V4: &[(&str, &[&str])] = &[
+    ("discovery_progress", &["report_hold"]),
+    (
+        "discovery_reporting_history",
+        &[
+            "profile_id",
+            "discovery_id",
+            "first_report_status",
+            "legacy_merit_credit",
+            "updated_at",
+        ],
+    ),
+];
+
 static UNIQUE_ID: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Default)]
@@ -569,6 +583,9 @@ async fn validate_database(path: &Path) -> Result<i64, ValidationError> {
     }
     if version >= 3 {
         validate_required_columns(&mut connection, REQUIRED_COLUMNS_V3).await?;
+    }
+    if version >= 4 {
+        validate_required_columns(&mut connection, REQUIRED_COLUMNS_V4).await?;
     }
     connection.close().await.map_err(|error| ValidationError {
         incompatible: false,
@@ -1073,6 +1090,98 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn version_three_restore_then_startup_migration_preserves_business_snapshot() {
+        let directory = test_directory("map-c4-old-restore");
+        let current = directory.join("current.db");
+        let backup = directory.join("version003.sqlite3");
+        create_application_database(&current).await;
+        let baseline = application_snapshot(&current).await;
+        create_backup(&current, &backup).await.unwrap();
+        assert_eq!(validate_database(&backup).await.unwrap(), 3);
+        let pool = SqlitePool::connect_with(
+            SqliteConnectOptions::new()
+                .filename(&current)
+                .foreign_keys(true),
+        )
+        .await
+        .unwrap();
+        crate::migrations::run(&pool).await.unwrap();
+        pool.close().await;
+        restore_backup(&current, &backup).await.unwrap();
+        assert_eq!(validate_database(&current).await.unwrap(), 3);
+        assert_eq!(application_snapshot(&current).await, baseline);
+        let pool = SqlitePool::connect_with(
+            SqliteConnectOptions::new()
+                .filename(&current)
+                .foreign_keys(true),
+        )
+        .await
+        .unwrap();
+        crate::migrations::run(&pool).await.unwrap();
+        crate::quest_facets::backfill_pool(&pool).await.unwrap();
+        pool.close().await;
+        assert_eq!(validate_database(&current).await.unwrap(), 4);
+        assert_eq!(application_snapshot(&current).await, baseline);
+        assert_eq!(
+            scalar(
+                &current,
+                "SELECT COUNT(*) FROM discovery_progress WHERE report_hold<>0"
+            )
+            .await,
+            0
+        );
+        assert_eq!(scalar(&current,"SELECT COUNT(*) FROM discovery_reporting_history WHERE first_report_status<>'unknown'").await,0);
+        assert_eq!(integrity(&current).await, ("ok".to_string(), 0));
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[tokio::test]
+    async fn version_four_backup_preserves_hold_and_history_and_requires_new_schema() {
+        let directory = test_directory("map-c1-v4");
+        let current = directory.join("current.db");
+        let backup = directory.join("snapshot.sqlite3");
+        create_application_database(&current).await;
+        let pool = SqlitePool::connect_with(
+            SqliteConnectOptions::new()
+                .filename(&current)
+                .foreign_keys(true),
+        )
+        .await
+        .unwrap();
+        crate::migrations::run(&pool).await.unwrap();
+        sqlx::query("UPDATE discovery_progress SET reported=0, report_hold=1 WHERE profile_id=1 AND discovery_id=1")
+            .execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO discovery_reporting_history(profile_id,discovery_id,first_report_status) VALUES (2,1,'confirmed') ON CONFLICT(profile_id,discovery_id) DO UPDATE SET first_report_status='confirmed',legacy_merit_credit=0")
+            .execute(&pool).await.unwrap();
+        pool.close().await;
+        assert_eq!(validate_database(&current).await.unwrap(), 4);
+        create_backup(&current, &backup).await.unwrap();
+        assert_eq!(validate_database(&backup).await.unwrap(), 4);
+        for query in [
+            "SELECT COUNT(*) FROM discovery_progress WHERE report_hold=1",
+            "SELECT COUNT(*) FROM discovery_reporting_history",
+            "SELECT COUNT(*) FROM discovery_reporting_history WHERE first_report_status='confirmed'",
+        ] {
+            assert_eq!(scalar(&current, query).await, scalar(&backup, query).await);
+        }
+        let mut connection = open_database(&backup).await.unwrap();
+        sqlx::query("DROP TABLE discovery_reporting_history")
+            .execute(&mut connection)
+            .await
+            .unwrap();
+        connection.close().await.unwrap();
+        assert!(validate_database(&backup).await.is_err());
+        let mut connection = open_database(&current).await.unwrap();
+        sqlx::query("ALTER TABLE discovery_progress DROP COLUMN report_hold")
+            .execute(&mut connection)
+            .await
+            .unwrap();
+        connection.close().await.unwrap();
+        assert!(validate_database(&current).await.is_err());
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[tokio::test]
     async fn vacuum_backup_is_valid_and_does_not_change_current_data() {
         let directory = test_directory("backup");
         let current = directory.join("current.db");
@@ -1161,7 +1270,7 @@ mod tests {
         let database = directory.join("future.sqlite3");
         create_application_database(&database).await;
         let mut connection = open_database(&database).await.unwrap();
-        sqlx::query("UPDATE _sqlx_migrations SET version = 4 WHERE version = 3")
+        sqlx::query("UPDATE _sqlx_migrations SET version = 5 WHERE version = 3")
             .execute(&mut connection)
             .await
             .unwrap();
@@ -1306,6 +1415,15 @@ mod tests {
         let current = directory.join("current.db");
         let backup = directory.join("snapshot.sqlite3");
         create_application_database(&current).await;
+        let pool = SqlitePool::connect_with(
+            SqliteConnectOptions::new()
+                .filename(&current)
+                .foreign_keys(true),
+        )
+        .await
+        .unwrap();
+        crate::migrations::run(&pool).await.unwrap();
+        pool.close().await;
         let mut connection = open_database(&current).await.unwrap();
         sqlx::raw_sql(
             "DELETE FROM quest_progress WHERE profile_id = 1 AND quest_id = 1;\
