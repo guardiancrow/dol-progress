@@ -311,6 +311,23 @@ Case 'PE missing version resource' { $b=[byte[]]$payload['dol-progress-manager.e
 Case 'Privacy leak in payload returns failure' { $leaky=[ordered]@{}; foreach ($key in $payload.Keys) { $leaky[$key]=$payload[$key] }; $leaky['THIRD-PARTY-NOTICES.txt']=[Text.Encoding]::Unicode.GetBytes($prefixes.CargoHome); $stage=New-TestPath '.staging'; $h=New-PortableStaging $stage $leaky; $path=New-TestPath '.zip'; Write-PortableZip $stage $path; Reject { Test-PortableArchive $path '' (New-TestPath '.verify') $h '0.3.0' $leaky $prefixes } }
 Case 'Unknown UNC requires privacy failure' { $file=New-TestPath '.bin'; Write-PortableBytes $fixtures $file ([Text.Encoding]::UTF8.GetBytes('\\UnknownHost\PrivateShare\data')); Reject { Assert-ReleasePrivacy (Test-PrivacyArtifact $file $prefixes 'test') } }
 Case 'Unresolved notice availability fails with no genuine inputs' { Reject { Assert-PortableNoticeAvailability (New-TestPath '.missing-notices') } }
+Case 'New REVIEWED label without Owner evidence is rejected' {
+    $reason=''
+    try { Assert-PortableOwnerApproval $fixtures '0.4.0' ([pscustomobject]@{status='REVIEWED'}) ([ordered]@{}) } catch { $reason=$_.Exception.Message }
+    Expect ($reason -ceq 'Notices: Owner approval evidence missing.')
+}
+Case 'Owner evidence must be bound to source inputs' {
+    $reason=''
+    $m=[pscustomobject]@{owner_approval=[pscustomobject]@{path='release/notices/v0.4.0-approval.json';sha256=('a'*64)}}
+    try { Assert-PortableOwnerApproval $fixtures '0.4.0' $m ([ordered]@{}) } catch { $reason=$_.Exception.Message }
+    Expect ($reason -ceq 'Notices: unbound approval input.')
+}
+Case 'Malformed Owner evidence hash is rejected' {
+    $reason=''
+    $m=[pscustomobject]@{owner_approval=[pscustomobject]@{path='release/notices/v0.4.0-approval.json';sha256='invalid'}}
+    try { Assert-PortableOwnerApproval $fixtures '0.4.0' $m ([ordered]@{}) } catch { $reason=$_.Exception.Message }
+    Expect ($reason -ceq 'Notices: Owner approval evidence missing.')
+}
 Case 'Canonical notice inputs preserve review and source gates TEST_ONLY' {
     $root=New-TestPath '.canonical-notices'; $folder=Join-Path $root 'release/notices'
     New-Item -ItemType Directory -Path (Join-Path $folder 'texts') -Force | Out-Null

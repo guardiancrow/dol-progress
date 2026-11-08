@@ -8,22 +8,30 @@
   "source_commit": "9fa2ba9b3e2da5abdcec9de3b27a218a4e228627",
   "cargo_lock_sha256": "5a7964137a4cd6080dde0ecfed180e03877e3f7879ffbf452ad44cb499a339ae",
   "npm_lock_sha256": "28bb9672171784b794a538bf42295ab19a84e270dec77d9a0cfd310552085dbc",
-  "formal_review_state": "PREPARED",
+  "formal_review_state": "REVIEWED",
   "formal_package_gate": "NOT_COMPLETED",
   "source_updates": [
     {
       "phase": "Map-C12F-3",
       "input_checkpoint": "958722d87fb2405477530efc57553faec8d618c3",
-      "update_state": "PREPARED",
-      "content_commit": null,
-      "content_state": "UNCOMMITTED_UPDATE",
+      "update_state": "REVIEWED",
+      "content_commit": "7207214efcc64ed7db991d3777f0caab547fd1d8",
+      "content_state": "COMMITTED",
       "evidence": {
-        "path": "release/notices/v0.4.0-refresh.json",
-        "sha256": "1eaa2b0ceb3815600e230711e88639def70c8ef767f0b1dde3b090f5cd5b6dc3"
+        "path": "release/notices/v0.4.0-reviewed.json",
+        "sha256": "876dd0a910b2a958d42e87aeb35275b777b947232f3d0cc7cdf841b58c0c984c"
       },
       "upstream_rust_commit": "58cf8f9c35b355199727627d07ae34a4e2846d67",
       "provider_sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
-      "scope": "source_commit is the original notice provenance. This update is bound to new canonical bytes by sha256; a new content commit is not claimed before Owner commit."
+      "scope": "source_commit preserves the original notice provenance. The updated canonical notice and new N201 original are stored in content_commit; approval metadata is a later change.",
+      "prepared_evidence": {
+        "path": "release/notices/v0.4.0-refresh.json",
+        "sha256": "1eaa2b0ceb3815600e230711e88639def70c8ef767f0b1dde3b090f5cd5b6dc3"
+      }
     }
-  ]
+  ],
+  "owner_approval": {
+    "path": "release/notices/v0.4.0-approval.json",
+    "sha256": "5b7ad29c58214e8a365bd0141830adfeb927d0a7dcce76f6f0a6ffed0f4ed8d9"
+  }
 }

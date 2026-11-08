@@ -146,6 +146,25 @@ function Assert-PortableCopyrightMapping([string]$Root, $Record, $SourceHashes, 
     }
 }
 
+function Assert-PortableOwnerApproval([string]$Root, [string]$Version, $Manifest, $SourceHashes) {
+    # Preserve the legacy v0.3.0 contract; newer inputs require explicit approval evidence.
+    if ($Version -ceq '0.3.0' -and -not ($Manifest.PSObject.Properties.Name -contains 'owner_approval')) { return }
+    $approval='release/notices/v0.4.0-approval.json'
+    $reviewed='release/notices/v0.4.0-reviewed.json'
+    $audit='scripts/release-input-audit.mjs'
+    if ($Manifest.owner_approval.path -cne $approval -or $Manifest.owner_approval.sha256 -cnotmatch '^[a-f0-9]{64}$') { throw 'Notices: Owner approval evidence missing.' }
+    foreach ($relative in @($approval,$reviewed,$audit)) {
+        if (-not $SourceHashes.Contains($relative) -or (Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $Root $relative) 16777216)) -cne $SourceHashes[$relative]) { throw 'Notices: unbound approval input.' }
+    }
+    if ($Manifest.owner_approval.sha256 -cne $SourceHashes[$approval]) { throw 'Notices: Owner approval hash mismatch.' }
+    $savedPreference=$ErrorActionPreference
+    try { $ErrorActionPreference='Continue'; $lines=@(& node (Join-Path $Root $audit) 2>$null); $code=$LASTEXITCODE }
+    finally { $ErrorActionPreference=$savedPreference }
+    if ($code -ne 0) { throw 'Notices: Owner approval evidence rejected.' }
+    try { $result=($lines -join "`n") | ConvertFrom-Json } catch { throw 'Notices: Owner approval result invalid.' }
+    if ($result.status -cne 'REVIEWED' -or $result.version -cne $Version -or $result.formal_approval -ne $true -or $result.public_release_approved -ne $false) { throw 'Notices: Owner approval result invalid.' }
+}
+
 function Read-PortableNotices([string]$Root, [string]$Version, $SourceHashes) {
     Assert-PortableNoticeAvailability $Root
     $raw=@{}
@@ -161,6 +180,7 @@ function Read-PortableNotices([string]$Root, [string]$Version, $SourceHashes) {
     $review=Get-PortableText $raw['review.json'] | ConvertFrom-Json
     $source=Get-PortableText $raw['source.json'] | ConvertFrom-Json
     $text=Get-PortableText $raw['THIRD-PARTY-NOTICES.txt']
+    Assert-PortableOwnerApproval $Root $Version $manifest $SourceHashes
     if ($source.schema -ne 1 -or $source.purpose -cne 'PACKAGE_NOTICE_SOURCE' -or
         $source.canonical_file -cne 'THIRD-PARTY-NOTICES.txt' -or $source.version -cne $Version -or
         $source.target -cne 'x86_64-pc-windows-msvc' -or $source.source_commit -cnotmatch '^[a-f0-9]{40}$' -or

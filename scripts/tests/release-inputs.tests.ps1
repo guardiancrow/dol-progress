@@ -1,5 +1,5 @@
 #Requires -Version 5.1
-# Candidate inspection is separate from the formal REVIEWED gate.
+# Inspect real REVIEWED metadata locally; this is not a signed-source Release run.
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '../portable-package-safety.ps1')
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -11,7 +11,9 @@ $query="const p=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));c
 $npmVersions=@(& node -e $query (Join-Path $root 'package-lock.json'))
 if ($LASTEXITCODE -ne 0) { throw 'npm lock read failed' }
 Assert-PortableVersions $package.version $tauri.version ([IO.File]::ReadAllText((Join-Path $root 'src-tauri/Cargo.toml'))) ([IO.File]::ReadAllText((Join-Path $root 'src-tauri/Cargo.lock'))) $npmVersions
-$rejected=$false
-try { Assert-PortableNoticeAvailability $root } catch { $rejected=$_.Exception.Message -ceq 'Notices: user review pending.' }
-if (-not $rejected) { throw 'Expected PREPARED formal gate rejection missing' }
-Write-Output 'Release input consistency PASS; PREPARED formal gate rejected. No formal approval or Release run.'
+# Hash the actual tracked and pending source inputs. This does not certify a clean/signed HEAD.
+$files=@(Get-PortableGit $root @('ls-files','--cached','--others','--exclude-standard'))
+$hashes=Get-ReleaseInputHashes $root $files
+$notices=Read-PortableNotices $root $package.version $hashes
+if ((Get-ReleaseSHA256 $notices) -cne $hashes['THIRD-PARTY-NOTICES.txt']) { throw 'Formal notice reader returned different bytes' }
+Write-Output 'REVIEWED notice reader PASS; actual bytes and approval evidence verified. Signed clean source and formal Release stages NOT assessed.'

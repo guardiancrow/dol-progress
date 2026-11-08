@@ -24,19 +24,21 @@ v0.3.0の通知対象201件・除外6件、原文148種類・357参照は正式�
 
 source.jsonのformal_package_gate=NOT_COMPLETEDなどは登録時のmetadataである。後続Packageの成功はrun/resultで記録し、その表示を更新するためにREVIEWED metadataや通知の由来commit・レビュー基点を改変しない。新しい依存・toolchain・配布構成へ旧レビューを無条件で一般化しない。
 
-### v0.4.0入力の準備状態（Map-C12F〜F-3）
+### v0.4.0正式レビューの状態（Map-C12F-4）
 
-`release/notices/manifest.json`と`review.json`のstatus、`source.json`のformal_review_stateはPREPAREDである。アプリ版と現在lockのraw byte hash、manifest相互参照、候補toolchain hashを整合させた。正式gateはREVIEWEDを要求するため、この候補を拒否する。OwnerはMap-C12F-2で更新方針と候補環境を承認したが、更新結果の最終確認とREVIEWEDへの昇格は別途判断する。
+Ownerは2026年11月8日にMap-C12F-3の通知本文・metadata・参照hash・限定検証結果を承認した。`release/notices/manifest.json`と`review.json`のstatus、`source.json`のformal_review_stateはREVIEWEDである。承認範囲と対象のPREPARED入力hashを`v0.4.0-approval.json`へ記録し、`v0.4.0-reviewed.json`で現行の承認済み対応を示す。Microsoft関連の法的残件やバイナリ公開は承認対象外である。
 
-既存148原文・mapping、旧coverageと除外根拠、reviewer／reviewed_at、approval_basis／formal_review、既存toolchain_refreshは過去の事実として保持する。manifestのsource_headは当時のレビュー基点、source.jsonのsource_commitは元の通知正本の由来であり、最終CompileのHEADではない。新しい本文との対応はsource_updatesと通知のhashで記録し、未commitの本文に架空のcommitを割り当てない。
+既存148原文・mapping、旧coverageと除外根拠、reviewer／reviewed_at、approval_basis／formal_review、既存toolchain_refreshは過去の事実として保持する。manifestのsource_headは当時のレビュー基点、source.jsonのsource_commitは元の通知正本の由来であり、最終CompileのHEADではない。新本文・N201原文の保存commitは`7207214efcc64ed7db991d3777f0caab547fd1d8`で、source_updates.content_commitへ記録する。承認metadataはそれより後の変更として区別し、自己参照commitを作らない。
 
-`v0.4.0-preparation.json`はMap-C12F当時のsnapshotとして変更せず、更新後の入力・現record対応・方針承認を`v0.4.0-refresh.json`へ分離した。mapping.jsonも過去のhash参照を保つため不変とし、現行対応はrefresh.current_record_mappingで明示する。元のtoolchain_refreshの未承認記録を当時の記録として残し、現在の候補採用と混同しない。
+`v0.4.0-preparation.json`と`v0.4.0-refresh.json`は当時のPREPARED snapshotとして変更しない。mapping.jsonも過去のhash参照を保つため不変とし、現行対応はreviewed.current_record_mappingと新承認の証拠へ分離する。元のtoolchain_refreshの未承認記録を当時の記録として残し、今回の採用・最終承認と混同しない。
 
-Map-C12F-3ではN196–N199の既存原文を継承し、適用Rust版を1.99.1、N200をrustc-demangle 0.1.28へ対応付けた。N201の現配布元原文を全文追加し、旧原文を歴史証拠として残した。201通知・6除外を維持し、現候補は149原文・358参照である。更新したcoverage recordはPREPAREDとし、方針承認を最終原文・metadataの承認へ読み替えない。
+Map-C12F-3ではN196–N199の既存原文を継承し、適用Rust版を1.99.1、N200をrustc-demangle 0.1.28へ対応付けた。N201の現配布元原文を全文追加し、旧原文を歴史証拠として残した。201通知・6除外、149原文・358参照である。F-4では本文・原文・inventoryを変更せず、更新した10件のcoverage recordをREVIEWEDへ移行し、新承認への参照を追加した。
 
 CSPは旧除外根拠のnullから非nullへ変わった。cssparser等の対象4件は現行Cargo treeでhostのbuild／proc-macro経路だけにあり、通常target経路へ入らない。Ownerがこの範囲の除外継承を承認したため、旧理由をhistorical_exclusion_reasonへ残し、現行理由を更新した。最終バイナリの全byte包含証明やsource義務の法的判断へ読み替えない。Microsoft関連の既存残件と公開承認は独立して維持する。
 
-候補の内容検査は`scripts/release-input-audit.mjs`と`scripts/tests/release-inputs.tests.ps1`で行う。承認されたrecord／field以外の保全、全原文hash・全文収録、原文追加と見出し変更以外の旧通知byteの保全、現行参照hash、最終未承認を検査する。これはPREPARED候補専用の読取検査で、正式gateのREVIEWED要求や署名・clean・Package条件を変更しない。
+現行入力の検査は`scripts/release-input-audit.mjs`と`scripts/tests/release-inputs.tests.ps1`で行う。Gitに保存されたF-3のPREPARED snapshotとOwner承認の対象hashを照合し、許可した状態遷移・由来記録・承認参照以外の差分を拒否する。旧PREPARED検査も実際の保存snapshotに対して保持する。
+
+v0.4.0の正式`Read-PortableNotices`は新しいOwner承認証拠と検査moduleをsource hashへ束縛して呼び出す。REVIEWEDという文字列だけ、不正hash、承認対象外の本文・coverage変更、架空の由来commitを拒否する。署名・clean・Compile provenanceのgateは別に維持し、読取検査の成功を正式3工程の成功へ読み替えない。旧v0.3.0入力の契約は継承する。
 
 ## 正式入力の検証仕様
 
@@ -44,11 +46,12 @@ CSPは旧除外根拠のnullから非nullへ変わった。cssparser等の対象
 
 | 入力 | 必須の状態・対応 |
 | --- | --- |
-| release/notices/manifest.json | schema 1、REVIEWED、scope=DISTRIBUTION、boolean test_only=false、アプリversion、unresolved空配列。inventory／review／source／通知・Cargo／npm lock・compile toolchainのSHA-256 |
+| release/notices/manifest.json | schema 1、REVIEWED、scope=DISTRIBUTION、boolean test_only=false、アプリversion、unresolved空配列。inventory／review／source／通知・Cargo／npm lock・compile toolchainのSHA-256。v0.4.0はowner_approvalの固定pathとhashも必須 |
 | inventory.json | schema 1、version、target=x86_64-pc-windows-msvc。一意のcomponent ID、version、boolean included、rust／frontend／native／toolchain／assets各group |
 | review.json | schema 1、REVIEWED、version、boolean test_only=false、reviewer／reviewed_at、unresolved空配列。全componentへ一意に対応するcoverage、included一致、obligations_completedとprovenance_completed=true、非空の署名対象evidence |
 | source.json | schema 1、purpose=PACKAGE_NOTICE_SOURCE、canonical_file=THIRD-PARTY-NOTICES.txt、version／target、40桁source_commit、formal_review_state=REVIEWED。通知正本とCargo／npm lockのhash |
 | mapping.json | component／原文／出典、除外根拠、toolchain等を記録する署名対象のreview evidence |
+| v0.4.0-approval.json／v0.4.0-reviewed.json | 2026-11-08のOwner限定承認、対象PREPARED commit・各入力hash・範囲・除外、現行のREVIEWED証拠。旧snapshotと新metadataのhash参照を循環させない |
 | rootのTHIRD-PARTY-NOTICES.txt | manifestとsource.jsonが束縛する唯一の通知正本。空本文、DRAFT — NOT FOR DISTRIBUTION、LICENSE CLEARANCE INCOMPLETE、TEST_ONLY／SYNTHETIC／PLACEHOLDER／TODO／TBD／UNRESOLVEDのmarkerは拒否 |
 | texts/*.txt／evidence/*.txt | reviewが参照する原文・評価証拠。署名対象であること、固定相対path、記録hashと実bytesの一致 |
 

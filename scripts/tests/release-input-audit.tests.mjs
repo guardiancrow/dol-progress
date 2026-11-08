@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { readReleaseInputs, validateReleaseInputs, sha256 } from '../release-input-audit.mjs';
+import { readReleaseInputs, preparedReleaseInputs, validatePreparedInputs as validateReleaseInputs, sha256 } from '../release-input-audit.mjs';
 
 // Published notice inputs only. Mutations stay in memory; no approval or file write.
-const original = readReleaseInputs(fileURLToPath(new URL('../../', import.meta.url)));
+// Keep the previous negative cases against the genuine committed PREPARED snapshot.
+const original = preparedReleaseInputs(readReleaseInputs(fileURLToPath(new URL('../../', import.meta.url))));
 const prefix = 'release/notices/';
 const refreshPath = prefix + 'v0.4.0-refresh.json';
 const providerPath = prefix + 'texts/5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27.txt';

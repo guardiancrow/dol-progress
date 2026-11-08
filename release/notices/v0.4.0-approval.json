@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "purpose": "NOTICE_OWNER_FINAL_APPROVAL",
+  "version": "0.4.0",
+  "state": "APPROVED",
+  "approved_by": "Owner",
+  "approved_on": "2026-11-08",
+  "basis": "OWNER_EXPLICIT_APPROVAL_OF_MAP_C12F_3",
+  "instruction": "Map-C12F-4 Owner承認記録とREVIEWED確定",
+  "scope": [
+    "v0.4.0への既存依存・通知・coverageの継承",
+    "承認候補のToolchain採用",
+    "Rust N196-N200の適用更新",
+    "Rust N201の新しい提供元原文と旧証拠の保全",
+    "CSP関連4件の除外継承と現行理由",
+    "正式Notices本文・metadata・参照hash・限定検証結果"
+  ],
+  "prepared_snapshot": {
+    "commit": "7207214efcc64ed7db991d3777f0caab547fd1d8",
+    "inputs": {
+      "release/notices/manifest.json": "0dfa763dfe6742b7be414a00fb14bee3b77fecad86d9084f9d2b67029db6e8b3",
+      "release/notices/inventory.json": "612f8aa6ed4defd41ed0c7a9abc1e841ed945178de55e012e3cf3549b7fa86c8",
+      "release/notices/review.json": "b8e5e24985672f6b95d3661a6b33a573cd7d57e8d492c508e5f1c26cc86a502e",
+      "release/notices/source.json": "591027966a26fe39d74198487e34333592462122d6ae6ee39ca96f218878fe92",
+      "release/notices/mapping.json": "b88d680df8df2a1e64578df87ef415d15fda37fcb003f0e2fe1129664e25cf71",
+      "release/notices/v0.4.0-preparation.json": "4f0991a5b4f3a81a6ff5dc267d940d004abc0e2a7b89bcb3917f065bb28eaed6",
+      "release/notices/v0.4.0-refresh.json": "1eaa2b0ceb3815600e230711e88639def70c8ef767f0b1dde3b090f5cd5b6dc3",
+      "THIRD-PARTY-NOTICES.txt": "93bd33f8353c7375cf8d9612e18ccbeb976f37165315d3f485b4050dc8cbb855",
+      "release/notices/texts/5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27.txt": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
+      "docs/map-c12f-3-verification.md": "7cd3e6bdbe9ff0da2df208135467537318727a914161c8b4f3a0ea238c9d463b"
+    }
+  },
+  "canonical_content_commit": "7207214efcc64ed7db991d3777f0caab547fd1d8",
+  "toolchain_sha256": "03bc8eeb02bfd006cf7f72f4bf5f4e4110eac9ccd96ad3f2c0d1e961ac9272da",
+  "coverage": {
+    "notice_records": 201,
+    "exclusions": 6,
+    "raw_texts": 149,
+    "text_references": 358
+  },
+  "exclusions": [
+    "Microsoft関連の契約適合判断・既存未解決事項の解消",
+    "バイナリ公開",
+    "GitHub Release公開"
+  ],
+  "legal_clearance": false,
+  "public_release_approved": false
+}

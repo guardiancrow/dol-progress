@@ -1,4 +1,4 @@
-// Read-only candidate inspection. This does not authorize or run a Release stage.
+// Read-only notice inspection. This does not authorize or run a Release stage.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -12,6 +12,10 @@ const providerHash = '5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d
 const providerPath = prefix + 'texts/' + providerHash + '.txt';
 const rustCommit = '58cf8f9c35b355199727627d07ae34a4e2846d67';
 const checkpoint = '958722d87fb2405477530efc57553faec8d618c3';
+const preparedCheckpoint = '7207214efcc64ed7db991d3777f0caab547fd1d8';
+const approvalPath = prefix + 'v0.4.0-approval.json';
+const reviewedPath = prefix + 'v0.4.0-reviewed.json';
+const snapshotPaths = ['manifest.json', 'inventory.json', 'review.json', 'source.json', 'mapping.json', 'v0.4.0-preparation.json', 'v0.4.0-refresh.json'].map(x => prefix + x).concat(['THIRD-PARTY-NOTICES.txt', providerPath, 'docs/map-c12f-3-verification.md']);
 const excluded = ['excluded:cssparser@0.37.0', 'excluded:cssparser-macros@0.7.1', 'excluded:selectors@0.38.0', 'excluded:dtoa-short@0.3.5'];
 const runtimeIds = ['N196', 'N197', 'N198', 'N199', 'N200', 'N201'];
 const currentReason = '現行Windows x64の通常target dependency経路なし。host build／proc-macroのHTML処理。CSPは非nullで、nullを除外条件にしていない。';
@@ -37,10 +41,20 @@ export function readReleaseInputs(root) {
     for (const evidence of record.evidence) read(evidence);
     for (const text of record.required_texts ?? []) read(text.path);
   }
-  return { files, historical };
+  read(approvalPath); read(reviewedPath);
+  for (const name of snapshotPaths) read(name);
+  const prepared = new Map(snapshotPaths.map(name => [name, execFileSync('git', ['-C', root, 'show', preparedCheckpoint + ':' + name], { maxBuffer: 16 * 1024 * 1024 })]));
+  return { files, historical, prepared };
 }
 
-export function validateReleaseInputs({ files, historical }) {
+// Inspect the genuine archived PREPARED bytes, without relabeling current inputs.
+export function preparedReleaseInputs(model) {
+  const files = new Map(model.files);
+  for (const [name, bytes] of model.prepared) files.set(name, bytes);
+  return { files, historical: model.historical };
+}
+
+export function validatePreparedInputs({ files, historical }) {
   const get = name => { safeRelative(name); const bytes = files.get(name); check(Buffer.isBuffer(bytes), 'input_missing'); return bytes; };
   const json = name => parse(get(name));
   const matchHash = (name, hash) => check(/^[a-f0-9]{64}$/.test(hash) && sha256(get(name)) === hash, 'input_hash');
@@ -123,6 +137,51 @@ export function validateReleaseInputs({ files, historical }) {
   previousText = previousText.replace('原文参照 (SHA-256): ' + oldProvider + ', ' + providerHash + '\n旧Rust 1.98.0の提供元原文は歴史証拠として併記し、現行1.99.1の原文と区別します。\n', '原文参照 (SHA-256): ' + oldProvider + '\n');
   same(Buffer.from(previousText), historical.notice, 'old_canonical_bytes_preserved');
   return { version: '0.4.0', status: manifest.status, original_texts: uniqueTexts.size, references, notice_bytes: notice.length, notice_sha256: source.sha256, formal_approval: false };
+}
+
+export function validateReleaseInputs(model) {
+  const { files, prepared } = model;
+  const get = name => { safeRelative(name); const bytes = files.get(name); check(Buffer.isBuffer(bytes), 'input_missing'); return bytes; };
+  const json = name => parse(get(name));
+  const approval = json(approvalPath), reviewed = json(reviewedPath);
+  const manifest = json(prefix + 'manifest.json'), review = json(prefix + 'review.json'), source = json(prefix + 'source.json');
+  check(manifest.status === 'REVIEWED' && review.status === 'REVIEWED' && source.formal_review_state === 'REVIEWED', 'reviewed_required');
+  const scope = ['v0.4.0への既存依存・通知・coverageの継承', '承認候補のToolchain採用', 'Rust N196-N200の適用更新', 'Rust N201の新しい提供元原文と旧証拠の保全', 'CSP関連4件の除外継承と現行理由', '正式Notices本文・metadata・参照hash・限定検証結果'];
+  const approvedInputs = Object.fromEntries(snapshotPaths.map(name => [name, sha256(prepared.get(name))]));
+  const previousRefresh = parse(prepared.get(refreshPath));
+  same(approval, { schema: 1, purpose: 'NOTICE_OWNER_FINAL_APPROVAL', version: '0.4.0', state: 'APPROVED', approved_by: 'Owner', approved_on: '2026-11-08', basis: 'OWNER_EXPLICIT_APPROVAL_OF_MAP_C12F_3', instruction: 'Map-C12F-4 Owner承認記録とREVIEWED確定', scope, prepared_snapshot: { commit: preparedCheckpoint, inputs: approvedInputs }, canonical_content_commit: preparedCheckpoint, toolchain_sha256: previousRefresh.candidate_toolchain_sha256, coverage: previousRefresh.current_coverage, exclusions: ['Microsoft関連の契約適合判断・既存未解決事項の解消', 'バイナリ公開', 'GitHub Release公開'], legal_clearance: false, public_release_approved: false }, 'owner_approval_evidence');
+  // Approval targets the committed candidate, not arbitrary freshly rehashed inputs.
+  for (const name of [prefix + 'inventory.json', prefix + 'mapping.json', prefix + 'v0.4.0-preparation.json', refreshPath, 'THIRD-PARTY-NOTICES.txt', providerPath, 'docs/map-c12f-3-verification.md']) same(get(name), prepared.get(name), 'approved_bytes_unchanged');
+  const approvalEvidence = { path: approvalPath, sha256: sha256(get(approvalPath)) };
+  const expectedReviewed = structuredClone(previousRefresh);
+  expectedReviewed.state = 'REVIEWED';
+  expectedReviewed.prepared_snapshot = { commit: preparedCheckpoint, path: refreshPath, sha256: approvedInputs[refreshPath] };
+  expectedReviewed.final_review = { state: 'APPROVED', approved: true, approved_by: 'Owner', approved_on: '2026-11-08', evidence: approvalEvidence };
+  expectedReviewed.canonical_notice.content_commit = preparedCheckpoint;
+  expectedReviewed.canonical_notice.content_state = 'COMMITTED';
+  same(reviewed, expectedReviewed, 'reviewed_evidence');
+  const reviewedEvidence = { path: reviewedPath, sha256: sha256(get(reviewedPath)) };
+  const expectedSource = parse(prepared.get(prefix + 'source.json'));
+  expectedSource.formal_review_state = 'REVIEWED'; expectedSource.owner_approval = approvalEvidence;
+  const update = expectedSource.source_updates[0];
+  update.update_state = 'REVIEWED'; update.content_commit = preparedCheckpoint; update.content_state = 'COMMITTED';
+  update.prepared_evidence = update.evidence; update.evidence = reviewedEvidence;
+  update.scope = 'source_commit preserves the original notice provenance. The updated canonical notice and new N201 original are stored in content_commit; approval metadata is a later change.';
+  same(source, expectedSource, 'approved_source_contract');
+  const expectedReview = parse(prepared.get(prefix + 'review.json'));
+  expectedReview.status = 'REVIEWED'; expectedReview.unresolved = []; expectedReview.owner_approval = approvalEvidence;
+  for (const record of expectedReview.coverage) if (record.review_state === 'PREPARED') { record.review_state = 'REVIEWED'; record.evidence.push(approvalPath); }
+  expectedReview.release_refresh.state = 'REVIEWED';
+  expectedReview.release_refresh.scope = 'Ownerは2026-11-08にMap-C12F-3の正式Notices本文・metadata・hash・限定検証結果を承認。Microsoft関連の法的残件とバイナリ公開は承認範囲外。';
+  expectedReview.release_refresh.evidence.push(approvalEvidence, reviewedEvidence);
+  same(review, expectedReview, 'approved_review_contract');
+  const expectedManifest = parse(prepared.get(prefix + 'manifest.json'));
+  expectedManifest.status = 'REVIEWED'; expectedManifest.unresolved = []; expectedManifest.owner_approval = approvalEvidence;
+  expectedManifest.review_sha256 = sha256(get(prefix + 'review.json'));
+  expectedManifest.source_sha256 = sha256(get(prefix + 'source.json'));
+  same(manifest, expectedManifest, 'approved_manifest_contract');
+  const inspected = validatePreparedInputs(preparedReleaseInputs(model));
+  return { ...inspected, status: 'REVIEWED', formal_approval: true, public_release_approved: false, content_commit: preparedCheckpoint };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

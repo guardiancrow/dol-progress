@@ -1,18 +1,20 @@
 {
   "schema": 1,
-  "status": "PREPARED",
+  "status": "REVIEWED",
   "scope": "DISTRIBUTION",
   "test_only": false,
   "version": "0.4.0",
   "source_head": "4396ff971bbb4b543ead88dd51ae7a077d7cb69f",
-  "unresolved": [
-    "新原文・coverage・metadata・hash・限定検証結果に対するOwnerの最終確認"
-  ],
+  "unresolved": [],
   "inventory_sha256": "612f8aa6ed4defd41ed0c7a9abc1e841ed945178de55e012e3cf3549b7fa86c8",
-  "review_sha256": "b8e5e24985672f6b95d3661a6b33a573cd7d57e8d492c508e5f1c26cc86a502e",
+  "review_sha256": "27c3394b78937938a613667e1e0a755eb98fb256df007325116e3d409677c919",
   "notices_sha256": "93bd33f8353c7375cf8d9612e18ccbeb976f37165315d3f485b4050dc8cbb855",
-  "source_sha256": "591027966a26fe39d74198487e34333592462122d6ae6ee39ca96f218878fe92",
+  "source_sha256": "5b16e8db44c662f3952fda3cfce5e61338d4180a2752581f5c71d19175f11162",
   "cargo_lock_sha256": "5a7964137a4cd6080dde0ecfed180e03877e3f7879ffbf452ad44cb499a339ae",
   "npm_lock_sha256": "28bb9672171784b794a538bf42295ab19a84e270dec77d9a0cfd310552085dbc",
-  "toolchain_sha256": "03bc8eeb02bfd006cf7f72f4bf5f4e4110eac9ccd96ad3f2c0d1e961ac9272da"
+  "toolchain_sha256": "03bc8eeb02bfd006cf7f72f4bf5f4e4110eac9ccd96ad3f2c0d1e961ac9272da",
+  "owner_approval": {
+    "path": "release/notices/v0.4.0-approval.json",
+    "sha256": "5b7ad29c58214e8a365bd0141830adfeb927d0a7dcce76f6f0a6ffed0f4ed8d9"
+  }
 }
