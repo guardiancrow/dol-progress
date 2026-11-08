@@ -52,7 +52,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 .main-content { min-width: 0; min-height: 0; overflow: auto; padding: 2rem clamp(1.5rem, 4vw, 3.5rem); }
 .main-content--workspace { overflow: hidden; }
-.status-bar { grid-column: 1 / -1; padding: .45rem 1.25rem; color: #536575; background: #fff; border-top: 1px solid #d5dde4; font-size: .75rem; }
+.status-bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: .2rem 1rem; min-width: 0; padding: .45rem 1.25rem; color: #536575; background: #fff; border-top: 1px solid #d5dde4; font-size: .75rem; }
+.app-version { margin-left: auto; flex-shrink: 0; white-space: nowrap; }
 .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 2rem; margin-bottom: 1.5rem; }
 .page-heading h2, .state-panel h2, .state-panel h3 { margin: .3rem 0 .45rem; color: #17324d; }
 .page-heading h2 { font-size: 1.8rem; }

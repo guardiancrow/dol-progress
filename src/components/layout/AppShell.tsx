@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 
 import { useProfiles } from "../../profiles/ProfileContext";
 import { Sidebar, type AppPage } from "./Sidebar";
@@ -16,6 +17,19 @@ export function AppShell({
 }: AppShellProps) {
   const { selectedProfile } = useProfiles();
   const isWorkspace = currentPage === "quests" || currentPage === "discoveries";
+  const [version, setVersion] = useState<string | null>(null);
+  const versionRequest = useRef<Promise<string> | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    // StrictModeのeffect再実行でも、同じ取得Promiseを使用する。
+    versionRequest.current ??= getVersion();
+    void versionRequest.current.then(
+      (loaded) => { if (active) setVersion(loaded); },
+      () => { /* Tauri APIが使えない環境や取得失敗時は表示を省略する。 */ },
+    );
+    return () => { active = false; };
+  }, []);
 
   return (
     <div className="app-shell">
@@ -34,7 +48,8 @@ export function AppShell({
         {children}
       </main>
       <footer className="status-bar">
-        データはこのPCのSQLiteに保存されます
+        <span>データはこのPCのSQLiteに保存されます</span>
+        {version && <span className="app-version" aria-label="アプリケーションのバージョン">v{version}</span>}
       </footer>
     </div>
   );
