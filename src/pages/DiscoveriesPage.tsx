@@ -258,6 +258,7 @@ export function DiscoveriesPage({
         const effectiveReported = capabilities.canReport && progress !== null && (automaticReporting || progress.reported);
         const reporting = reportHold.summaries.get(discovery.id);
         return {
+          unreportedHistoryReady: reportHold.summaryReadState === "ready" && reporting !== undefined,
           firstReportStatus: reporting?.firstReportStatus,
           historyPresent: reporting ? reporting.historyUpdatedAt !== null : undefined,
           legacyMeritCredit: Boolean(reporting?.legacyMeritCredit),
@@ -283,7 +284,7 @@ export function DiscoveriesPage({
             selectedProfileId !== null && (pendingUpdates.has(`${selectedProfileId}:${discovery.id}`) || reportHold.busy || (reportHold.dialog !== null || reportHold.selection !== null)),
         };
       }),
-    [discoveries, pendingUpdates, progressById, selectedProfileId, reportHold.busy, reportHold.dialog, reportHold.selection, reportHold.summaries],
+    [discoveries, pendingUpdates, progressById, selectedProfileId, reportHold.busy, reportHold.dialog, reportHold.selection, reportHold.summaries, reportHold.summaryReadState],
   );
 
   if (isProfileLoading) return <div className="state-panel" role="status">プロフィールを読み込んでいます…</div>;
@@ -306,6 +307,7 @@ export function DiscoveriesPage({
         <div className="state-panel empty-state"><h3>発見物のマスターデータがありません</h3><p>マスターデータを取り込んでからご利用ください。</p></div>
       ) : progressError ? null : (
         <DiscoveryTable
+          historyReadState={reportHold.summaryReadState}
           reportHold={reportHold}
           rows={rows}
           initialFilter={initialFilter}

@@ -1,4 +1,5 @@
-import { mapDiscoveryStatus, mapDiscoveryLabels } from "../../discoveries/mapReacquisition";
+import { mapDiscoveryStatus, mapDiscoveryLabels, mapDiscoveryReviewReason } from "../../discoveries/mapReacquisition";
+import { currentUnreportedHistory } from "../../discoveries/unreportedBreakdown";
 import { FirstReportControl } from "./FirstReportControl";
 import { DiscoveryStateControl } from "./ReportHoldControls";
 import type { ReportHoldController } from "../../discoveries/useReportHold";
@@ -37,6 +38,7 @@ const STATUS_ORDER = { undiscovered: 0, unreported: 1, reported: 2 } as const;
 type CardOwnedFilter = "all" | "owned" | "not-owned";
 
 interface DiscoveryTableProps {
+  historyReadState?: "loading" | "ready" | "error";
   reportHold?: ReportHoldController;
   rows: DiscoveryRowViewModel[];
   paginationResetKey: number;
@@ -48,6 +50,7 @@ interface DiscoveryTableProps {
 }
 
 export function DiscoveryTable({
+  historyReadState = "ready",
   rows,
   paginationResetKey,
   initialFilter,
@@ -78,6 +81,8 @@ export function DiscoveryTable({
   const columns = useMemo(
     () =>
       columnHelper.columns([
+        columnHelper.accessor(currentUnreportedHistory, { id: "unreportedBreakdown", header: "未報告の内訳", enableSorting: false,
+          filterFn: (row, id, value) => row.getValue(id) === value, cell: () => null }),
         columnHelper.accessor(row => mapDiscoveryStatus(row), {id:"mapReacquisition",header:"地図",enableSorting:false,
           filterFn:(row,id,value)=>!value || value === "all" || (value === "related" ? row.getValue<string>(id) !== "unrelated" : row.getValue<string>(id) === value),cell:()=>null}),
         columnHelper.accessor("status", {
@@ -112,7 +117,7 @@ export function DiscoveryTable({
           sortFn: (a, b, id) => collator.compare(a.getValue(id), b.getValue(id)),
           cell: ({ row, getValue }) => (
             <span className="master-info-name">
-              <span className="discovery-name-content"><span className="quest-title" title={getValue<string>()}>{getValue<string>()}</span>{mapDiscoveryStatus(row.original) !== "unrelated" && <small className="map-related-badge">{mapDiscoveryLabels[mapDiscoveryStatus(row.original)]}</small>}</span>
+              <span className="discovery-name-content"><span className="quest-title" title={getValue<string>()}>{getValue<string>()}</span><MapBadge row={row.original} /></span>
               <MasterInfoButton rowId={row.original.id} />
             </span>
           ),
@@ -203,7 +208,7 @@ export function DiscoveryTable({
       features: featureSet,
       columns,
       data: rows,
-      state: { columnFilters, sorting, pagination, columnVisibility: {mapReacquisition:false} },
+      state: { columnFilters, sorting, pagination, columnVisibility: {mapReacquisition:false, unreportedBreakdown:false} },
       onColumnFiltersChange: setColumnFilters,
       onSortingChange: (updater) => {
         setSorting(updater);
@@ -227,6 +232,7 @@ export function DiscoveryTable({
   const unreportedCount = filteredRows.filter((row) => row.original.canReport && row.original.progress !== null && !row.original.effectiveReported).length;
   const cardOwnedCount = filteredRows.filter((row) => row.original.hasCard && row.original.progress?.cardOwned).length;
   const pageCount = table.getPageCount();
+  const breakdownUnavailable = table.getColumn("unreportedBreakdown")?.getFilterValue() !== undefined && historyReadState !== "ready";
 
   useEffect(() => {
     setPagination((current) =>
@@ -266,17 +272,31 @@ export function DiscoveryTable({
         <label>発見物名を検索<input type="search" value={String(table.getColumn("name")?.getFilterValue() ?? "")} onChange={(event) => setFilter("name", event.target.value || undefined)} /></label>
         <label>分類<select value={String(table.getColumn("category")?.getFilterValue() ?? "all")} onChange={(event) => setFilter("category", event.target.value === "all" ? undefined : event.target.value === "unset" ? "unset" : Number(event.target.value))}><option value="all">すべて</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}{hasUncategorized && <option value="unset">未設定</option>}</select></label>
         <label>状態<select value={String(table.getColumn("status")?.getFilterValue() ?? "all")} onChange={(event) => setFilter("status", event.target.value === "all" ? undefined : event.target.value)}><option value="all">すべて</option><option value="undiscovered">未発見</option><option value="unreported">発見済み・未報告</option><option value="reported">報告済み</option></select></label>
+        <label title="発見済み・未報告の発見物を初回報告履歴で絞り込みます。地図以外も対象です。">未報告の内訳<select value={String(table.getColumn("unreportedBreakdown")?.getFilterValue() ?? "all")} onChange={event => setFilter("unreportedBreakdown", event.target.value === "all" ? undefined : event.target.value)}><option value="all">すべて</option><option value="not_reported">初回未報告</option><option value="confirmed">再報告待ち</option><option value="unknown">履歴未確定</option></select></label>
         <label>カード所有<select value={cardOwnedFilterValue(table.getColumn("cardOwned")?.getFilterValue())} onChange={(event) => setFilter("cardOwned", event.target.value === "all" ? undefined : event.target.value === "owned")}><option value="all">すべて</option><option value="owned">所有</option><option value="not-owned">未所有（発見済みのみ）</option></select></label>
-        <label title="地図によって発見する発見物">地図<select value={String(table.getColumn("mapReacquisition")?.getFilterValue() ?? "all")} onChange={e=>setFilter("mapReacquisition",e.target.value === "all" ? undefined : e.target.value)}><option value="all">すべて</option><option value="related">地図のみ</option><option value="suppressed">地図・未報告（再入手抑止）</option><option value="candidate">地図・再入手候補</option><option value="review">地図・要確認</option></select></label>
+        <label title="地図によって発見する発見物。判定保留は、一つの地図に複数発見物が関連する場合、または報告対象外の場合です。初回報告履歴の不明とは別の判定です。">地図<select value={String(table.getColumn("mapReacquisition")?.getFilterValue() ?? "all")} onChange={e=>setFilter("mapReacquisition",e.target.value === "all" ? undefined : e.target.value)}><option value="all">すべて</option><option value="related">地図のみ</option><option value="suppressed">地図・未報告（再入手抑止）</option><option value="candidate">地図・再入手候補</option><option value="review">地図・判定保留</option></select></label>
       </div>
+      {breakdownUnavailable ? <div className="state-panel" role="status">{historyReadState === "loading" ? "未報告の内訳を読み込んでいます…" : "未報告の内訳を確認できません。地図・報告履歴を再読み込みしてください。"}</div> : <>
       <div className="quest-summary" aria-live="polite"><span>{rows.length.toLocaleString("ja-JP")}件中 {filteredRows.length.toLocaleString("ja-JP")}件表示</span><span>発見済み {discoveredCount.toLocaleString("ja-JP")}件</span><span>未報告 {unreportedCount.toLocaleString("ja-JP")}件</span><span>カード所有 {cardOwnedCount.toLocaleString("ja-JP")}件</span></div>
       {filteredRows.length === 0 ? <div className="state-panel empty-state"><h3>条件に一致する発見物がありません</h3><p>検索条件または絞り込み条件を変更してください。</p></div> : (
         <div className="quest-table-scroll discovery-table-scroll"><table className="quest-table discovery-table"><thead>{table.getHeaderGroups().map((group) => <tr key={group.id}>{group.headers.map((header) => { const canSort = header.column.getCanSort(); const direction = header.column.getIsSorted(); return <th data-column={header.column.id} title={header.column.id === "firstReport" ? "地図から発見できる発見物について、過去に一度でも報告したかを示します。地図以外の発見物は対象外です。" : undefined} key={header.id} scope="col" aria-sort={direction === "asc" ? "ascending" : direction === "desc" ? "descending" : undefined}>{header.isPlaceholder ? null : canSort ? <button type="button" className="sort-button" aria-label={`${String(header.column.columnDef.header)}で並べ替え`} onClick={header.column.getToggleSortingHandler()}><table.FlexRender header={header} /><span aria-hidden="true">{direction === "asc" ? " ▲" : direction === "desc" ? " ▼" : " ↕"}</span></button> : <table.FlexRender header={header} />}</th>; })}</tr>)}</thead><tbody>{table.getRowModel().rows.map((row) => <tr key={row.id}>{row.getVisibleCells().map((cell) => <td data-column={cell.column.id} key={cell.id}><table.FlexRender cell={cell} /></td>)}</tr>)}</tbody></table></div>
       )}
       <div className="pagination" aria-label="発見物一覧ページ操作"><button type="button" className="button secondary" disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()}>前ページ</button><span>{pageCount === 0 ? 0 : table.state.pagination.pageIndex + 1} / {pageCount}ページ</span><button type="button" className="button secondary" disabled={!table.getCanNextPage()} onClick={() => table.nextPage()}>次ページ</button><label>1ページの件数<select value={table.state.pagination.pageSize} onChange={(event) => table.setPageSize(Number(event.target.value))}><option value={50}>50件</option><option value={100}>100件</option></select></label></div>
+      </>}
     </div>
     </MasterInfoProvider>
   );
+}
+
+function MapBadge({ row }: { row: DiscoveryRowViewModel }) {
+  const status = mapDiscoveryStatus(row);
+  if (status === "unrelated") return null;
+  const reason = mapDiscoveryReviewReason(row);
+  if (!reason) return <small className="map-related-badge">{mapDiscoveryLabels[status]}</small>;
+  return <span className="map-review-help" tabIndex={0} aria-label={`${mapDiscoveryLabels[status]}：${reason}`}>
+    <small className="map-related-badge">{mapDiscoveryLabels[status]}</small>
+    <span className="map-review-tooltip" role="tooltip">{reason}</span>
+  </span>;
 }
 
 function numericColumn(key: "rank" | "points" | "difficulty" | "experience", header: string) {

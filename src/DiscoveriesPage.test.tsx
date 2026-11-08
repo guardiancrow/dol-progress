@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -31,6 +31,75 @@ afterEach(() => {
 });
 
 describe("Discovery UI", () => {
+  it("waits for batch history, distinguishes absent history from failure and retries without writing progress", async () => {
+    const repositories = setup([profile(1)], [discovery(1,"非地図の発見物")], new Map([[1,[progress(1,1)]]]));
+    let rejectRead!: (error: Error) => void;
+    vi.mocked(discoveryStateReader.list).mockImplementationOnce(() => new Promise((_resolve,reject)=>{rejectRead=reject;}));
+    const user = await open(repositories);
+    await user.selectOptions(screen.getByLabelText("状態"), "unreported");
+    await user.selectOptions(screen.getByLabelText("未報告の内訳"), "unknown");
+    expect(screen.getByText("未報告の内訳を読み込んでいます…")).toBeInTheDocument();
+    expect(screen.queryByText(/件中.*件表示/)).not.toBeInTheDocument();
+    expect(screen.queryByText("条件に一致する発見物がありません")).not.toBeInTheDocument();
+    await act(async()=>rejectRead(new Error("synthetic failure")));
+    expect(screen.getByText("未報告の内訳を確認できません。地図・報告履歴を再読み込みしてください。")).toBeInTheDocument();
+    const retry = screen.getByRole("button",{name:"再読み込み"});
+    expect(retry).toBeEnabled();
+    vi.mocked(discoveryStateReader.list).mockResolvedValueOnce([historySummary(1,"unknown",{historyUpdatedAt:null})]);
+    await user.click(retry);
+    expect(await screen.findByText("1件中 1件表示")).toBeInTheDocument();
+    expect(screen.getByText("非地図の発見物")).toBeInTheDocument();
+    expect(discoveryStateReader.list).toHaveBeenCalledTimes(2);
+    expect(repositories.progress.setReported).not.toHaveBeenCalled();
+    expect(repositories.progress.markDiscovered).not.toHaveBeenCalled();
+    expect(repositories.link.discoverWithLinkedQuest).not.toHaveBeenCalled();
+  });
+
+  it("isolates delayed history across profile switches and includes non-map history groups", async () => {
+    const repositories = setup([profile(1,"A"),profile(2,"B")], [discovery(1,"非地図")],
+      new Map([[1,[progress(1,1)]],[2,[progress(2,1)]]]));
+    let resolveA!: (rows:DiscoveryStateSummary[]) => void;
+    let resolveB!: (rows:DiscoveryStateSummary[]) => void;
+    vi.mocked(discoveryStateReader.list).mockImplementation(id=>new Promise(resolve=>{if(id===1) resolveA=resolve; else resolveB=resolve;}));
+    const user = await open(repositories);
+    await user.selectOptions(screen.getByLabelText("未報告の内訳"), "confirmed");
+    expect(screen.getByText("未報告の内訳を読み込んでいます…")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    await waitFor(()=>expect(discoveryStateReader.list).toHaveBeenCalledWith(2));
+    await user.selectOptions(await screen.findByLabelText("未報告の内訳"), "unknown");
+    await act(async()=>resolveB([historySummary(1,"unknown",{legacyMeritCredit:1})]));
+    expect(await screen.findByText("1件中 1件表示")).toBeInTheDocument();
+    await act(async()=>resolveA([historySummary(1,"confirmed")]));
+    expect(screen.getByText("1件中 1件表示")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("未報告の内訳"), "confirmed");
+    expect(screen.getByText("条件に一致する発見物がありません")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("未報告の内訳"), "not_reported");
+    expect(screen.getByText("条件に一致する発見物がありません")).toBeInTheDocument();
+    expect(discoveryStateReader.list).toHaveBeenCalledTimes(2);
+  });
+
+  it("invalidates saved history while reloading after a current-state update, including reload failure", async () => {
+    const repositories = setup([profile(1)], [discovery(1,"非地図")], new Map([[1,[progress(1,1)]]]));
+    vi.mocked(discoveryStateReader.list).mockResolvedValueOnce([historySummary(1,"not_reported")]);
+    const user = await open(repositories);
+    let rejectRead!: (error:Error)=>void;
+    vi.mocked(discoveryStateReader.list).mockImplementationOnce(()=>new Promise((_resolve,reject)=>{rejectRead=reject;}));
+    await user.click(screen.getByRole("checkbox",{name:"非地図のカード所有状態"}));
+    await user.selectOptions(screen.getByLabelText("未報告の内訳"), "not_reported");
+    expect(screen.getByText("未報告の内訳を読み込んでいます…")).toBeInTheDocument();
+    await act(async()=>rejectRead(new Error("synthetic reload failure")));
+    expect(screen.getByText("未報告の内訳を確認できません。地図・報告履歴を再読み込みしてください。")).toBeInTheDocument();
+    expect(screen.queryByText(/件中.*件表示/)).not.toBeInTheDocument();
+    vi.mocked(discoveryStateReader.list).mockResolvedValueOnce([historySummary(1,"confirmed")]);
+    await user.click(screen.getByRole("button",{name:"再読み込み"}));
+    expect(await screen.findByText("条件に一致する発見物がありません")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("未報告の内訳"), "confirmed");
+    expect(screen.getByText("非地図")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("未報告の内訳"), "all");
+    expect(screen.getByText("非地図")).toBeInTheDocument();
+    expect(repositories.progress.setReported).not.toHaveBeenCalled();
+  });
+
   it("reloads map status, filters and existing card/memo after the common state command succeeds", async () => {
     const saved=progress(1,1,false,true,"keep");
     const storage=new Map([[1,[saved]]]);
@@ -121,6 +190,7 @@ describe("Discovery UI", () => {
     expect(screen.getByLabelText("状態")).toHaveValue(status);
     expect(screen.getByLabelText("カード所有")).toHaveValue(card);
     expect(screen.getByLabelText("分類")).toHaveValue("all");
+    expect(screen.getByLabelText("未報告の内訳")).toHaveValue("all");
     expect(screen.getByText("1 / 1ページ")).toBeInTheDocument();
     const expectedCount = status === "unreported" ? stats.discoveries.unreported : stats.discoveries.cardCapableDiscovered - stats.discoveries.cardOwned;
     expect(bodyRows()).toHaveLength(expectedCount);
@@ -751,6 +821,11 @@ describe("Discovery UI", () => {
 });
 
 interface Repositories { profiles: MockProfiles; master: MockMaster; progress: MockProgress; link: MockProgressLink }
+
+function historySummary(id:number, firstReportStatus:DiscoveryStateSummary["firstReportStatus"], overrides:Partial<DiscoveryStateSummary> = {}):DiscoveryStateSummary {
+  return {id,active:1,categoryName:"地理",experience:100,masterUpdatedAt:"m",discovered:1,reported:0,reportHold:0,progressUpdatedAt:"p",
+    firstReportStatus,legacyMeritCredit:0,historyUpdatedAt:"h",automaticReporting:0,mapRelated:0,...overrides};
+}
 
 function categoryStats(categories: Array<{ id: number; name: string; sortOrder: number }>): ProgressStats {
   return {

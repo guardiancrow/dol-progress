@@ -6,6 +6,9 @@ import history from "../../src-tauri/migrations/004_map_report_hold.sql?raw";
 import type { DatabaseClient } from "../db/client";
 import type { ProgressStats } from "../overview/types";
 import { ProgressStatsRepository } from "./progressStatsRepository";
+import { DiscoveryStateReader } from "../discoveries/stateReader";
+import { currentUnreportedHistory } from "../discoveries/unreportedBreakdown";
+import { mapDiscoveryReviewReason, mapDiscoveryStatus } from "../discoveries/mapReacquisition";
 
 interface MemorySqlite {
   exec(sql: string): void;
@@ -61,7 +64,7 @@ function fixture(seed = true) {
     return JSON.stringify(["profiles", "discovery_progress", "discovery_reporting_history", "quest_progress"]
       .map((table) => db.prepare(`SELECT * FROM ${table} ORDER BY 1,2`).all({})));
   }
-  return { db, read, calls, snapshot };
+  return { db, read, calls, snapshot, reader: new DiscoveryStateReader(async () => client) };
 }
 
 function partition(stats: ProgressStats, expected: [number, number, number, number]) {
@@ -79,6 +82,44 @@ function partition(stats: ProgressStats, expected: [number, number, number, numb
 const baselineMerit = { knownMerit: 4800, reportedCount: 8, knownExperienceCount: 7, unknownExperienceCount: 1 };
 
 describe.skipIf(sqlite === null)("current-unreported history groups with actual repository SQL", () => {
+  it("matches list filters to C7/C8 totals for each profile and preserves all saved progress", async () => {
+    const f = fixture();
+    try {
+      // 一つの地図に複数発見物、報告対象外、両方の条件を合成する。
+      f.db.exec(`INSERT INTO quest_discoveries VALUES(1,12),(2,8);
+        INSERT INTO quest_progress(profile_id,quest_id,memo) VALUES(1,1,'synthetic quest memo');
+        UPDATE discovery_progress SET memo='synthetic discovery memo',card_owned=1,report_hold=1 WHERE profile_id=1 AND discovery_id=1;`);
+      const before = f.snapshot();
+      for (const profileId of [1,2,3]) {
+        f.db.exec("PRAGMA query_only=ON");
+        const states = await f.reader.list(profileId);
+        const rows = states.filter(s=>s.active).map(s=>({
+          id:s.id, canReport:s.categoryName!=="レリック", mapRelated:!!s.mapRelated, mapNeedsReview:!!s.mapNeedsReview,
+          progress:s.discovered?{profileId,discoveryId:s.id,reported:!!s.reported,cardOwned:false,memo:null,updatedAt:"p"}:null,
+          effectiveReported:!!s.discovered && !!(s.reported || s.automaticReporting),
+          firstReportStatus:s.firstReportStatus, historyPresent:s.historyUpdatedAt!==null,
+        }));
+        const stats = await f.read(profileId);
+        const classified = rows.map(r=>({id:r.id,status:currentUnreportedHistory(r)}));
+        expect(classified.filter(r=>r.status!==null)).toHaveLength(stats.discoveries.unreported);
+        for (const [status,key] of [["not_reported","notReported"],["confirmed","confirmed"],["unknown","unknown"]] as const) {
+          expect(classified.filter(r=>r.status===status)).toHaveLength(stats.discoveries.unreportedBreakdown![key]);
+        }
+        if (profileId === 1) {
+          expect(classified.filter(r=>r.status==="unknown").map(r=>r.id)).toEqual([3,4,5]);
+          expect(rows.find(r=>r.id===3)?.mapRelated).toBe(false);
+          const multiple = rows.find(r=>r.id===12)!;
+          expect(mapDiscoveryStatus(multiple)).toBe("review");
+          expect(mapDiscoveryReviewReason(multiple)).toContain("一つの地図に複数の発見物");
+          const relic = rows.find(r=>r.id===8)!;
+          expect(mapDiscoveryStatus(relic)).toBe("review");
+          expect(mapDiscoveryReviewReason(relic)).toContain("報告対象外");
+          expect(stats.adventureMerit).toEqual(baselineMerit);
+        }
+      }
+      expect(f.snapshot()).toBe(before);
+    } finally { f.db.close(); }
+  });
   it.each([
     [1, [1, 1, 0, 0]], [2, [1, 0, 1, 0]], [3, [1, 0, 0, 1]],
     [4, [1, 0, 0, 1]], [5, [1, 0, 0, 1]], [6, [0, 0, 0, 0]],

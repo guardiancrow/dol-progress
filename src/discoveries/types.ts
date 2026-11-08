@@ -32,6 +32,7 @@ export type DiscoveryInitialFilter =
   | { kind: "card-not-owned" };
 
 export interface DiscoveryRowViewModel {
+  unreportedHistoryReady?: boolean;
   firstReportStatus?: import("./stateService").FirstReportStatus;
   historyPresent?: boolean;
   legacyMeritCredit?: boolean;

@@ -23,6 +23,7 @@ export type HoldDialog = {
 export function useReportHold(profileId: number | null, onChanged: () => void, dependencies = defaults) {
   const [summaries, setSummaries] = useState(new Map<number, DiscoveryStateSummary>());
   const [summariesProfileId,setSummariesProfileId] = useState<number|null>(null);
+  const [summaryRead, setSummaryRead] = useState<{profileId: number; state: "loading" | "ready" | "error"} | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,9 +43,20 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
     if (profileId === null) return;
     const token = epoch.current;
     const generation = ++readGeneration.current;
-    const rows = await dependencies.reader.list(profileId);
-    if (epoch.current === token && profile.current === profileId && readGeneration.current === generation) {
-      setSummaries(new Map(rows.map(s => [s.id, s])));setSummariesProfileId(profileId);
+    const isCurrent = () => epoch.current === token && profile.current === profileId && readGeneration.current === generation;
+    setSummaryRead({profileId, state: "loading"});
+    try {
+      const rows = await dependencies.reader.list(profileId);
+      if (isCurrent()) {
+        setSummaries(new Map(rows.map(s => [s.id, s])));setSummariesProfileId(profileId);
+        setSummaryRead({profileId, state: "ready"});
+      }
+    } catch (error: unknown) {
+      if (isCurrent()) {
+        setSummaryRead({profileId, state: "error"});
+        setError("地図・報告履歴を読み込めませんでした。再読み込みしてください。");
+      }
+      throw error;
     }
   }, [profileId, dependencies]);
 
@@ -143,6 +155,7 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
     setSelection({kind,name,targets});
   }
 
-  return { summaries:summariesProfileId===profileId?summaries:EMPTY_SUMMARIES, loading:loading || profileId!==null&&summariesProfileId!==profileId, busy, error, notice, dialog, selection, openSelection, setDialog, close, save, open, reload, retry };
+  const summaryReadState = summaryRead?.profileId === profileId ? summaryRead.state : "loading";
+  return { summaries:summariesProfileId===profileId?summaries:EMPTY_SUMMARIES, summaryReadState, loading:loading || profileId!==null&&summaryReadState === "loading", busy, error, notice, dialog, selection, openSelection, setDialog, close, save, open, reload, retry };
 }
 export type ReportHoldController = ReturnType<typeof useReportHold>;

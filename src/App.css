@@ -310,6 +310,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .discovery-name-content { min-width: 0; flex: 1; }
 .discovery-name-content > .quest-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .map-related-badge { display: block; white-space: nowrap; color: #34596c; font-size: .7rem; line-height: 16px; }
+.map-review-help { position: relative; display: block; width: fit-content; cursor: help; }
+.map-review-tooltip { display: none; position: absolute; top: 100%; left: 0; z-index: 10; width: 19rem; padding: .5rem; border: 1px solid #9baeb7; border-radius: 4px; background: #fff; color: #263b46; white-space: pre-line; font-size: .8rem; line-height: 1.5; box-shadow: 0 2px 6px #0002; }
+.map-review-help:hover .map-review-tooltip, .map-review-help:focus .map-review-tooltip { display: block; }
 .map-related-button { padding: 3px 5px; white-space: nowrap; }
 .map-related-dialog { display: grid; gap: .7rem; }
 .map-related-dialog label { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }
