@@ -18,11 +18,21 @@ Noticesは保守的な包含候補と提供元通知も含む。通知に載る�
 
 ## 正式レビューの状態
 
-現行v0.3.0の通知対象201件・除外6件、原文148種類・357参照は正式レビュー済みで、manifest／review／sourceの承認状態はREVIEWEDである。依存版はnpm／Cargoのlockfileで固定する。原文、著作権表示、出典、除外根拠、lockとtoolchainを対応付けた既存結果を保持し、文書整理のために再監査・再承認しない。
+v0.3.0の通知対象201件・除外6件、原文148種類・357参照は正式レビュー済みで、当時のmanifest／review／sourceはREVIEWEDだった。依存版はnpm／Cargoのlockfileで固定する。原文、著作権表示、出典、除外根拠、lockとtoolchainを対応付けた既存結果を保持し、文書整理のために再監査・再承認しない。v0.4.0候補の状態は次項で区別する。
 
 正式レビューは通知に関する確認範囲の判断であり、全原文の逐語確認、包括的な法的保証、Microsoft契約の受入、一般公開の承認を意味しない。既存HEADの正式Compile・Package・独立Verifierは成功済みだが、新HEADの検証結果へ流用しない。
 
 source.jsonのformal_package_gate=NOT_COMPLETEDなどは登録時のmetadataである。後続Packageの成功はrun/resultで記録し、その表示を更新するためにREVIEWED metadataや通知の由来commit・レビュー基点を改変しない。新しい依存・toolchain・配布構成へ旧レビューを無条件で一般化しない。
+
+### v0.4.0入力の準備状態（Map-C12F）
+
+`release/notices/manifest.json`と`review.json`のstatus、`source.json`のformal_review_stateはPREPAREDである。アプリ版と現在lockのraw byte hash、manifest相互参照、候補toolchain hashを整合させた。正式gateはREVIEWEDを要求するため、この候補を拒否する。新しい承認は記録していない。
+
+原文・通知正本・mapping、全coverageと除外根拠、reviewer／reviewed_at、approval_basis／formal_review、既存toolchain_refreshは過去の事実として保持した。manifestのsource_headは当時のレビュー基点、source.jsonのsource_commitは通知正本の由来を表し、最終CompileのHEADではない。両値を現在HEADへ置き換えない。
+
+`v0.4.0-preparation.json`に旧入力hashと参照checkpoint、候補lock／toolchain、差分、未承認事項を記録し、review.release_refreshからhashで参照する。inventoryのtoolchain record N196–N201とcoverageはRust 1.98.0の過去の証拠であり、現在のRust 1.99.1への適用を認定したものではない。現行toolchainの限定レビュー後に必要な原文・inventory・coverageを更新し、Ownerが対象差分を承認する。
+
+CSPは旧除外根拠のnullから非nullへ変わった。cssparser等の対象4件は現行Cargo treeでhostのbuild／proc-macro経路だけにあり、通常target経路ではselectors・cssparserが出現しないことを確認した。除外継承の候補証拠として扱い、過去の文言を上書きせずOwnerレビューへ渡す。最終バイナリの包含証明やsource義務の法的判断へ読み替えない。Microsoft関連の既存残件と公開承認は独立して維持する。
 
 ## 正式入力の検証仕様
 

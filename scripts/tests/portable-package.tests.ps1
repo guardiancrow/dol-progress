@@ -337,6 +337,16 @@ Case 'Canonical notice inputs preserve review and source gates TEST_ONLY' {
     foreach ($name in @('manifest.json','inventory.json','review.json','source.json','texts/example.txt')) { $map['release/notices/'+$name]=Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $folder $name)) }
     $actual=Read-PortableNotices $root '0.3.0' $map
     Expect ((Get-ReleaseSHA256 $actual) -ceq $textHash)
+    foreach ($pendingInput in @('manifest','review')) {
+        $pendingPath=Join-Path $folder ($pendingInput+'.json')
+        $savedBytes=Read-PortableBytes $pendingPath
+        $pending=Get-PortableText $savedBytes | ConvertFrom-Json
+        $pending.status='PREPARED'
+        [IO.File]::WriteAllText($pendingPath,($pending | ConvertTo-Json -Depth 12),[Text.UTF8Encoding]::new($false))
+        Reject { Assert-PortableNoticeAvailability $root }
+        Reject { Read-PortableNotices $root '0.3.0' $map }
+        [IO.File]::WriteAllBytes($pendingPath,$savedBytes)
+    }
     $noOwner=@{copyrights=@();evidence=@($originalPath);copyright_review=@{state='NO_SEPARATE_NOTICE_IN_REVIEWED_SOURCES';reason='Synthetic no-owner mapping test only';source_evidence=@(@{path=$originalPath;sha256=$textHash})}}
     Assert-PortableCopyrightMapping $root $noOwner $map $original
     $noOwner.copyright_review.state='PENDING_USER_APPROVAL'
@@ -392,7 +402,8 @@ Case 'Exact toolchain match and drift rejection use production reader TEST_ONLY'
     }
     $state=Fixture-CompileState
     $result=$state.Result
-    $result | Add-Member -NotePropertyName toolchain -NotePropertyValue ((Get-PortableText (Read-PortableBytes (Join-Path $repo 'release/notices/mapping.json'))) | ConvertFrom-Json).toolchain
+    # This fixture has its own approval hash, independent of real pending release inputs.
+    $result | Add-Member -NotePropertyName toolchain -NotePropertyValue ([pscustomobject]@{rustc=@('TEST_ONLY rustc','TEST_ONLY host');cargo='TEST_ONLY cargo';node='TEST_ONLY node';npm='TEST_ONLY npm';tauri_cli='TEST_ONLY cli';powershell='TEST_ONLY powershell'})
     $result | Add-Member -NotePropertyName input_hashes -NotePropertyValue ([ordered]@{'TEST_ONLY.source'=('c'*64)})
     $result.executable.sha256=Get-ReleaseSHA256 $payload['dol-progress-manager.exe']
     $source=[pscustomobject]@{Head=$head;Version='0.3.0';Hashes=[ordered]@{'TEST_ONLY.source'=('c'*64)}}
@@ -400,7 +411,8 @@ Case 'Exact toolchain match and drift rejection use production reader TEST_ONLY'
     Write-PortableBytes $root (Join-Path $run 'output/dol-progress-manager.exe') $payload['dol-progress-manager.exe']
     Write-PortableBytes $root (Join-Path $run 'target/release/dol-progress-manager.exe') $payload['dol-progress-manager.exe']
     Write-ReleaseNewText (Join-Path $run 'logs/compile.txt') 'TEST_ONLY resource-only PE; no application executed.'
-    $approved=(Get-PortableText (Read-PortableBytes (Join-Path $repo 'release/notices/manifest.json')) | ConvertFrom-Json).toolchain_sha256
+    $fingerprint=@('rustc','cargo','node','npm','tauri_cli','powershell') | ForEach-Object { $_+'='+(@($result.toolchain.$_) -join "`n") }
+    $approved=Get-ReleaseSHA256 ([Text.Encoding]::UTF8.GetBytes(($fingerprint -join "`n")+"`n"))
     Write-ReleaseNewText (Join-Path $root 'release/notices/manifest.json') ((@{toolchain_sha256=$approved} | ConvertTo-Json)+"`n")
     $resultPath=Join-Path $run 'result.json'
     [IO.File]::WriteAllText($resultPath,($result | ConvertTo-Json -Depth 12),[Text.UTF8Encoding]::new($false))

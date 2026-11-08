@@ -1,7 +1,8 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '../third-party-notices.ps1')
 $repo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
+$applicationVersion=(Get-NoticeJson (Join-Path $repo 'package.json')).version
 $fixtures=Join-Path $repo ('tmp/phase-23d-c1c-b2b/tests/'+[Guid]::NewGuid().ToString('N'))
 Assert-ReleaseContained $repo $fixtures; Assert-ReleaseNoReparse $fixtures
 Get-PortableGit $repo @('check-ignore','--quiet','--','tmp/phase-23d-c1c-b2b/test.txt') | Out-Null
@@ -41,9 +42,9 @@ function New-Fixture {
         }
         if ($i -lt 5) { $records[-1].NOTICE.texts=@($ref) }
     }
-    $inventory=[pscustomobject]@{status='DRAFT';version='0.3.0';source_head=('a'*40);records=$records;texts=$texts;copyright_source_files=$ownerFiles}
+    $inventory=[pscustomobject]@{status='DRAFT';version=$applicationVersion;source_head=('a'*40);records=$records;texts=$texts;copyright_source_files=$ownerFiles}
     Write-ReleaseNewText (Join-Path $root 'copyright-review.json') '{"records":[]}'
-    $manifest=[pscustomobject]@{schema=1;kind='NOTICE_ASSEMBLY_DRAFT';status='DRAFT';version='0.3.0';source_head=('a'*40);target='x86_64-pc-windows-msvc';inventory_file='inventory.json';inventory_sha256='';copyright_review_file='copyright-review.json';copyright_review_sha256=(Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $root 'copyright-review.json')));expected_records=207;expected_candidates=207;expected_texts=148;bundle_reference='tmp/TEST_ONLY/assembly-manifest.json';component_contracts=@($records | ForEach-Object { [pscustomobject](Get-NoticeContract $_) })}
+    $manifest=[pscustomobject]@{schema=1;kind='NOTICE_ASSEMBLY_DRAFT';status='DRAFT';version=$applicationVersion;source_head=('a'*40);target='x86_64-pc-windows-msvc';inventory_file='inventory.json';inventory_sha256='';copyright_review_file='copyright-review.json';copyright_review_sha256=(Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $root 'copyright-review.json')));expected_records=207;expected_candidates=207;expected_texts=148;bundle_reference='tmp/TEST_ONLY/assembly-manifest.json';component_contracts=@($records | ForEach-Object { [pscustomobject](Get-NoticeContract $_) })}
     # Roundtrip isolates contract objects from the subsequently mutated inventory.
     $manifest=($manifest | ConvertTo-Json -Depth 60) | ConvertFrom-Json
     $fixture=[pscustomobject]@{Root=$root;Inventory=$inventory;Manifest=$manifest;ManifestPath=(Join-Path $root 'assembly-manifest.json')}

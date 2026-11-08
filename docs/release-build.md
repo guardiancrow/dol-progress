@@ -50,6 +50,8 @@ npm run tauri -- build --no-bundle -- --locked --offline
 
 不一致、署名検証失敗、staged変更、未知のuntracked source、application／依存／schemaへの許可外変更は停止する。任意のdirty-tree許可、skip、公開entryのtest modeはない。
 
+CompileとPackageは`release-safety.ps1`の共通`Assert-PortableVersions`で5ファイルを照合する。npm lockはtop-levelと空keyのroot packageを両方確認し、Cargo.tomlは`[package]`、Cargo.lockはアプリ名のrecordだけを対象にする。Compile結果のversionは照合済みのpackage.jsonから記録し、特定のリリース番号へ固定しない。v0.4.0準備では6か所の値を`0.4.0`に揃えた。
+
 compile runnerには限定的なツール検証用として、次の6pathだけの未commit変更を記録する既存処理がある。これは正式配布のclean要件の代替ではなく、そのrunはPackage入力として使えない。
 
 - scripts/build-release.ps1
@@ -159,6 +161,7 @@ BuildRootは追加prefixで、検査を省略するoptionではない。既定�
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/portable-package.tests.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/release-tooling.tests.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/release-inputs.tests.ps1
 npm run typecheck
 ```
 
@@ -166,7 +169,9 @@ npm run typecheck
 
 ## 現在の確認結果と公開前の残件
 
-既存の署名済みHEAD `482b9ae80f117946f6c36cc093b27f27666d044e` に対して正式Compile・Package・独立Verifierは成功済みである。これはそのHEADに限る検証結果で、文書変更後のHEADの成功とは扱わない。run識別子とhashを含む記録は[履歴の確認状況](release-build-history.md#現在の公開準備状況)に保持する。NoticesはREVIEWED、201通知・6除外、148原文・357参照のままとする。
+既存の署名済みHEAD `482b9ae80f117946f6c36cc093b27f27666d044e` に対して正式Compile・Package・独立Verifierは成功済みである。これはそのHEADに限る検証結果で、文書変更後のHEADの成功とは扱わない。run識別子とhashを含む記録は[履歴の確認状況](release-build-history.md#現在の公開準備状況)に保持する。当時のNoticesはREVIEWEDであり、201通知・6除外、148原文・357参照のレビュー事実を保全する。
+
+上記はv0.3.0の過去の確認結果である。v0.4.0の入力はMap-C12FでPREPAREDへ分離し、原文と過去のcoverage・承認事実を保全した。現行toolchainへの適用と入力継承のOwnerレビューは未完了で、正式3工程は未実行である。[Map-C12Fの検証報告](map-c12f-verification.md)と[Noticesの準備状態](third-party-licenses.md#v040入力の準備状態map-c12f)を参照する。通常のDebug／Releaseコンパイル成功で正式工程や公開承認を代替しない。
 
 SDK受領者条件はREADMEとConsent v2へ実装している。同程度の保護と合意方式の契約解釈、MSVC startupの個別再配布根拠、配布者の補償等の本人判断は未完了。[Microsoft関連の区分](third-party-licenses.md#microsoft関連の確認範囲と残件)を参照する。実装を契約適合性やバイナリ公開の承認と扱わない。
 

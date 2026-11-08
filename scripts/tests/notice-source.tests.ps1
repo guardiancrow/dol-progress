@@ -1,7 +1,8 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '../third-party-notices.ps1')
 $repo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
+$applicationVersion=(Get-NoticeJson (Join-Path $repo 'package.json')).version
 $testRoot=Join-Path $repo ('tmp/phase-23d-c1c-c1/tests/'+[Guid]::NewGuid().ToString('N'))
 Assert-ReleaseContained $repo $testRoot; Assert-ReleaseNoReparse $testRoot
 New-Item -ItemType Directory -Path $testRoot | Out-Null
@@ -37,10 +38,10 @@ function New-Fixture {
         $components+=[pscustomobject]@{component_id=$id;name=$id;version='1.0.0';inclusion=$r.inclusion_classification;declared_license=$r.declared_license;notice_candidate=$true;provenance_completed=$false;text_sha256=@($hash);unresolved_obligations=@('A07','A12')}
         $assets+=[pscustomobject]@{asset_id=$id;file=$file;roles=@('LICENSE_TEXT','COPYRIGHT_SOURCE');category='A';disposition='INCLUDE';rights_basis='TEST_ONLY synthetic permission';license_identifier='TEST_ONLY';original_sha256=$hash;curated_sha256=$hash;curated_bytes=$raw.Length;transformation='NONE';component_ids=@($id);component_versions=@([pscustomobject]@{id=$id;name=$id;version='1.0.0';declared_license=$r.declared_license});origins=@([pscustomobject]@{source_label=$label;version='1.0.0';official_url='https://example.invalid/TEST_ONLY';original_sha256=$hash;confidence='TEST_ONLY'})}
     }
-    $inventory=[pscustomobject]@{status='DRAFT';version='0.3.0';source_head=('a'*40);records=$records;texts=$texts;copyright_source_files=$owners}
+    $inventory=[pscustomobject]@{status='DRAFT';version=$applicationVersion;source_head=('a'*40);records=$records;texts=$texts;copyright_source_files=$owners}
     Write-ReleaseNewText (Join-Path $root 'review.json') '{"records":[]}'
-    $source=[pscustomobject]@{schema=1;kind='VERSIONED_NOTICE_SOURCE';status='DRAFT';version='0.3.0';formal_clearance=$false;license_clearance='UNRESOLVED';public_release='NO_GO';coverage=[pscustomobject]@{records=2;candidates=2;raw_texts=2;copyright_source_files=2};assets=$assets;components=$components;references=@()}
-    $manifest=[pscustomobject]@{schema=1;kind='NOTICE_ASSEMBLY_DRAFT';source_mode='VERSIONED_CURATED';status='DRAFT';version='0.3.0';source_head=('a'*40);target='x86_64-pc-windows-msvc';inventory_file='inventory.json';inventory_sha256='';copyright_review_file='review.json';copyright_review_sha256=(Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $root 'review.json')));provenance_file='provenance.json';provenance_sha256='';expected_records=2;expected_candidates=2;expected_texts=2;bundle_reference='release/notice-source/manifest.json';component_contracts=@($records | ForEach-Object {[pscustomobject](Get-NoticeContract $_)})}
+    $source=[pscustomobject]@{schema=1;kind='VERSIONED_NOTICE_SOURCE';status='DRAFT';version=$applicationVersion;formal_clearance=$false;license_clearance='UNRESOLVED';public_release='NO_GO';coverage=[pscustomobject]@{records=2;candidates=2;raw_texts=2;copyright_source_files=2};assets=$assets;components=$components;references=@()}
+    $manifest=[pscustomobject]@{schema=1;kind='NOTICE_ASSEMBLY_DRAFT';source_mode='VERSIONED_CURATED';status='DRAFT';version=$applicationVersion;source_head=('a'*40);target='x86_64-pc-windows-msvc';inventory_file='inventory.json';inventory_sha256='';copyright_review_file='review.json';copyright_review_sha256=(Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $root 'review.json')));provenance_file='provenance.json';provenance_sha256='';expected_records=2;expected_candidates=2;expected_texts=2;bundle_reference='release/notice-source/manifest.json';component_contracts=@($records | ForEach-Object {[pscustomobject](Get-NoticeContract $_)})}
     $manifest=($manifest | ConvertTo-Json -Depth 60) | ConvertFrom-Json
     $f=[pscustomobject]@{Root=$root;Inventory=$inventory;Source=$source;Manifest=$manifest;ManifestPath=(Join-Path $root 'manifest.json')}; Save-Fixture $f; return $f
 }
@@ -84,8 +85,12 @@ foreach ($relative in $inputFiles) {
     New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($to)) -Force | Out-Null
     [IO.File]::Copy($from,$to,$false)
 }
-Save (Join-Path $testRoot 'source-only-inputs.json') ([ordered]@{classification='TEST_ONLY';files=$inputFiles;ignored_audit_inputs=@();network_required=$false;dependency_cache_required=$false;git_mutations=$false;git_usage='Read-only output ignore guard inherited from enclosing repository'})
-Case 'Clean-clone equivalent source-only execution reproduces all 207/148' {
+# Preserve the historical v0.3.0 curation test without rebadging its inputs as v0.4.0.
+$historicalPackage=Get-NoticeJson (Join-Path $isolated 'package.json')
+$historicalPackage.version=$curatedManifest.version
+Save (Join-Path $isolated 'package.json') $historicalPackage
+Save (Join-Path $testRoot 'source-only-inputs.json') ([ordered]@{classification='TEST_ONLY';files=$inputFiles;application_version_fixture=$curatedManifest.version;ignored_audit_inputs=@();network_required=$false;dependency_cache_required=$false;git_mutations=$false;git_usage='Read-only output ignore guard inherited from enclosing repository'})
+Case 'Historical curated source-only execution reproduces all 207/148' {
     $names=@('CARGO_HOME','RUSTUP_HOME','NPM_CONFIG_CACHE','HTTP_PROXY','HTTPS_PROXY'); $saved=@{}
     foreach ($name in $names) { $saved[$name]=[Environment]::GetEnvironmentVariable($name,'Process') }
     try {

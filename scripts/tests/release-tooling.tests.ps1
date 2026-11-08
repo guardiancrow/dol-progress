@@ -92,6 +92,21 @@ Test-Case 'Staged change rejection' { Assert-Rejected { Assert-ReleaseSource $he
 Test-Case 'CLI unsupported assumptions' { Assert-Rejected { Assert-ReleaseCli '3.0.0' '3.0.0' '--no-bundle' } }
 Test-Case 'CLI lock mismatch' { Assert-Rejected { Assert-ReleaseCli '2.11.4' '2.11.3' '--no-bundle' } }
 Test-Case 'CLI missing argument support' { Assert-Rejected { Assert-ReleaseCli '2.11.4' '2.11.4' '--debug' } }
+foreach ($applicationVersion in @('0.3.0','0.4.0','0.5.10')) {
+    Test-Case "Shared version guard accepts $applicationVersion" {
+        Assert-PortableVersions $applicationVersion $applicationVersion ("[package]`nversion = `""+$applicationVersion+"`"") ("name = `"dol-progress-manager`"`nversion = `""+$applicationVersion+"`"") @($applicationVersion,$applicationVersion)
+    }
+}
+foreach ($versionField in @('package','tauri','cargo','cargoLock','npm','npmRoot')) {
+    Test-Case "Shared version guard rejects stale $versionField" {
+        $values=@{package='0.4.0';tauri='0.4.0';cargo='0.4.0';cargoLock='0.4.0';npm='0.4.0';npmRoot='0.4.0'}
+        $values[$versionField]='0.3.0'
+        Assert-Rejected { Assert-PortableVersions $values.package $values.tauri ("[package]`nversion = `""+$values.cargo+"`"") ("name = `"dol-progress-manager`"`nversion = `""+$values.cargoLock+"`"") @($values.npm,$values.npmRoot) }
+    }
+}
+Test-Case 'Shared version guard scopes Cargo manifest to package' {
+    Assert-Rejected { Assert-PortableVersions '0.4.0' '0.4.0' "[package]`nversion = `"0.3.0`"`n[dependencies.fixture]`nversion = `"0.4.0`"" "name = `"dol-progress-manager`"`nversion = `"0.4.0`"" @('0.4.0','0.4.0') }
+}
 Test-Case 'Child failure preserves exit code' {
     $code=0
     try { Assert-ReleaseChildExit 23 'synthetic' } catch { $code=$_.Exception.Data['ExitCode'] }

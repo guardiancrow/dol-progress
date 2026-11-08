@@ -17,7 +17,7 @@ $run = $null
 $prefixes = [ordered]@{}
 $inputs = $null
 $failure = $null
-$result = [ordered]@{ purpose='portable release compile validation'; classification='FAILED'; version='0.3.0'; target='x86_64-pc-windows-msvc'; build_command='npm run tauri -- build --no-bundle -- --locked --offline'; license_status='UNRESOLVED'; packaging='NOT_IMPLEMENTED'; acceptance='NOT_PERFORMED' }
+$result = [ordered]@{ purpose='portable release compile validation'; classification='FAILED'; version=$null; target='x86_64-pc-windows-msvc'; build_command='npm run tauri -- build --no-bundle -- --locked --offline'; license_status='UNRESOLVED'; packaging='NOT_IMPLEMENTED'; acceptance='NOT_PERFORMED' }
 
 function Invoke-ReleaseCapture([string]$Command, [string[]]$Arguments, [string]$Stage) {
     $savedPreference = $ErrorActionPreference
@@ -73,14 +73,16 @@ try {
     $cliVersion = @(Invoke-ReleaseCapture 'node' @($cliPath,'--version') 'Tauri version')
     $cliHelp = @(Invoke-ReleaseCapture 'node' @($cliPath,'build','--help') 'Tauri build help')
     # Windows PowerShell 5.1 ConvertFrom-Json cannot represent npm's empty root package key.
-    $lockQuery = "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package-lock.json','utf8'));console.log(JSON.stringify({version:p.packages[''].version,cliVersion:p.packages['node_modules/@tauri-apps/cli'].version}));"
+    $lockQuery = "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package-lock.json','utf8'));console.log(JSON.stringify({version:p.version,rootVersion:p.packages[''].version,cliVersion:p.packages['node_modules/@tauri-apps/cli'].version}));"
     $lock = (Invoke-ReleaseCapture 'node' @('-e',$lockQuery) 'npm lock metadata') | ConvertFrom-Json
     $version = $cliVersion[0] -replace '^tauri-cli ', ''
     Assert-ReleaseCli $version $lock.cliVersion ($cliHelp -join [Environment]::NewLine)
     $package = [IO.File]::ReadAllText((Join-Path $repoRoot 'package.json')) | ConvertFrom-Json
     $tauri = [IO.File]::ReadAllText((Join-Path $repoRoot 'src-tauri\tauri.conf.json')) | ConvertFrom-Json
     $cargoText = [IO.File]::ReadAllText((Join-Path $repoRoot 'src-tauri\Cargo.toml'))
-    if ($package.version -ne '0.3.0' -or $tauri.version -ne '0.3.0' -or $cargoText -notmatch '(?m)^version = "0\.3\.0"\r?$' -or $lock.version -ne '0.3.0') { throw 'Version: compile phase must remain 0.3.0.' }
+    $cargoLock = [IO.File]::ReadAllText((Join-Path $repoRoot 'src-tauri\Cargo.lock'))
+    Assert-PortableVersions $package.version $tauri.version $cargoText $cargoLock @($lock.version,$lock.rootVersion)
+    $result['version'] = $package.version
     if ($tauri.bundle.active -ne $false -or $tauri.identifier -ne 'com.dolprogress.manager' -or $tauri.build.beforeBuildCommand -ne 'npm run build' -or $tauri.build.frontendDist -ne '../dist') { throw 'Configuration: expected portable build contract missing.' }
     if ($tauri.PSObject.Properties.Name -contains 'mainBinaryName') { throw 'Configuration: renamed executable unsupported.' }
     $result['toolchain'] = [ordered]@{ rustc=$rustc; cargo=$cargoVersion[0]; node=$nodeVersion[0]; npm=$npmVersion[0]; tauri_cli=$version; powershell=$PSVersionTable.PSVersion.ToString() }

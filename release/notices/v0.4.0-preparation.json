@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "purpose": "RELEASE_INPUT_PREPARATION",
+  "state": "PREPARED_FOR_USER_REVIEW",
+  "prepared_on": "2026-11-08",
+  "version": "0.4.0",
+  "preparation_source_head": "0221a705beeca9b638e85e5170eb19f5a22ec064",
+  "target": "x86_64-pc-windows-msvc",
+  "historical_inputs": {
+    "manifest.json": {
+      "sha256": "38c76b1d0fed058a3aa131762315d36c510b92761305a60331b3cf37df52a7e5",
+      "checkpoint": "0221a705beeca9b638e85e5170eb19f5a22ec064"
+    },
+    "source.json": {
+      "sha256": "9dd92f90a06bbc65ab7e4185333a086cda40b43f2839eb80d85b3647fda7acfd",
+      "checkpoint": "0221a705beeca9b638e85e5170eb19f5a22ec064"
+    },
+    "inventory.json": {
+      "sha256": "abc2bb292db19a51d6bfc315d53d7506aaa933887802fd070534e85a40421277",
+      "checkpoint": "0221a705beeca9b638e85e5170eb19f5a22ec064"
+    },
+    "review.json": {
+      "sha256": "1448d848f672e94531ed2114532c14ba40bb4e1d8aa4c2ade91fa7a88c91068b",
+      "checkpoint": "0221a705beeca9b638e85e5170eb19f5a22ec064"
+    },
+    "mapping.json": {
+      "sha256": "b88d680df8df2a1e64578df87ef415d15fda37fcb003f0e2fe1129664e25cf71",
+      "checkpoint": "0221a705beeca9b638e85e5170eb19f5a22ec064"
+    }
+  },
+  "historical_review_source_head": "4396ff971bbb4b543ead88dd51ae7a077d7cb69f",
+  "historical_notice_source_commit": "9fa2ba9b3e2da5abdcec9de3b27a218a4e228627",
+  "historical_approval_basis": {
+    "reviewer": "guardiancrow",
+    "reviewed_at": "2026-10-12T12:06:02.266Z",
+    "basis": "USER_ACCEPTANCE_OF_AUTOMATED_VALIDATION_AND_EXISTING_AUDIT",
+    "scope": "Windows x64 v0.3.0：通知201件、除外6件、原文148種類・357参照、ライセンス義務・出典・著作権・owner assessment5件・lock・toolchain・自動検証結果。不整合がないことを条件とするユーザー承認。全原文の逐語確認、法的クリアランス、公開承認を意味しない。",
+    "notice_sha256": "37e763e27a6fd410324b3617d6e55ba0bb058d0086949dac776dc073c0c282a1",
+    "toolchain_sha256": "4283dd97a1eb8080c9ae2afc59e3e4b1608bca99071dcfb4021b0805930637e7"
+  },
+  "candidate_inputs": {
+    "cargo_lock_sha256": "5a7964137a4cd6080dde0ecfed180e03877e3f7879ffbf452ad44cb499a339ae",
+    "npm_lock_sha256": "28bb9672171784b794a538bf42295ab19a84e270dec77d9a0cfd310552085dbc",
+    "notices_sha256": "37e763e27a6fd410324b3617d6e55ba0bb058d0086949dac776dc073c0c282a1",
+    "mapping_sha256": "b88d680df8df2a1e64578df87ef415d15fda37fcb003f0e2fe1129664e25cf71"
+  },
+  "phase_dependency_changes": "Application version only; dependency records unchanged from preparation_source_head.",
+  "historical_lock_hashes": {
+    "cargo": "05c112cb5269dba19ac792bbbb33d200a29ede4074d219c384b0f5faff4095e8",
+    "npm": "e54ce7518f50b7d2ec8252d0b715b415f0056f30436f7c9ce72f78e4a39c6466"
+  },
+  "historical_to_candidate_lock_delta": {
+    "cargo": {
+      "removed": [],
+      "added": []
+    },
+    "npm": {
+      "removed": [],
+      "added": []
+    }
+  },
+  "historical_toolchain": {
+    "rustc": [
+      "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+      "binary: rustc",
+      "commit-hash: 88d9e12ae178fab0fb5cc050a94da85685d449ea",
+      "commit-date: 2026-08-18",
+      "host: x86_64-pc-windows-msvc",
+      "release: 1.98.0",
+      "LLVM version: 22.1.8"
+    ],
+    "cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+    "node": "v24.20.0",
+    "npm": "11.19.0",
+    "tauri_cli": "2.11.4",
+    "powershell": "5.1.26100.9711"
+  },
+  "candidate_toolchain": {
+    "rustc": [
+      "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+      "binary: rustc",
+      "commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67",
+      "commit-date: 2026-10-13",
+      "host: x86_64-pc-windows-msvc",
+      "release: 1.99.1",
+      "LLVM version: 23.1.1"
+    ],
+    "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+    "node": "v26.13.0",
+    "npm": "11.20.0",
+    "tauri_cli": "2.11.4",
+    "powershell": "5.1.26100.9711"
+  },
+  "candidate_toolchain_sha256": "03bc8eeb02bfd006cf7f72f4bf5f4e4110eac9ccd96ad3f2c0d1e961ac9272da",
+  "toolchain_changed_elements": [
+    "rustc",
+    "cargo",
+    "node",
+    "npm"
+  ],
+  "unchanged_evidence": {
+    "notice_records": 201,
+    "exclusions": 6,
+    "original_texts": 148,
+    "text_references": 357,
+    "coverage": "Historical coverage preserved; candidate applicability awaits review.",
+    "source_head": "Historical review checkpoint; not the future Compile HEAD.",
+    "source_commit": "Canonical notice provenance; not the future application HEAD."
+  },
+  "csp_exclusion_check": {
+    "historical_reason": "CSP null",
+    "current_csp": "non-null",
+    "affected": [
+      "cssparser@0.37.0",
+      "cssparser-macros@0.7.1",
+      "selectors@0.38.0",
+      "dtoa-short@0.3.5"
+    ],
+    "observation": "cargo tree --locked --offline --target x86_64-pc-windows-msvc -e features: host build/proc-macro path through dom_query / tauri-utils html-manipulation-2. With -e normal,no-proc-macro selectors@0.38.0 and cssparser@0.37.0 have no path. Not proof of final binary bytes.",
+    "state": "PREPARED_FOR_USER_REVIEW"
+  },
+  "pending_decisions": [
+    "v0.4.0への入力継承・lock差分のOwnerレビュー",
+    "現行toolchainとRust標準ライブラリ通知N196-N201の限定レビュー",
+    "CSP変更後のhost-only除外根拠のOwnerレビュー"
+  ],
+  "formal_compile_package_verifier": "NOT_RUN",
+  "legal_clearance": false,
+  "public_release_approved": false
+}

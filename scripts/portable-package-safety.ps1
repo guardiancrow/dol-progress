@@ -90,14 +90,6 @@ function Assert-PortableSourceState([string]$Actual, [string]$Expected, [string[
     if ($Expected -notmatch '^[0-9a-f]{40}$' -or $Actual -cne $Expected -or $Dirty.Count -ne 0) { throw 'Source: clean expected checkpoint required.' }
 }
 
-function Assert-PortableVersions([string]$Version, [string]$TauriVersion, [string]$CargoText, [string]$CargoLock, [string[]]$NpmVersions) {
-    $packageSection=[regex]::Match($CargoText,'(?ms)^\[package\]\r?\n(.*?)(?=^\[|\z)')
-    if ($Version -notmatch '^\d+\.\d+\.\d+$' -or $Version -cne $TauriVersion -or $NpmVersions.Count -ne 2 -or
-        $NpmVersions[0] -cne $Version -or $NpmVersions[1] -cne $Version -or
-        -not $packageSection.Success -or $packageSection.Groups[1].Value -cnotmatch ('(?m)^version = "'+[regex]::Escape($Version)+'"\r?$') -or
-        $CargoLock -cnotmatch ('(?m)^name = "dol-progress-manager"\r?\nversion = "'+[regex]::Escape($Version)+'"\r?$')) { throw 'Source: version mismatch.' }
-}
-
 function Get-PortableSource([string]$Root, [string]$Expected) {
     Assert-ReleasePlatform ([Environment]::OSVersion.Platform) $env:PROCESSOR_ARCHITECTURE ([IntPtr]::Size) 'x86_64-pc-windows-msvc'
     Assert-ReleaseNoReparse $Root

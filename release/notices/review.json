@@ -1,11 +1,15 @@
 {
   "schema": 1,
-  "version": "0.3.0",
-  "status": "REVIEWED",
+  "version": "0.4.0",
+  "status": "PREPARED",
   "test_only": false,
   "reviewer": "guardiancrow",
   "reviewed_at": "2026-10-12T12:06:02.266Z",
-  "unresolved": [],
+  "unresolved": [
+    "v0.4.0への入力継承・lock差分のOwnerレビュー",
+    "現行toolchainとRust標準ライブラリ通知N196-N201の限定レビュー",
+    "CSP変更後のhost-only除外根拠のOwnerレビュー"
+  ],
   "coverage": [
     {
       "id": "N001",
@@ -5530,5 +5534,15 @@
       }
     ],
     "scope": "元のapproval_basis・reviewer・reviewed_at・coverageは当時の承認として保持。Windows PowerShell 5.1 build差分の更新候補であり、本人のコミット前レビュー・承認は未完了。"
+  },
+  "release_refresh": {
+    "state": "PREPARED_FOR_USER_REVIEW",
+    "evidence": [
+      {
+        "path": "release/notices/v0.4.0-preparation.json",
+        "sha256": "4f0991a5b4f3a81a6ff5dc267d940d004abc0e2a7b89bcb3917f065bb28eaed6"
+      }
+    ],
+    "scope": "元のreviewer・reviewed_at・approval_basis・coverageは過去の承認事実。v0.4.0・現行toolchainの承認を意味しない。"
   }
 }

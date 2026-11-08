@@ -1,16 +1,20 @@
 {
   "schema": 1,
-  "status": "REVIEWED",
+  "status": "PREPARED",
   "scope": "DISTRIBUTION",
   "test_only": false,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "source_head": "4396ff971bbb4b543ead88dd51ae7a077d7cb69f",
-  "unresolved": [],
-  "inventory_sha256": "abc2bb292db19a51d6bfc315d53d7506aaa933887802fd070534e85a40421277",
-  "review_sha256": "1448d848f672e94531ed2114532c14ba40bb4e1d8aa4c2ade91fa7a88c91068b",
+  "unresolved": [
+    "v0.4.0への入力継承・lock差分のOwnerレビュー",
+    "現行toolchainとRust標準ライブラリ通知N196-N201の限定レビュー",
+    "CSP変更後のhost-only除外根拠のOwnerレビュー"
+  ],
+  "inventory_sha256": "355c96a23a9c2a439c5c3832ebc1cd2ce16d84d6a12107d683d60da9ca980b42",
+  "review_sha256": "be3c901d0bf0f52b6904cae9e0b176d94da8be814121203227eda2fc6f7b7b7f",
   "notices_sha256": "37e763e27a6fd410324b3617d6e55ba0bb058d0086949dac776dc073c0c282a1",
-  "source_sha256": "9dd92f90a06bbc65ab7e4185333a086cda40b43f2839eb80d85b3647fda7acfd",
-  "cargo_lock_sha256": "05c112cb5269dba19ac792bbbb33d200a29ede4074d219c384b0f5faff4095e8",
-  "npm_lock_sha256": "e54ce7518f50b7d2ec8252d0b715b415f0056f30436f7c9ce72f78e4a39c6466",
-  "toolchain_sha256": "e2123b4c42a45064cfa99eb49084c509f1a440594e5e7165a1e53fb3ecadd9a7"
+  "source_sha256": "96546e5bd0314f0d50a576c908f3b7e74d3b4397de06d1114ede6a3689ad7781",
+  "cargo_lock_sha256": "5a7964137a4cd6080dde0ecfed180e03877e3f7879ffbf452ad44cb499a339ae",
+  "npm_lock_sha256": "28bb9672171784b794a538bf42295ab19a84e270dec77d9a0cfd310552085dbc",
+  "toolchain_sha256": "03bc8eeb02bfd006cf7f72f4bf5f4e4110eac9ccd96ad3f2c0d1e961ac9272da"
 }

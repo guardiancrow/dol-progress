@@ -28,6 +28,15 @@ function Assert-ReleaseCli([string]$Version, [string]$LockedVersion, [string]$He
     }
 }
 
+# Compile and Package use the same application-only version contract.
+function Assert-PortableVersions([string]$Version, [string]$TauriVersion, [string]$CargoText, [string]$CargoLock, [string[]]$NpmVersions) {
+    $packageSection=[regex]::Match($CargoText,'(?ms)^\[package\]\r?\n(.*?)(?=^\[|\z)')
+    if ($Version -notmatch '^\d+\.\d+\.\d+$' -or $Version -cne $TauriVersion -or $NpmVersions.Count -ne 2 -or
+        $NpmVersions[0] -cne $Version -or $NpmVersions[1] -cne $Version -or
+        -not $packageSection.Success -or $packageSection.Groups[1].Value -cnotmatch ('(?m)^version = "'+[regex]::Escape($Version)+'"\r?$') -or
+        $CargoLock -cnotmatch ('(?m)^name = "dol-progress-manager"\r?\nversion = "'+[regex]::Escape($Version)+'"\r?$')) { throw 'Source: version mismatch.' }
+}
+
 function Get-ReleaseDirectory([string]$Value, [string]$Category, [string]$RepoRoot) {
     if ([string]::IsNullOrWhiteSpace($Value) -or $Value -match '[\x00-\x1f]') { throw "$Category`: invalid directory." }
     $full = if ([IO.Path]::IsPathRooted($Value)) { [IO.Path]::GetFullPath($Value) } else { [IO.Path]::GetFullPath((Join-Path $RepoRoot $Value)) }
