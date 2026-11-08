@@ -11,6 +11,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text.RegularExpressions;
 public static class PortableZipVerifier {
     static void Require(bool ok) { if (!ok) throw new InvalidDataException("Archive or PE contract failed."); }
     static void Range(byte[] b, long p, long n) { Require(p>=0 && n>=0 && p<=b.LongLength-n); }
@@ -20,7 +22,19 @@ public static class PortableZipVerifier {
     static uint[] MakeTable() { var t=new uint[256]; for(uint i=0;i<256;i++) { uint c=i; for(int j=0;j<8;j++) c=(c&1)!=0 ? 0xedb88320U^(c>>1) : c>>1; t[i]=c; } return t; }
     public static uint Crc(byte[] b) { uint c=0xffffffffU; foreach(byte x in b) c=Table[(c^x)&255]^(c>>8); return c^0xffffffffU; }
     static string Name(byte[] b,long p,int n) { Range(b,p,n); for(int i=0;i<n;i++) Require(b[p+i]>=32 && b[p+i]<127); return Encoding.ASCII.GetString(b,(int)p,n); }
-    public static Dictionary<string,byte[]> Read(byte[] b) {
+    static uint SourceDosTimestamp(string committerTimestamp) {
+        // Deliberately independent of the writer's PowerShell conversion.
+        long seconds;
+        Require(committerTimestamp!=null && Regex.IsMatch(committerTimestamp,@"\A(?:0|[1-9][0-9]*)\z"));
+        Require(long.TryParse(committerTimestamp,NumberStyles.None,CultureInfo.InvariantCulture,out seconds));
+        Require(seconds>=315532800L && seconds<=4354819199L);
+        DateTime utc=new DateTime(1970,1,1,0,0,0,DateTimeKind.Utc).AddSeconds(seconds);
+        uint date=(uint)(((utc.Year-1980)<<9) | (utc.Month<<5) | utc.Day);
+        uint time=(uint)((utc.Hour<<11) | (utc.Minute<<5) | (utc.Second/2));
+        return (date<<16) | time;
+    }
+    public static Dictionary<string,byte[]> Read(byte[] b,string committerTimestamp) {
+        uint timestamp=SourceDosTimestamp(committerTimestamp);
         Require(b.Length>=22 && b.Length<=100663296);
         long end=b.Length-22;
         Require(U32(b,end)==0x06054b50 && U16(b,end+4)==0 && U16(b,end+6)==0 && U16(b,end+8)==5 && U16(b,end+10)==5 && U16(b,end+20)==0);
@@ -37,12 +51,12 @@ public static class PortableZipVerifier {
             long local=U32(b,p+42);
             string name=Name(b,p+46,nameLength);
             Require(name==expected[i] && extra==0 && comment==0 && U16(b,p+34)==0 && U16(b,p+36)==0 && U32(b,p+38)==0);
-            Require((U16(b,p+4)&255)<=20 && U16(b,p+6)==20 && (flags==0 || flags==0x800) && method==8 && U16(b,p+12)==0 && U16(b,p+14)==33);
+            Require((U16(b,p+4)&255)<=20 && U16(b,p+6)==20 && (flags==0 || flags==0x800) && method==8 && U32(b,p+12)==timestamp);
             long limit=i==4 ? 67108864 : i==3 ? 16777216 : i==2 ? 4096 : 2097152;
             Require(unpacked>0 && unpacked<=limit && packed>0 && packed<=100663296);
             total+=unpacked; Require(total<=100663296 && local==nextLocal);
             Range(b,local,30); Require(U32(b,local)==0x04034b50 && U16(b,local+4)==20);
-            Require(U16(b,local+6)==flags && U16(b,local+8)==method && U16(b,local+10)==0 && U16(b,local+12)==33);
+            Require(U16(b,local+6)==flags && U16(b,local+8)==method && U32(b,local+10)==timestamp);
             Require(U32(b,local+14)==crc && U32(b,local+18)==packed && U32(b,local+22)==unpacked && U16(b,local+26)==nameLength && U16(b,local+28)==0);
             Require(Name(b,local+30,nameLength)==name);
             long data=local+30+nameLength; Range(b,data,packed); Require(data+packed<=cd);
@@ -94,9 +108,9 @@ public static class PortableZipVerifier {
 }
 
 function Test-PortableArchive([string]$ZipPath, [string]$ExternalHashPath, [string]$VerifyRoot, $ExpectedHashes,
-    [string]$Version, $Payload, $Prefixes) {
+    [string]$Version, $Payload, $Prefixes, [string]$CommitterTimestamp) {
     $zipBytes=Read-PortableBytes $ZipPath
-    $members=[PortableZipVerifier]::Read($zipBytes)
+    $members=[PortableZipVerifier]::Read($zipBytes,$CommitterTimestamp)
     # Independent manifest parser: never call the generator's manifest builder.
     $manifest=(New-Object Text.UTF8Encoding($false,$true)).GetString($members['SHA256SUMS.txt'])
     $names=@('LICENSE.txt','README.txt','THIRD-PARTY-NOTICES.txt','dol-progress-manager.exe')
@@ -165,7 +179,7 @@ if ($MyInvocation.InvocationName -ne '.') {
         $run=New-PortablePackageRun $root $source.Head $CompileRunId
         $prefixes['PackageRoot']=$package; $prefixes['VerificationRoot']=$run.Path
         $zip=Join-Path $package ('output/DOL-Progress-Manager_'+$source.Version+'_windows-x64_portable.zip')
-        $gate='Verification'; $verified=Test-PortableArchive $zip ($zip+'.sha256') (Join-Path $run.Verify 'extracted') $hashes $source.Version $payload $prefixes
+        $gate='Verification'; $verified=Test-PortableArchive $zip ($zip+'.sha256') (Join-Path $run.Verify 'extracted') $hashes $source.Version $payload $prefixes $source.CommitterTimestamp
         if ($verified.sha256 -cne $packageResult.zip_sha256) { throw 'Package: recorded archive hash mismatch.' }
         $namesPath=Join-Path $run.Logs 'member-names.txt'
         Write-ReleaseNewText $namesPath "DOL-Progress-Manager/LICENSE.txt`nDOL-Progress-Manager/README.txt`nDOL-Progress-Manager/SHA256SUMS.txt`nDOL-Progress-Manager/THIRD-PARTY-NOTICES.txt`nDOL-Progress-Manager/dol-progress-manager.exe`n"

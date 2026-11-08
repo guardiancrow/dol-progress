@@ -33,9 +33,9 @@ try {
     $gate='Archive'
     $basename='DOL-Progress-Manager_'+$source.Version+'_windows-x64_portable.zip'
     $candidate=Join-Path $run.Verify $basename
-    Write-PortableZip $staging $candidate
+    Write-PortableZip $staging $candidate $source.CommitterTimestamp
     $gate='Verification'
-    $verified=Test-PortableArchive $candidate '' (Join-Path $run.Verify 'extracted') $hashes $source.Version $payload $prefixes
+    $verified=Test-PortableArchive $candidate '' (Join-Path $run.Verify 'extracted') $hashes $source.Version $payload $prefixes $source.CommitterTimestamp
     # External hash is only created after close, decompression/CRC and independent verification.
     $externalPath=$candidate+'.sha256'
     Write-PortableBytes $run.Path $externalPath ([Text.Encoding]::UTF8.GetBytes($verified.sha256+'  '+$basename+"`n"))

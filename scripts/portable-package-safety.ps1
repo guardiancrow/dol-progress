@@ -90,12 +90,20 @@ function Assert-PortableSourceState([string]$Actual, [string]$Expected, [string[
     if ($Expected -notmatch '^[0-9a-f]{40}$' -or $Actual -cne $Expected -or $Dirty.Count -ne 0) { throw 'Source: clean expected checkpoint required.' }
 }
 
+function Get-PortableCommitterTimestamp([string]$Root, [string]$Head) {
+    if ($Head -cnotmatch '\A[0-9a-f]{40}\z') { throw 'Source: invalid timestamp revision.' }
+    $timestamp=@(Get-PortableGit $Root @('show','-s','--format=%ct',$Head,'--'))
+    if ($timestamp.Count -ne 1 -or $timestamp[0] -cnotmatch '\A(?:0|[1-9][0-9]*)\z') { throw 'Source: invalid committer timestamp.' }
+    return $timestamp[0]
+}
+
 function Get-PortableSource([string]$Root, [string]$Expected) {
     Assert-ReleasePlatform ([Environment]::OSVersion.Platform) $env:PROCESSOR_ARCHITECTURE ([IntPtr]::Size) 'x86_64-pc-windows-msvc'
     Assert-ReleaseNoReparse $Root
     $head=@(Get-PortableGit $Root @('rev-parse','HEAD'))
     Assert-PortableSourceState $head[0] $Expected @(Get-PortableGit $Root @('status','--porcelain','--untracked-files=all'))
     Get-PortableGit $Root @('verify-commit','HEAD') | Out-Null
+    $committerTimestamp=Get-PortableCommitterTimestamp $Root $head[0]
     $files=@(Get-PortableGit $Root @('ls-files'))
     $hashes=Get-ReleaseInputHashes $Root $files
     $package=Get-PortableText (Read-PortableBytes (Join-Path $Root 'package.json')) | ConvertFrom-Json
@@ -106,7 +114,7 @@ function Get-PortableSource([string]$Root, [string]$Expected) {
     finally { $ErrorActionPreference=$preference }
     if ($code -ne 0) { throw 'Source: npm lock version unavailable.' }
     Assert-PortableVersions $package.version $tauri.version (Get-PortableText (Read-PortableBytes (Join-Path $Root 'src-tauri/Cargo.toml'))) (Get-PortableText (Read-PortableBytes (Join-Path $Root 'src-tauri/Cargo.lock'))) $npmVersions
-    return [pscustomobject]@{Head=$head[0];Version=$package.version;Hashes=$hashes}
+    return [pscustomobject]@{Head=$head[0];Version=$package.version;Hashes=$hashes;CommitterTimestamp=$committerTimestamp}
 }
 
 function Assert-PortableNoticeAvailability([string]$Root) {
@@ -295,7 +303,18 @@ function New-PortableStaging([string]$Root, $Payload) {
     return $hashes
 }
 
-function Write-PortableZip([string]$Staging, [string]$Path) {
+function Get-PortableZipTimestamp([string]$CommitterTimestamp) {
+    $seconds=0L
+    if ($CommitterTimestamp -cnotmatch '\A(?:0|[1-9][0-9]*)\z' -or
+        -not [long]::TryParse($CommitterTimestamp,[ref]$seconds) -or
+        $seconds -lt 315532800L -or $seconds -gt 4354819199L) { throw 'Archive: committer timestamp outside DOS range.' }
+    # ZIP has no timezone: store UTC calendar fields, flooring to DOS two-second precision.
+    $epoch=New-Object DateTimeOffset(1970,1,1,0,0,0,[TimeSpan]::Zero)
+    return $epoch.AddSeconds($seconds - ($seconds % 2))
+}
+
+function Write-PortableZip([string]$Staging, [string]$Path, [string]$CommitterTimestamp) {
+    $timestamp=Get-PortableZipTimestamp $CommitterTimestamp
     # The verifier owns its own allowlist and does not import this member list.
     $names=@('LICENSE.txt','README.txt','SHA256SUMS.txt','THIRD-PARTY-NOTICES.txt','dol-progress-manager.exe')
     $actual=@(Get-ChildItem -LiteralPath $Staging -Force | ForEach-Object { $_.Name })
@@ -308,7 +327,7 @@ function Write-PortableZip([string]$Staging, [string]$Path) {
             foreach ($name in $names) {
                 $bytes=Read-PortableBytes (Join-Path $Staging $name)
                 $entry=$zip.CreateEntry('DOL-Progress-Manager/'+$name,[IO.Compression.CompressionLevel]::Optimal)
-                $entry.LastWriteTime=New-Object DateTimeOffset(1980,1,1,0,0,0,[TimeSpan]::Zero)
+                $entry.LastWriteTime=$timestamp
                 $entry.ExternalAttributes=0
                 $writer=$entry.Open()
                 try { $writer.Write($bytes,0,$bytes.Length) } finally { $writer.Dispose() }

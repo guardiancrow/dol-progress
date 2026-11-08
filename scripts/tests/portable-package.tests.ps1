@@ -63,8 +63,9 @@ $payload=[ordered]@{'LICENSE.txt'=[Text.Encoding]::UTF8.GetBytes("TEST_ONLY lice
 $prefixes=[ordered]@{CargoHome='Q:\Synthetic\Cargo';RustupHome='Q:\Synthetic\Rustup';Repository='R:\Synthetic\Source'}
 $staging=New-TestPath '.staging'
 $hashes=New-PortableStaging $staging $payload
+$committerTimestamp='1704164645' # TEST_ONLY: 2024-01-02T03:04:05Z, normalized to :04.
 $zipPath=New-TestPath '.zip'
-Write-PortableZip $staging $zipPath
+Write-PortableZip $staging $zipPath $committerTimestamp
 $zipBytes=Read-PortableBytes $zipPath
 $externalPath=$zipPath+'.sha256'
 Write-PortableBytes $fixtures $externalPath ([Text.Encoding]::UTF8.GetBytes((Get-ReleaseSHA256 $zipBytes)+'  '+[IO.Path]::GetFileName($zipPath)+"`n"))
@@ -75,7 +76,7 @@ function Fixture-Zip($Members) {
         $archive=New-Object IO.Compression.ZipArchive($stream,[IO.Compression.ZipArchiveMode]::Create,$true,(New-Object Text.UTF8Encoding($false)))
         try { foreach ($member in $Members) {
             $entry=$archive.CreateEntry($member.name,[IO.Compression.CompressionLevel]::Optimal)
-            $entry.LastWriteTime=New-Object DateTimeOffset(1980,1,1,0,0,0,[TimeSpan]::Zero); $entry.ExternalAttributes=0
+            $entry.LastWriteTime=Get-PortableZipTimestamp $committerTimestamp; $entry.ExternalAttributes=0
             $writer=$entry.Open(); try { $writer.Write($member.bytes,0,$member.bytes.Length) } finally { $writer.Dispose() }
         } } finally { $archive.Dispose() }
     } finally { $stream.Dispose() }
@@ -93,7 +94,7 @@ function Header-Offsets([byte[]]$Bytes) {
 }
 function Reject-Archive([string]$Path) {
     $verify=New-TestPath '.verify'
-    Reject { Test-PortableArchive $Path '' $verify $hashes '0.3.0' $payload $prefixes }
+    Reject { Test-PortableArchive $Path '' $verify $hashes '0.3.0' $payload $prefixes $committerTimestamp }
 }
 
 # Run the production Output statements with synthetic files, without invoking package gates.
@@ -150,15 +151,107 @@ Case 'CRC32 known vector' { Expect ([PortableZipVerifier]::Crc([Text.Encoding]::
 Case 'PE x64 GUI version resource' { [PortableZipVerifier]::Pe($payload['dol-progress-manager.exe'],'0.3.0') }
 Case 'Fixed five members independent verifier positive' {
     $verify=New-TestPath '.verify'
-    $result=Test-PortableArchive $zipPath $externalPath $verify $hashes '0.3.0' $payload $prefixes
+    $result=Test-PortableArchive $zipPath $externalPath $verify $hashes '0.3.0' $payload $prefixes $committerTimestamp
     Expect ($result.members -eq 5 -and $result.crc_verified -eq 5 -and $result.extracted_hashes_verified -eq 5)
     Expect (@(Get-ChildItem -LiteralPath (Join-Path $verify 'DOL-Progress-Manager') -Force).Count -eq 5)
 }
-Case 'Independent existing archive read leaves ZIP bytes unchanged' { [void][PortableZipVerifier]::Read($zipBytes); Expect ((Get-ReleaseSHA256 (Read-PortableBytes $zipPath)) -ceq (Get-ReleaseSHA256 $zipBytes)) }
-Case 'Deterministic ZIP bytes and fixed header timestamps' {
-    $again=New-TestPath '.zip'; Write-PortableZip $staging $again
+Case 'Independent existing archive read leaves ZIP bytes unchanged' { [void][PortableZipVerifier]::Read($zipBytes,$committerTimestamp); Expect ((Get-ReleaseSHA256 (Read-PortableBytes $zipPath)) -ceq (Get-ReleaseSHA256 $zipBytes)) }
+Case 'Deterministic ZIP bytes and all central/local UTC DOS timestamps' {
+    $again=New-TestPath '.zip'; Write-PortableZip $staging $again $committerTimestamp
     Expect ((Get-ReleaseSHA256 (Read-PortableBytes $again)) -ceq (Get-ReleaseSHA256 $zipBytes))
-    foreach ($p in (Header-Offsets $zipBytes)) { Expect ([BitConverter]::ToUInt16($zipBytes,$p+12) -eq 0 -and [BitConverter]::ToUInt16($zipBytes,$p+14) -eq 33) }
+    foreach ($p in (Header-Offsets $zipBytes)) {
+        $local=[int][BitConverter]::ToUInt32($zipBytes,$p+42)
+        # Independently calculated: 2024-01-02 03:04:04, date=0x5822, time=0x1882.
+        Expect ([BitConverter]::ToUInt16($zipBytes,$p+12) -eq 6274 -and [BitConverter]::ToUInt16($zipBytes,$p+14) -eq 22562)
+        Expect ([BitConverter]::ToUInt16($zipBytes,$local+10) -eq 6274 -and [BitConverter]::ToUInt16($zipBytes,$local+12) -eq 22562)
+    }
+}
+Case 'Odd seconds floor to the same ZIP as preceding even second' {
+    $timestamp=Get-PortableZipTimestamp $committerTimestamp
+    Expect ($timestamp.ToString('yyyy-MM-ddTHH:mm:sszzz') -ceq '2024-01-02T03:04:04+00:00')
+    $even=New-TestPath '.zip'; Write-PortableZip $staging $even '1704164644'
+    Expect ((Get-ReleaseSHA256 (Read-PortableBytes $even)) -ceq (Get-ReleaseSHA256 $zipBytes))
+    [void][PortableZipVerifier]::Read($zipBytes,'1704164644')
+}
+Case 'UTC calendar fields independent of source timezone offsets and staging times' {
+    foreach ($date in @('2024-01-02T03:04:05+00:00','2024-01-02T12:04:05+09:00','2024-01-01T19:04:05-08:00')) {
+        $seconds=[DateTimeOffset]::Parse($date,[Globalization.CultureInfo]::InvariantCulture).ToUnixTimeSeconds().ToString([Globalization.CultureInfo]::InvariantCulture)
+        Expect ($seconds -ceq $committerTimestamp)
+        foreach ($file in (Get-ChildItem -LiteralPath $staging)) { [IO.File]::SetLastWriteTimeUtc($file.FullName,[DateTime]::new(2000,2,3,4,5,6,[DateTimeKind]::Utc)) }
+        $path=New-TestPath '.zip'; Write-PortableZip $staging $path $seconds
+        Expect ((Get-ReleaseSHA256 (Read-PortableBytes $path)) -ceq (Get-ReleaseSHA256 $zipBytes))
+    }
+}
+Case 'Timestamp changes only header times, preserving payload hash CRC and manifest bytes' {
+    $path=New-TestPath '.zip'; Write-PortableZip $staging $path '1704164647'
+    $changed=Read-PortableBytes $path
+    $members=[PortableZipVerifier]::Read($changed,'1704164647')
+    foreach ($name in $hashes.Keys) { Expect ((Get-ReleaseSHA256 $members[$name]) -ceq $hashes[$name]) }
+    $masked=[byte[]]$changed.Clone()
+    foreach ($p in (Header-Offsets $masked)) {
+        $local=[int][BitConverter]::ToUInt32($masked,$p+42)
+        [Array]::Copy($zipBytes,$p+12,$masked,$p+12,4)
+        [Array]::Copy($zipBytes,$local+10,$masked,$local+10,4)
+    }
+    Expect ((Get-ReleaseSHA256 $changed) -cne (Get-ReleaseSHA256 $zipBytes))
+    Expect ((Get-ReleaseSHA256 $masked) -ceq (Get-ReleaseSHA256 $zipBytes))
+    Reject { Test-PortableArchive $path '' (New-TestPath '.verify') $hashes '0.3.0' $payload $prefixes $committerTimestamp }
+}
+foreach ($invalid in @('', '-1', '315532799','4354819200','9223372036854775807','9223372036854775808','1704164645x',' 1704164645','01704164645','+1704164645','1.704164645e9',"1704164645`n",'2024-02-30T03:04:05Z')) {
+    Case ('Invalid or out-of-range committer timestamp '+$invalid.Trim()) {
+        Reject { Get-PortableZipTimestamp $invalid }
+        $path=New-TestPath '.zip'; Reject { Write-PortableZip $staging $path $invalid }
+        Expect (-not [IO.File]::Exists($path))
+        Reject { [PortableZipVerifier]::Read($zipBytes,$invalid) }
+    }
+}
+foreach ($boundary in @(
+    @{seconds='315532800';date=33;time=0},
+    @{seconds='4354819199';date=65439;time=49021}
+)) {
+    Case ('DOS boundary timestamp '+$boundary.seconds) {
+        $path=New-TestPath '.zip'; Write-PortableZip $staging $path $boundary.seconds
+        $bytes=Read-PortableBytes $path
+        foreach ($p in (Header-Offsets $bytes)) { Expect ([BitConverter]::ToUInt16($bytes,$p+12) -eq $boundary.time -and [BitConverter]::ToUInt16($bytes,$p+14) -eq $boundary.date) }
+        [void][PortableZipVerifier]::Read($bytes,$boundary.seconds)
+    }
+}
+Case 'Git timestamp uses committer epoch of the exact revision, not author or local time' {
+    $saved=(Get-Command Get-PortableGit).ScriptBlock
+    try {
+        function Get-PortableGit([string]$Root,[string[]]$Arguments) {
+            Expect (($Arguments -join '|') -ceq ('show|-s|--format=%ct|'+('a'*40)+'|--'))
+            return '1704164645'
+        }
+        Expect ((Get-PortableCommitterTimestamp $repo ('a'*40)) -ceq $committerTimestamp)
+        Reject { Get-PortableCommitterTimestamp $repo 'HEAD' }
+        function Get-PortableGit { return @('1704164645','1704164647') }
+        Reject { Get-PortableCommitterTimestamp $repo ('a'*40) }
+        function Get-PortableGit { return 'invalid' }
+        Reject { Get-PortableCommitterTimestamp $repo ('a'*40) }
+    } finally { Set-Item Function:Get-PortableGit $saved }
+}
+Case 'Reader does not trust writer timestamp conversion' {
+    $saved=(Get-Command Get-PortableZipTimestamp).ScriptBlock
+    try {
+        function Get-PortableZipTimestamp { return [DateTimeOffset]::new(1980,1,1,0,0,0,[TimeSpan]::Zero) }
+        $path=New-TestPath '.zip'; Write-PortableZip $staging $path $committerTimestamp
+        Reject-Archive $path
+    } finally { Set-Item Function:Get-PortableZipTimestamp $saved }
+}
+Case 'Standard NET ZIP reader and extraction retain usable calendar fields and bytes' {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive=[IO.Compression.ZipFile]::OpenRead($zipPath)
+    try {
+        foreach ($entry in $archive.Entries) { Expect ($entry.LastWriteTime.ToString('yyyy-MM-ddTHH:mm:ss') -ceq '2024-01-02T03:04:04') }
+    } finally { $archive.Dispose() }
+    $destination=New-TestPath '.net-extract'
+    [IO.Compression.ZipFile]::ExtractToDirectory($zipPath,$destination)
+    foreach ($name in $hashes.Keys) {
+        $path=Join-Path $destination ('DOL-Progress-Manager/'+$name)
+        Expect ((Get-ReleaseSHA256 (Read-PortableBytes $path)) -ceq $hashes[$name])
+        Expect ([IO.File]::GetLastWriteTime($path).ToString('yyyy-MM-ddTHH:mm:ss') -ceq '2024-01-02T03:04:04')
+    }
 }
 Case 'README BOM CRLF complete section and external URL retention' {
     Expect ($readme[0] -eq 239 -and $readme[1] -eq 187 -and $readme[2] -eq 191)
@@ -252,8 +345,8 @@ Case 'README missing official URL' { Reject { ConvertTo-PortableReadme ([Text.En
 Case 'README unknown relative link' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('(LICENSE)','(../unknown.txt)'))) } }
 Case 'LICENSE bytes copied without text transformation' { Expect ((Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $staging 'LICENSE.txt'))) -ceq (Get-ReleaseSHA256 $payload['LICENSE.txt'])) }
 Case 'Manifest exact four lines no BOM final LF' { $b=Read-PortableBytes (Join-Path $staging 'SHA256SUMS.txt'); $text=Get-PortableText $b; Expect ($b[0] -ne 239 -and $text.Split([char]10).Count -eq 5 -and $text.EndsWith("`n") -and -not $text.Contains("`r")) }
-Case 'Wrong external ZIP hash' { $bad=New-TestPath '.sha256'; Write-PortableBytes $fixtures $bad ([Text.Encoding]::UTF8.GetBytes(('0'*64)+'  '+[IO.Path]::GetFileName($zipPath)+"`n")); Reject { Test-PortableArchive $zipPath $bad (New-TestPath '.verify') $hashes '0.3.0' $payload $prefixes } }
-Case 'Missing external ZIP hash file' { Reject { Test-PortableArchive $zipPath (New-TestPath '.sha256') (New-TestPath '.verify') $hashes '0.3.0' $payload $prefixes } }
+Case 'Wrong external ZIP hash' { $bad=New-TestPath '.sha256'; Write-PortableBytes $fixtures $bad ([Text.Encoding]::UTF8.GetBytes(('0'*64)+'  '+[IO.Path]::GetFileName($zipPath)+"`n")); Reject { Test-PortableArchive $zipPath $bad (New-TestPath '.verify') $hashes '0.3.0' $payload $prefixes $committerTimestamp } }
+Case 'Missing external ZIP hash file' { Reject { Test-PortableArchive $zipPath (New-TestPath '.sha256') (New-TestPath '.verify') $hashes '0.3.0' $payload $prefixes $committerTimestamp } }
 foreach ($index in 0..4) {
     Case ('Missing member '+$index) { $members=@($memberFixtures | Where-Object { $_.name -cne $memberFixtures[$index].name }); Reject-Archive (Fixture-Zip $members) }
 }
@@ -261,7 +354,7 @@ foreach ($unsafe in @('../outside','/absolute','DOL-Progress-Manager\..\outside'
     Case ('Unsafe member '+$unsafe) {
         $members=@($memberFixtures | ForEach-Object { [pscustomobject]@{name=$_.name;bytes=$_.bytes} }); $members[0].name=$unsafe
         $path=Fixture-Zip $members; $verify=New-TestPath '.verify'
-        Reject { Test-PortableArchive $path '' $verify $hashes '0.3.0' $payload $prefixes }; Expect (-not [IO.Directory]::Exists($verify))
+        Reject { Test-PortableArchive $path '' $verify $hashes '0.3.0' $payload $prefixes $committerTimestamp }; Expect (-not [IO.Directory]::Exists($verify))
     }
 }
 Case 'Extra member' { Reject-Archive (Fixture-Zip (@($memberFixtures)+@([pscustomobject]@{name='hidden.txt';bytes=[byte[]](1)}))) }
@@ -275,6 +368,25 @@ Case 'Encryption flag' { Reject-Archive (Mutated-Zip {param($b) Put16 $b ((Heade
 Case 'Unsupported compression' { Reject-Archive (Mutated-Zip {param($b) Put16 $b ((Header-Offsets $b)[0]+10) 99; Put16 $b 8 99}) }
 Case 'Unexpected data descriptor flag' { Reject-Archive (Mutated-Zip {param($b) Put16 $b ((Header-Offsets $b)[0]+8) 2056; Put16 $b 6 2056}) }
 Case 'Wrong timestamp' { Reject-Archive (Mutated-Zip {param($b) Put16 $b ((Header-Offsets $b)[0]+14) 34; Put16 $b 12 34}) }
+foreach ($index in 0..4) {
+    Case ('Central timestamp mismatch member '+$index) {
+        Reject-Archive (Mutated-Zip {param($b) Put16 $b ((Header-Offsets $b)[$index]+12) 6275})
+    }
+    Case ('Local timestamp mismatch member '+$index) {
+        Reject-Archive (Mutated-Zip {param($b)
+            $p=(Header-Offsets $b)[$index]; $local=[int][BitConverter]::ToUInt32($b,$p+42)
+            Put16 $b ($local+10) 6275
+        })
+    }
+}
+Case 'Invalid DOS month/day rejected even when central and local match' {
+    Reject-Archive (Mutated-Zip {param($b)
+        foreach ($p in (Header-Offsets $b)) {
+            $local=[int][BitConverter]::ToUInt32($b,$p+42)
+            Put16 $b ($p+14) 0; Put16 $b ($local+12) 0
+        }
+    })
+}
 Case 'Central local name mismatch' { Reject-Archive (Mutated-Zip {param($b) $b[30]=88}) }
 Case 'Central local size mismatch' { Reject-Archive (Mutated-Zip {param($b) Put32 $b 22 99}) }
 Case 'CRC mismatch in matching central local headers' { Reject-Archive (Mutated-Zip {param($b) Put32 $b ((Header-Offsets $b)[0]+16) 0; Put32 $b 14 0}) }
@@ -305,10 +417,10 @@ foreach ($badManifestName in $badManifests.Keys) {
     }
 }
 Case 'Manifest payload hash mismatch' { $members=@($memberFixtures | ForEach-Object { [pscustomobject]@{name=$_.name;bytes=$_.bytes} }); $members[0].bytes=[Text.Encoding]::UTF8.GetBytes('changed'); Reject-Archive (Fixture-Zip $members) }
-Case 'Wrong PE version' { Reject { Test-PortableArchive $zipPath '' (New-TestPath '.verify') $hashes '0.4.0' $payload $prefixes } }
+Case 'Wrong PE version' { Reject { Test-PortableArchive $zipPath '' (New-TestPath '.verify') $hashes '0.4.0' $payload $prefixes $committerTimestamp } }
 Case 'Wrong PE architecture' { $b=[byte[]]$payload['dol-progress-manager.exe'].Clone(); Put16 $b 132 0x14c; Reject { [PortableZipVerifier]::Pe($b,'0.3.0') } }
 Case 'PE missing version resource' { $b=[byte[]]$payload['dol-progress-manager.exe'].Clone(); Put32 $b 280 0; Reject { [PortableZipVerifier]::Pe($b,'0.3.0') } }
-Case 'Privacy leak in payload returns failure' { $leaky=[ordered]@{}; foreach ($key in $payload.Keys) { $leaky[$key]=$payload[$key] }; $leaky['THIRD-PARTY-NOTICES.txt']=[Text.Encoding]::Unicode.GetBytes($prefixes.CargoHome); $stage=New-TestPath '.staging'; $h=New-PortableStaging $stage $leaky; $path=New-TestPath '.zip'; Write-PortableZip $stage $path; Reject { Test-PortableArchive $path '' (New-TestPath '.verify') $h '0.3.0' $leaky $prefixes } }
+Case 'Privacy leak in payload returns failure' { $leaky=[ordered]@{}; foreach ($key in $payload.Keys) { $leaky[$key]=$payload[$key] }; $leaky['THIRD-PARTY-NOTICES.txt']=[Text.Encoding]::Unicode.GetBytes($prefixes.CargoHome); $stage=New-TestPath '.staging'; $h=New-PortableStaging $stage $leaky; $path=New-TestPath '.zip'; Write-PortableZip $stage $path $committerTimestamp; Reject { Test-PortableArchive $path '' (New-TestPath '.verify') $h '0.3.0' $leaky $prefixes $committerTimestamp } }
 Case 'Unknown UNC requires privacy failure' { $file=New-TestPath '.bin'; Write-PortableBytes $fixtures $file ([Text.Encoding]::UTF8.GetBytes('\\UnknownHost\PrivateShare\data')); Reject { Assert-ReleasePrivacy (Test-PrivacyArtifact $file $prefixes 'test') } }
 Case 'Unresolved notice availability fails with no genuine inputs' { Reject { Assert-PortableNoticeAvailability (New-TestPath '.missing-notices') } }
 Case 'New REVIEWED label without Owner evidence is rejected' {
@@ -450,14 +562,14 @@ Case 'Exact toolchain match and drift rejection use production reader TEST_ONLY'
     try { [void](Get-PortableCompile $root $id $source $prefixes) } catch { $reason=$_.Exception.Message }
     Expect ($reason -ceq 'Compile: provenance mismatch.')
 }
-Case 'Output collision preserves existing ZIP' { Reject { Write-PortableZip $staging $zipPath }; Expect ((Get-ReleaseSHA256 (Read-PortableBytes $zipPath)) -ceq (Get-ReleaseSHA256 $zipBytes)) }
-Case 'Extraction collision preserves existing files' { $root=New-TestPath '.verify'; New-Item -ItemType Directory -Path $root | Out-Null; Write-ReleaseNewText (Join-Path $root 'keep.txt') 'keep'; Reject { Test-PortableArchive $zipPath '' $root $hashes '0.3.0' $payload $prefixes }; Expect ([IO.File]::ReadAllText((Join-Path $root 'keep.txt')) -ceq 'keep') }
-Case 'Hidden unexpected staging file' { $stage=New-TestPath '.staging'; [void](New-PortableStaging $stage $payload); Write-ReleaseNewText (Join-Path $stage '.hidden') 'extra'; Reject { Write-PortableZip $stage (New-TestPath '.zip') } }
+Case 'Output collision preserves existing ZIP' { Reject { Write-PortableZip $staging $zipPath $committerTimestamp }; Expect ((Get-ReleaseSHA256 (Read-PortableBytes $zipPath)) -ceq (Get-ReleaseSHA256 $zipBytes)) }
+Case 'Extraction collision preserves existing files' { $root=New-TestPath '.verify'; New-Item -ItemType Directory -Path $root | Out-Null; Write-ReleaseNewText (Join-Path $root 'keep.txt') 'keep'; Reject { Test-PortableArchive $zipPath '' $root $hashes '0.3.0' $payload $prefixes $committerTimestamp }; Expect ([IO.File]::ReadAllText((Join-Path $root 'keep.txt')) -ceq 'keep') }
+Case 'Hidden unexpected staging file' { $stage=New-TestPath '.staging'; [void](New-PortableStaging $stage $payload); Write-ReleaseNewText (Join-Path $stage '.hidden') 'extra'; Reject { Write-PortableZip $stage (New-TestPath '.zip') $committerTimestamp } }
 Case 'Unreadable ZIP fails with no ACL modification' { $stream=[IO.File]::Open($zipPath,'Open','ReadWrite','None'); try { Reject { Read-PortableBytes $zipPath } } finally { $stream.Dispose() } }
 Case 'Reparse extraction ancestor rejected before writes' {
     $destination=New-TestPath '.link-target'; New-Item -ItemType Directory -Path $destination | Out-Null
     $link=New-TestPath '.link'; New-Item -ItemType Junction -Path $link -Target $destination | Out-Null
-    Reject { Test-PortableArchive $zipPath '' (Join-Path $link 'extracted') $hashes '0.3.0' $payload $prefixes }
+    Reject { Test-PortableArchive $zipPath '' (Join-Path $link 'extracted') $hashes '0.3.0' $payload $prefixes $committerTimestamp }
     Expect (-not [IO.Directory]::Exists((Join-Path $destination 'extracted')))
 }
 Case 'Missing ZIP' { Reject { Read-PortableBytes (New-TestPath '.zip') } }

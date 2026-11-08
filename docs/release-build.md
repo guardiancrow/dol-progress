@@ -129,7 +129,17 @@ SHA256SUMS.txtは自身を除く4basenameをOrdinal順に記載する。形式�
 
 独立Verifierは生成側のmember／manifest処理に依存しない読取器で、固定5件、CRC／展開hash、SHA256SUMS、外部hash、PEのAMD64／PE32+／GUIとversion、原本との対応、privacyを検査する。extra／duplicate／unsafe名、header／size／flag／attribute不正、破損、展開・出力衝突、unreadable／reparseは拒否する。
 
-writerは.NET ZipArchiveで5entryを明示作成し、Deflate（CompressionLevel.Optimal）、timestamp=1980-01-01 00:00:00、ExternalAttributes=0、ASCII member名とUTF-8 encoding指定を使用する。許可flagは0またはUTF-8 flagだけで、central／localの一致を要求する。同じfixtureのZIP bytes一致はテストするが、compileしたEXE全体のbit-for-bit再現性を保証しない。
+writerは.NET ZipArchiveで5entryを明示作成し、Deflate（CompressionLevel.Optimal）、ExternalAttributes=0、ASCII member名とUTF-8 encoding指定を使用する。許可flagは0またはUTF-8 flagだけで、central／localの一致を要求する。
+
+全5memberの日時は、署名検証済みのExpectedSourceHeadに対するGit **committer timestamp**（`git show -s --format=%ct <HEAD> --`のUNIX秒）から求める。author日時、EXEのビルド日時、ZIP作成時刻、stagingの更新日時は使用しない。UTCへ変換した暦値の秒を2秒単位へ切り下げ、全local header／central directoryへ同じDOS日時を格納する。1980-01-01の固定代入は行わない。入力が1980-01-01T00:00:00Z未満または2107-12-31T23:59:59Z超、不正形式、整数overflowの場合は明示的に拒否し、範囲内への自動丸めはしない。表現範囲内の奇数秒だけを直前の偶数秒へ切り下げる。
+
+標準ZIPのDOS日時にはタイムゾーン情報がないため、**UTC暦値を格納する**という規約である。source revisionに由来する正規化値を示し、ファイルの実際の生成時刻を示すものではない。実行PCのローカルタイムゾーンや現在時刻を出力に使わないが、異なるタイムゾーンの展開先で同一の実時刻が再現されるとは保証しない。追加のtimestamp extra fieldは作らない。
+
+独立Verifierは自身のSource gateで署名付きclean HEADと入力hashを検査し、同じ確定SHAからcommitterのUNIX秒を読み直す。生成側の日時変換やPackageの申告日時を期待値にせず、別実装でUTC→DOS日時を算出し、全5memberのlocal／central双方を照合する。旧1980年固定ZIPや、local／centralだけが一致してsource日時と異なるZIPも拒否する。
+
+同じsource HEAD・payload・承認済み圧縮環境ではZIP bytesが再現することを合成fixtureで検査する。compileしたEXE全体や異なる圧縮実装間のbit-for-bit再現性を保証するものではない。Windows標準ZIP表示・展開で更新日時が空欄や1899年等にならないことは、.NETの日時・展開試験と区別し、Windows Shellで未確認の場合はOwnerの手動確認事項とする。
+
+Map-C12Gの旧1980年固定ZIPとrun、Map-C12Hの検証記録は履歴として保全するが、旧ZIPは公開候補に使用しない。日時修正後にOwner確認を経て署名付きcommitとclean HEADを確定し、その新HEADで正式Compile → Package → 独立Verifierを新runとして実施する。旧ZIP hash・旧PackageIntegrity PASSを新ZIPの正式検証結果へ流用しない。
 
 独立読取器はZIP32のcentral／local headerとEOCD、件数・名前・順序、version、method、timestamp、属性、size／offset、連続配置を検査する。extra／comment、preamble／trailer、ZIP64、暗号化、data descriptor、別compression、directory／symlink、重複・大小文字衝突、traversal／absolute／drive／ADS／UNC／backslashを拒否する。汎用ZIP互換性のために許容範囲を広げない。
 
