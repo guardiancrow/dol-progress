@@ -1,0 +1,210 @@
+{
+  "schema": 1,
+  "purpose": "NOTICE_RELEASE_REFRESH",
+  "state": "PREPARED_FOR_FINAL_OWNER_REVIEW",
+  "version": "0.4.0",
+  "prepared_on": "2026-11-08",
+  "input_checkpoint": "958722d87fb2405477530efc57553faec8d618c3",
+  "approved_plan": {
+    "state": "OWNER_APPROVED_UPDATE_PLAN",
+    "decision_date": "2026-11-08",
+    "decision_by": "Owner",
+    "basis": "Map-C12F-2 Owner判断",
+    "review_report": "docs/map-c12f-2-notices-review.md",
+    "review_report_sha256": "620f00f701f476a161415de2edddf7af95b7752f50e5d043c4ccbc136ef4d157",
+    "scope": [
+      "既存依存・通知・配布構成とwindows-sys追加featureの限定継承",
+      "現候補toolchainの採用（既存PowerShell更新候補を含む）",
+      "N196-N199原文継承、N200 0.1.28、N201全文追加と旧証拠保全",
+      "現行Windows x64 host-only経路によるCSP関連4件の除外継承",
+      "正式Notices更新作業と限定検証"
+    ],
+    "excludes": [
+      "最終REVIEWED昇格",
+      "Microsoft関連の既存未解決判断",
+      "バイナリ公開",
+      "GitHub Release公開"
+    ]
+  },
+  "final_review": {
+    "state": "PENDING_OWNER_REVIEW",
+    "approved": false
+  },
+  "historical_mapping": {
+    "path": "release/notices/mapping.json",
+    "sha256": "b88d680df8df2a1e64578df87ef415d15fda37fcb003f0e2fe1129664e25cf71",
+    "role": "Historical evidence retained unchanged; current record mapping is in this refresh."
+  },
+  "preparation_snapshot": {
+    "path": "release/notices/v0.4.0-preparation.json",
+    "sha256": "4f0991a5b4f3a81a6ff5dc267d940d004abc0e2a7b89bcb3917f065bb28eaed6"
+  },
+  "candidate_toolchain": {
+    "rustc": [
+      "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+      "binary: rustc",
+      "commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67",
+      "commit-date: 2026-10-13",
+      "host: x86_64-pc-windows-msvc",
+      "release: 1.99.1",
+      "LLVM version: 23.1.1"
+    ],
+    "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+    "node": "v26.13.0",
+    "npm": "11.20.0",
+    "tauri_cli": "2.11.4",
+    "powershell": "5.1.26100.9711"
+  },
+  "candidate_toolchain_sha256": "03bc8eeb02bfd006cf7f72f4bf5f4e4110eac9ccd96ad3f2c0d1e961ac9272da",
+  "rust_source": {
+    "release": "1.99.1",
+    "commit": "58cf8f9c35b355199727627d07ae34a4e2846d67",
+    "library_lock_relative_path": "lib/rustlib/src/rust/library/Cargo.lock",
+    "library_lock_sha256": "53d9ccff0c906de434b65af90d5c30063894b940fc839261f1fb06ef2e69e3d3",
+    "provider_component": "rustc-x86_64-pc-windows-msvc",
+    "provider_relative_path": "share/doc/rust/COPYRIGHT-library.html",
+    "provider_path": "release/notices/texts/5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27.txt",
+    "provider_sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
+    "provider_bytes": 1499465
+  },
+  "current_record_mapping": [
+    {
+      "id": "N196",
+      "name": "Rust core Unicode tables",
+      "version": "rustc 1.99.1; copyright 1991-2024",
+      "group": "toolchain",
+      "required_texts": [
+        {
+          "path": "release/notices/texts/f5062c9a188d81dfe66b56db4182dcf9e4b17c0d9b0d311a8e20b3a1b075c443.txt",
+          "sha256": "f5062c9a188d81dfe66b56db4182dcf9e4b17c0d9b0d311a8e20b3a1b075c443"
+        }
+      ]
+    },
+    {
+      "id": "N197",
+      "name": "Rust std/compiler builtins LLVM exception contributions",
+      "version": "compiler_builtins source 0.1.160 / Rust 1.99.1 (個別objectの包含範囲を示すものではありません)",
+      "group": "toolchain",
+      "required_texts": [
+        {
+          "path": "release/notices/texts/ab6eec6caf0fa5775e411c7a8bc6a45c4ef2956b0980b157ab74fc5cd62a928b.txt",
+          "sha256": "ab6eec6caf0fa5775e411c7a8bc6a45c4ef2956b0980b157ab74fc5cd62a928b"
+        }
+      ]
+    },
+    {
+      "id": "N198",
+      "name": "Rust std/alloc/core/panic runtime source license",
+      "version": "Rust 1.99.1 / 58cf8f9c35b355199727627d07ae34a4e2846d67",
+      "group": "toolchain",
+      "required_texts": [
+        {
+          "path": "release/notices/texts/62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a.txt",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "path": "release/notices/texts/b71bd43a069ca0641a9ecfe585ca7b3c53b5cc1608f8b68321168698e28b5ea1.txt",
+          "sha256": "b71bd43a069ca0641a9ecfe585ca7b3c53b5cc1608f8b68321168698e28b5ea1"
+        }
+      ]
+    },
+    {
+      "id": "N199",
+      "name": "hashbrown",
+      "version": "0.17.1",
+      "group": "toolchain",
+      "required_texts": [
+        {
+          "path": "release/notices/texts/a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2.txt",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        },
+        {
+          "path": "release/notices/texts/ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2.txt",
+          "sha256": "ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2"
+        }
+      ]
+    },
+    {
+      "id": "N200",
+      "name": "rustc-demangle",
+      "version": "0.1.28",
+      "group": "toolchain",
+      "required_texts": [
+        {
+          "path": "release/notices/texts/a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2.txt",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        },
+        {
+          "path": "release/notices/texts/378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397.txt",
+          "sha256": "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397"
+        }
+      ]
+    },
+    {
+      "id": "N201",
+      "name": "Rust standard-library provider notices (package scope)",
+      "version": "Rust 1.99.1 / 58cf8f9c35b355199727627d07ae34a4e2846d67",
+      "group": "toolchain",
+      "required_texts": [
+        {
+          "path": "release/notices/texts/68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6.txt",
+          "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+        },
+        {
+          "path": "release/notices/texts/5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27.txt",
+          "sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27"
+        }
+      ]
+    }
+  ],
+  "exclusions": [
+    {
+      "id": "excluded:cssparser@0.37.0",
+      "included": false,
+      "previous_reason": "host HTML処理・生成先。現target tauri-utilsにはdom_query/html-manipulationなし、CSP null。既存O02判断を継承。",
+      "current_reason": "現行Windows x64の通常target dependency経路なし。host build／proc-macroのHTML処理。CSPは非nullで、nullを除外条件にしていない。",
+      "basis": "Map-C12F-2: cargo tree --locked --offline --target x86_64-pc-windows-msvc -e features and -e normal,no-proc-macro. No normal target dependency path; host build/proc-macro only.",
+      "scope": "Current Windows x64 configuration; not an all-byte absence proof."
+    },
+    {
+      "id": "excluded:cssparser-macros@0.7.1",
+      "included": false,
+      "previous_reason": "host HTML処理・生成先。現target tauri-utilsにはdom_query/html-manipulationなし、CSP null。既存O02判断を継承。",
+      "current_reason": "現行Windows x64の通常target dependency経路なし。host build／proc-macroのHTML処理。CSPは非nullで、nullを除外条件にしていない。",
+      "basis": "Map-C12F-2: cargo tree --locked --offline --target x86_64-pc-windows-msvc -e features and -e normal,no-proc-macro. No normal target dependency path; host build/proc-macro only.",
+      "scope": "Current Windows x64 configuration; not an all-byte absence proof."
+    },
+    {
+      "id": "excluded:selectors@0.38.0",
+      "included": false,
+      "previous_reason": "host HTML処理・生成先。現target tauri-utilsにはdom_query/html-manipulationなし、CSP null。既存O02判断を継承。",
+      "current_reason": "現行Windows x64の通常target dependency経路なし。host build／proc-macroのHTML処理。CSPは非nullで、nullを除外条件にしていない。",
+      "basis": "Map-C12F-2: cargo tree --locked --offline --target x86_64-pc-windows-msvc -e features and -e normal,no-proc-macro. No normal target dependency path; host build/proc-macro only.",
+      "scope": "Current Windows x64 configuration; not an all-byte absence proof."
+    },
+    {
+      "id": "excluded:dtoa-short@0.3.5",
+      "included": false,
+      "previous_reason": "host HTML処理・生成先。現target tauri-utilsにはdom_query/html-manipulationなし、CSP null。既存O02判断を継承。",
+      "current_reason": "現行Windows x64の通常target dependency経路なし。host build／proc-macroのHTML処理。CSPは非nullで、nullを除外条件にしていない。",
+      "basis": "Map-C12F-2: cargo tree --locked --offline --target x86_64-pc-windows-msvc -e features and -e normal,no-proc-macro. No normal target dependency path; host build/proc-macro only.",
+      "scope": "Current Windows x64 configuration; not an all-byte absence proof."
+    }
+  ],
+  "current_coverage": {
+    "notice_records": 201,
+    "exclusions": 6,
+    "raw_texts": 149,
+    "text_references": 358
+  },
+  "canonical_notice": {
+    "path": "THIRD-PARTY-NOTICES.txt",
+    "sha256": "93bd33f8353c7375cf8d9612e18ccbeb976f37165315d3f485b4050dc8cbb855",
+    "previous_sha256": "37e763e27a6fd410324b3617d6e55ba0bb058d0086949dac776dc073c0c282a1",
+    "content_commit": null,
+    "content_state": "UNCOMMITTED_UPDATE"
+  },
+  "inventory_sha256": "612f8aa6ed4defd41ed0c7a9abc1e841ed945178de55e012e3cf3549b7fa86c8",
+  "legal_clearance": false,
+  "public_release_approved": false
+}

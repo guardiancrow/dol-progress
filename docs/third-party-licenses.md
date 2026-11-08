@@ -24,15 +24,19 @@ v0.3.0の通知対象201件・除外6件、原文148種類・357参照は正式�
 
 source.jsonのformal_package_gate=NOT_COMPLETEDなどは登録時のmetadataである。後続Packageの成功はrun/resultで記録し、その表示を更新するためにREVIEWED metadataや通知の由来commit・レビュー基点を改変しない。新しい依存・toolchain・配布構成へ旧レビューを無条件で一般化しない。
 
-### v0.4.0入力の準備状態（Map-C12F）
+### v0.4.0入力の準備状態（Map-C12F〜F-3）
 
-`release/notices/manifest.json`と`review.json`のstatus、`source.json`のformal_review_stateはPREPAREDである。アプリ版と現在lockのraw byte hash、manifest相互参照、候補toolchain hashを整合させた。正式gateはREVIEWEDを要求するため、この候補を拒否する。新しい承認は記録していない。
+`release/notices/manifest.json`と`review.json`のstatus、`source.json`のformal_review_stateはPREPAREDである。アプリ版と現在lockのraw byte hash、manifest相互参照、候補toolchain hashを整合させた。正式gateはREVIEWEDを要求するため、この候補を拒否する。OwnerはMap-C12F-2で更新方針と候補環境を承認したが、更新結果の最終確認とREVIEWEDへの昇格は別途判断する。
 
-原文・通知正本・mapping、全coverageと除外根拠、reviewer／reviewed_at、approval_basis／formal_review、既存toolchain_refreshは過去の事実として保持した。manifestのsource_headは当時のレビュー基点、source.jsonのsource_commitは通知正本の由来を表し、最終CompileのHEADではない。両値を現在HEADへ置き換えない。
+既存148原文・mapping、旧coverageと除外根拠、reviewer／reviewed_at、approval_basis／formal_review、既存toolchain_refreshは過去の事実として保持する。manifestのsource_headは当時のレビュー基点、source.jsonのsource_commitは元の通知正本の由来であり、最終CompileのHEADではない。新しい本文との対応はsource_updatesと通知のhashで記録し、未commitの本文に架空のcommitを割り当てない。
 
-`v0.4.0-preparation.json`に旧入力hashと参照checkpoint、候補lock／toolchain、差分、未承認事項を記録し、review.release_refreshからhashで参照する。inventoryのtoolchain record N196–N201とcoverageはRust 1.98.0の過去の証拠であり、現在のRust 1.99.1への適用を認定したものではない。現行toolchainの限定レビュー後に必要な原文・inventory・coverageを更新し、Ownerが対象差分を承認する。
+`v0.4.0-preparation.json`はMap-C12F当時のsnapshotとして変更せず、更新後の入力・現record対応・方針承認を`v0.4.0-refresh.json`へ分離した。mapping.jsonも過去のhash参照を保つため不変とし、現行対応はrefresh.current_record_mappingで明示する。元のtoolchain_refreshの未承認記録を当時の記録として残し、現在の候補採用と混同しない。
 
-CSPは旧除外根拠のnullから非nullへ変わった。cssparser等の対象4件は現行Cargo treeでhostのbuild／proc-macro経路だけにあり、通常target経路ではselectors・cssparserが出現しないことを確認した。除外継承の候補証拠として扱い、過去の文言を上書きせずOwnerレビューへ渡す。最終バイナリの包含証明やsource義務の法的判断へ読み替えない。Microsoft関連の既存残件と公開承認は独立して維持する。
+Map-C12F-3ではN196–N199の既存原文を継承し、適用Rust版を1.99.1、N200をrustc-demangle 0.1.28へ対応付けた。N201の現配布元原文を全文追加し、旧原文を歴史証拠として残した。201通知・6除外を維持し、現候補は149原文・358参照である。更新したcoverage recordはPREPAREDとし、方針承認を最終原文・metadataの承認へ読み替えない。
+
+CSPは旧除外根拠のnullから非nullへ変わった。cssparser等の対象4件は現行Cargo treeでhostのbuild／proc-macro経路だけにあり、通常target経路へ入らない。Ownerがこの範囲の除外継承を承認したため、旧理由をhistorical_exclusion_reasonへ残し、現行理由を更新した。最終バイナリの全byte包含証明やsource義務の法的判断へ読み替えない。Microsoft関連の既存残件と公開承認は独立して維持する。
+
+候補の内容検査は`scripts/release-input-audit.mjs`と`scripts/tests/release-inputs.tests.ps1`で行う。承認されたrecord／field以外の保全、全原文hash・全文収録、原文追加と見出し変更以外の旧通知byteの保全、現行参照hash、最終未承認を検査する。これはPREPARED候補専用の読取検査で、正式gateのREVIEWED要求や署名・clean・Package条件を変更しない。
 
 ## 正式入力の検証仕様
 

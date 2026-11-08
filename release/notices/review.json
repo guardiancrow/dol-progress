@@ -6,9 +6,7 @@
   "reviewer": "guardiancrow",
   "reviewed_at": "2026-10-12T12:06:02.266Z",
   "unresolved": [
-    "v0.4.0への入力継承・lock差分のOwnerレビュー",
-    "現行toolchainとRust標準ライブラリ通知N196-N201の限定レビュー",
-    "CSP変更後のhost-only除外根拠のOwnerレビュー"
+    "新原文・coverage・metadata・hash・限定検証結果に対するOwnerの最終確認"
   ],
   "coverage": [
     {
@@ -5240,7 +5238,8 @@
       "provenance_completed": true,
       "evidence": [
         "release/notices/mapping.json",
-        "release/notices/texts/f5062c9a188d81dfe66b56db4182dcf9e4b17c0d9b0d311a8e20b3a1b075c443.txt"
+        "release/notices/texts/f5062c9a188d81dfe66b56db4182dcf9e4b17c0d9b0d311a8e20b3a1b075c443.txt",
+        "release/notices/v0.4.0-refresh.json"
       ],
       "required_texts": [
         {
@@ -5252,7 +5251,7 @@
         "Copyright © 1991-2024 Unicode, Inc."
       ],
       "source_provision": "NOT_REQUIRED",
-      "review_state": "REVIEWED"
+      "review_state": "PREPARED"
     },
     {
       "id": "N197",
@@ -5262,7 +5261,8 @@
       "provenance_completed": true,
       "evidence": [
         "release/notices/mapping.json",
-        "release/notices/texts/ab6eec6caf0fa5775e411c7a8bc6a45c4ef2956b0980b157ab74fc5cd62a928b.txt"
+        "release/notices/texts/ab6eec6caf0fa5775e411c7a8bc6a45c4ef2956b0980b157ab74fc5cd62a928b.txt",
+        "release/notices/v0.4.0-refresh.json"
       ],
       "required_texts": [
         {
@@ -5274,7 +5274,7 @@
         "Copyright (c) 2009-2016 by the contributors listed in CREDITS.TXT"
       ],
       "source_provision": "NOT_REQUIRED",
-      "review_state": "REVIEWED"
+      "review_state": "PREPARED"
     },
     {
       "id": "N198",
@@ -5285,7 +5285,8 @@
       "evidence": [
         "release/notices/mapping.json",
         "release/notices/texts/62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a.txt",
-        "release/notices/texts/b71bd43a069ca0641a9ecfe585ca7b3c53b5cc1608f8b68321168698e28b5ea1.txt"
+        "release/notices/texts/b71bd43a069ca0641a9ecfe585ca7b3c53b5cc1608f8b68321168698e28b5ea1.txt",
+        "release/notices/v0.4.0-refresh.json"
       ],
       "required_texts": [
         {
@@ -5302,7 +5303,7 @@
         "2014 Alex Crichton"
       ],
       "source_provision": "NOT_REQUIRED",
-      "review_state": "REVIEWED"
+      "review_state": "PREPARED"
     },
     {
       "id": "N199",
@@ -5313,7 +5314,8 @@
       "evidence": [
         "release/notices/mapping.json",
         "release/notices/texts/a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2.txt",
-        "release/notices/texts/ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2.txt"
+        "release/notices/texts/ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2.txt",
+        "release/notices/v0.4.0-refresh.json"
       ],
       "required_texts": [
         {
@@ -5332,7 +5334,7 @@
         "Copyright (c) 2016 Amanieu d'Antras"
       ],
       "source_provision": "NOT_REQUIRED",
-      "review_state": "REVIEWED"
+      "review_state": "PREPARED"
     },
     {
       "id": "N200",
@@ -5343,7 +5345,8 @@
       "evidence": [
         "release/notices/mapping.json",
         "release/notices/texts/a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2.txt",
-        "release/notices/texts/378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397.txt"
+        "release/notices/texts/378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397.txt",
+        "release/notices/v0.4.0-refresh.json"
       ],
       "required_texts": [
         {
@@ -5362,7 +5365,7 @@
         "Copyright (c) 2014 Alex Crichton"
       ],
       "source_provision": "NOT_REQUIRED",
-      "review_state": "REVIEWED"
+      "review_state": "PREPARED"
     },
     {
       "id": "N201",
@@ -5372,12 +5375,18 @@
       "provenance_completed": true,
       "evidence": [
         "release/notices/mapping.json",
-        "release/notices/texts/68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6.txt"
+        "release/notices/texts/68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6.txt",
+        "release/notices/v0.4.0-refresh.json",
+        "release/notices/texts/5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27.txt"
       ],
       "required_texts": [
         {
           "path": "release/notices/texts/68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6.txt",
           "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+        },
+        {
+          "path": "release/notices/texts/5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27.txt",
+          "sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27"
         }
       ],
       "copyrights": [
@@ -5445,7 +5454,7 @@
         "copyright notice, this list of conditions and the following disclaimer"
       ],
       "source_provision": "NOT_REQUIRED",
-      "review_state": "REVIEWED"
+      "review_state": "PREPARED"
     },
     {
       "id": "excluded:cssparser@0.37.0",
@@ -5453,10 +5462,12 @@
       "obligations_completed": true,
       "provenance_completed": true,
       "evidence": [
-        "release/notices/mapping.json"
+        "release/notices/mapping.json",
+        "release/notices/v0.4.0-refresh.json"
       ],
-      "exclusion_reason": "host HTML処理・生成先。現target tauri-utilsにはdom_query/html-manipulationなし、CSP null。既存O02判断を継承。",
-      "review_state": "REVIEWED"
+      "exclusion_reason": "現行Windows x64の通常target dependency経路なし。host build／proc-macroのHTML処理。CSPは非nullで、nullを除外条件にしていない。",
+      "review_state": "PREPARED",
+      "historical_exclusion_reason": "host HTML処理・生成先。現target tauri-utilsにはdom_query/html-manipulationなし、CSP null。既存O02判断を継承。"
     },
     {
       "id": "excluded:cssparser-macros@0.7.1",
@@ -5464,10 +5475,12 @@
       "obligations_completed": true,
       "provenance_completed": true,
       "evidence": [
-        "release/notices/mapping.json"
+        "release/notices/mapping.json",
+        "release/notices/v0.4.0-refresh.json"
       ],
-      "exclusion_reason": "host HTML処理・生成先。現target tauri-utilsにはdom_query/html-manipulationなし、CSP null。既存O02判断を継承。",
-      "review_state": "REVIEWED"
+      "exclusion_reason": "現行Windows x64の通常target dependency経路なし。host build／proc-macroのHTML処理。CSPは非nullで、nullを除外条件にしていない。",
+      "review_state": "PREPARED",
+      "historical_exclusion_reason": "host HTML処理・生成先。現target tauri-utilsにはdom_query/html-manipulationなし、CSP null。既存O02判断を継承。"
     },
     {
       "id": "excluded:selectors@0.38.0",
@@ -5475,10 +5488,12 @@
       "obligations_completed": true,
       "provenance_completed": true,
       "evidence": [
-        "release/notices/mapping.json"
+        "release/notices/mapping.json",
+        "release/notices/v0.4.0-refresh.json"
       ],
-      "exclusion_reason": "host HTML処理・生成先。現target tauri-utilsにはdom_query/html-manipulationなし、CSP null。既存O02判断を継承。",
-      "review_state": "REVIEWED"
+      "exclusion_reason": "現行Windows x64の通常target dependency経路なし。host build／proc-macroのHTML処理。CSPは非nullで、nullを除外条件にしていない。",
+      "review_state": "PREPARED",
+      "historical_exclusion_reason": "host HTML処理・生成先。現target tauri-utilsにはdom_query/html-manipulationなし、CSP null。既存O02判断を継承。"
     },
     {
       "id": "excluded:dtoa-short@0.3.5",
@@ -5486,10 +5501,12 @@
       "obligations_completed": true,
       "provenance_completed": true,
       "evidence": [
-        "release/notices/mapping.json"
+        "release/notices/mapping.json",
+        "release/notices/v0.4.0-refresh.json"
       ],
-      "exclusion_reason": "host HTML処理・生成先。現target tauri-utilsにはdom_query/html-manipulationなし、CSP null。既存O02判断を継承。",
-      "review_state": "REVIEWED"
+      "exclusion_reason": "現行Windows x64の通常target dependency経路なし。host build／proc-macroのHTML処理。CSPは非nullで、nullを除外条件にしていない。",
+      "review_state": "PREPARED",
+      "historical_exclusion_reason": "host HTML処理・生成先。現target tauri-utilsにはdom_query/html-manipulationなし、CSP null。既存O02判断を継承。"
     },
     {
       "id": "excluded:option-ext@0.2.0",
@@ -5536,13 +5553,18 @@
     "scope": "元のapproval_basis・reviewer・reviewed_at・coverageは当時の承認として保持。Windows PowerShell 5.1 build差分の更新候補であり、本人のコミット前レビュー・承認は未完了。"
   },
   "release_refresh": {
-    "state": "PREPARED_FOR_USER_REVIEW",
+    "state": "PREPARED_FOR_FINAL_OWNER_REVIEW",
     "evidence": [
       {
         "path": "release/notices/v0.4.0-preparation.json",
         "sha256": "4f0991a5b4f3a81a6ff5dc267d940d004abc0e2a7b89bcb3917f065bb28eaed6"
+      },
+      {
+        "path": "release/notices/v0.4.0-refresh.json",
+        "sha256": "1eaa2b0ceb3815600e230711e88639def70c8ef767f0b1dde3b090f5cd5b6dc3"
       }
     ],
-    "scope": "元のreviewer・reviewed_at・approval_basis・coverageは過去の承認事実。v0.4.0・現行toolchainの承認を意味しない。"
+    "scope": "Ownerは更新方針と候補環境を承認済み。新原文・coverage・metadata・hash・検証結果の最終確認とREVIEWED昇格は未承認。",
+    "preparation_scope": "元のreviewer・reviewed_at・approval_basis・coverageは過去の承認事実。v0.4.0・現行toolchainの承認を意味しない。"
   }
 }

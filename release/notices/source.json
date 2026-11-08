@@ -4,10 +4,26 @@
   "version": "0.4.0",
   "target": "x86_64-pc-windows-msvc",
   "canonical_file": "THIRD-PARTY-NOTICES.txt",
-  "sha256": "37e763e27a6fd410324b3617d6e55ba0bb058d0086949dac776dc073c0c282a1",
+  "sha256": "93bd33f8353c7375cf8d9612e18ccbeb976f37165315d3f485b4050dc8cbb855",
   "source_commit": "9fa2ba9b3e2da5abdcec9de3b27a218a4e228627",
   "cargo_lock_sha256": "5a7964137a4cd6080dde0ecfed180e03877e3f7879ffbf452ad44cb499a339ae",
   "npm_lock_sha256": "28bb9672171784b794a538bf42295ab19a84e270dec77d9a0cfd310552085dbc",
   "formal_review_state": "PREPARED",
-  "formal_package_gate": "NOT_COMPLETED"
+  "formal_package_gate": "NOT_COMPLETED",
+  "source_updates": [
+    {
+      "phase": "Map-C12F-3",
+      "input_checkpoint": "958722d87fb2405477530efc57553faec8d618c3",
+      "update_state": "PREPARED",
+      "content_commit": null,
+      "content_state": "UNCOMMITTED_UPDATE",
+      "evidence": {
+        "path": "release/notices/v0.4.0-refresh.json",
+        "sha256": "1eaa2b0ceb3815600e230711e88639def70c8ef767f0b1dde3b090f5cd5b6dc3"
+      },
+      "upstream_rust_commit": "58cf8f9c35b355199727627d07ae34a4e2846d67",
+      "provider_sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
+      "scope": "source_commit is the original notice provenance. This update is bound to new canonical bytes by sha256; a new content commit is not claimed before Owner commit."
+    }
+  ]
 }

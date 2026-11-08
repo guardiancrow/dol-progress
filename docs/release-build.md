@@ -162,6 +162,7 @@ BuildRootは追加prefixで、検査を省略するoptionではない。既定�
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/portable-package.tests.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/release-tooling.tests.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tests/release-inputs.tests.ps1
+node --test scripts/tests/release-input-audit.tests.mjs
 npm run typecheck
 ```
 
@@ -171,7 +172,7 @@ npm run typecheck
 
 既存の署名済みHEAD `482b9ae80f117946f6c36cc093b27f27666d044e` に対して正式Compile・Package・独立Verifierは成功済みである。これはそのHEADに限る検証結果で、文書変更後のHEADの成功とは扱わない。run識別子とhashを含む記録は[履歴の確認状況](release-build-history.md#現在の公開準備状況)に保持する。当時のNoticesはREVIEWEDであり、201通知・6除外、148原文・357参照のレビュー事実を保全する。
 
-上記はv0.3.0の過去の確認結果である。v0.4.0の入力はMap-C12FでPREPAREDへ分離し、原文と過去のcoverage・承認事実を保全した。現行toolchainへの適用と入力継承のOwnerレビューは未完了で、正式3工程は未実行である。[Map-C12Fの検証報告](map-c12f-verification.md)と[Noticesの準備状態](third-party-licenses.md#v040入力の準備状態map-c12f)を参照する。通常のDebug／Releaseコンパイル成功で正式工程や公開承認を代替しない。
+上記はv0.3.0の過去の確認結果である。v0.4.0の入力はMap-C12FでPREPAREDへ分離し、原文と過去のcoverage・承認事実を保全した。Map-C12F-2でOwnerが候補環境と更新方針を承認し、F-3で新しいprovider原文と現行metadataを準備した。最終結果のOwner確認とREVIEWED昇格は未完了で、正式3工程も未実行である。[Map-C12F-3の検証報告](map-c12f-3-verification.md)と[Noticesの準備状態](third-party-licenses.md#v040入力の準備状態map-c12ff-3)を参照する。通常のDebug／Releaseコンパイル成功や候補検査で正式工程・公開承認を代替しない。
 
 SDK受領者条件はREADMEとConsent v2へ実装している。同程度の保護と合意方式の契約解釈、MSVC startupの個別再配布根拠、配布者の補償等の本人判断は未完了。[Microsoft関連の区分](third-party-licenses.md#microsoft関連の確認範囲と残件)を参照する。実装を契約適合性やバイナリ公開の承認と扱わない。
 

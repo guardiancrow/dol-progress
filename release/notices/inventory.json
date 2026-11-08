@@ -1566,7 +1566,7 @@
     {
       "id": "N196",
       "name": "Rust core Unicode tables",
-      "version": "rustc 1.98.0; copyright 1991-2024",
+      "version": "rustc 1.99.1; copyright 1991-2024",
       "group": "toolchain",
       "included": true,
       "inclusion_basis": "Rust runtime"
@@ -1574,7 +1574,7 @@
     {
       "id": "N197",
       "name": "Rust std/compiler builtins LLVM exception contributions",
-      "version": "compiler_builtins source 0.1.160 / Rust 1.98.0 (個別objectの包含範囲を示すものではありません)",
+      "version": "compiler_builtins source 0.1.160 / Rust 1.99.1 (個別objectの包含範囲を示すものではありません)",
       "group": "toolchain",
       "included": true,
       "inclusion_basis": "Rust runtime"
@@ -1582,7 +1582,7 @@
     {
       "id": "N198",
       "name": "Rust std/alloc/core/panic runtime source license",
-      "version": "Rust 1.98.0 / 88d9e12ae178fab0fb5cc050a94da85685d449ea",
+      "version": "Rust 1.99.1 / 58cf8f9c35b355199727627d07ae34a4e2846d67",
       "group": "toolchain",
       "included": true,
       "inclusion_basis": "Rust runtime"
@@ -1598,7 +1598,7 @@
     {
       "id": "N200",
       "name": "rustc-demangle",
-      "version": "0.1.27",
+      "version": "0.1.28",
       "group": "toolchain",
       "included": true,
       "inclusion_basis": "Rust標準ライブラリの依存"
@@ -1606,7 +1606,7 @@
     {
       "id": "N201",
       "name": "Rust standard-library provider notices (package scope)",
-      "version": "Rust 1.98.0 / 88d9e12ae178fab0fb5cc050a94da85685d449ea",
+      "version": "Rust 1.99.1 / 58cf8f9c35b355199727627d07ae34a4e2846d67",
       "group": "toolchain",
       "included": true,
       "inclusion_basis": "Rust runtime / provider NOTICE"
