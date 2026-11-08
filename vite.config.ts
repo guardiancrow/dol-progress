@@ -16,6 +16,10 @@ export default defineConfig(async () => ({
   server: {
     port: 1420,
     strictPort: true,
+    // Desktop devUrl is served by Vite, so enforce the same policy as Tauri's devCsp here.
+    headers: {
+      "Content-Security-Policy": "connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 ws://127.0.0.1:1420 https://api.github.com/repos/guardiancrow/dol-progress/releases/latest",
+    },
     host: host || false,
     hmr: host
       ? {
@@ -25,8 +29,8 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // 3. ignore Rust output and temporary runtime fixtures.
+      ignored: ["**/src-tauri/**", "**/tmp/**"],
     },
   },
 }));

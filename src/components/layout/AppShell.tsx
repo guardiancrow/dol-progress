@@ -3,6 +3,7 @@ import { getVersion } from "@tauri-apps/api/app";
 
 import { useProfiles } from "../../profiles/ProfileContext";
 import { Sidebar, type AppPage } from "./Sidebar";
+import { AppVersionInfo } from "./AppVersionInfo";
 
 interface AppShellProps {
   currentPage: AppPage;
@@ -49,7 +50,7 @@ export function AppShell({
       </main>
       <footer className="status-bar">
         <span>データはこのPCのSQLiteに保存されます</span>
-        {version && <span className="app-version" aria-label="アプリケーションのバージョン">v{version}</span>}
+        {version && <AppVersionInfo version={version} />}
       </footer>
     </div>
   );

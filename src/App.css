@@ -54,6 +54,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .main-content--workspace { overflow: hidden; }
 .status-bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: .2rem 1rem; min-width: 0; padding: .45rem 1.25rem; color: #536575; background: #fff; border-top: 1px solid #d5dde4; font-size: .75rem; }
 .app-version { margin-left: auto; flex-shrink: 0; white-space: nowrap; }
+.status-bar .app-version-trigger { min-height: 0; padding: .1rem .2rem; border: 0; color: inherit; background: transparent; font: inherit; text-decoration: underline; text-underline-offset: .2em; cursor: pointer; }
+.app-update-available { margin-left: .5rem; color: #256147; }
+.app-version-info { position: fixed; z-index: 30; width: min(24rem, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; padding: 1rem; color: #263746; background: #fff; border: 1px solid #9fadb8; border-radius: .5rem; box-shadow: 0 .35rem 1rem #1f293729; font-size: .85rem; line-height: 1.6; overflow-wrap: anywhere; }
+.app-version-info-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.app-version-info h2 { margin: 0; font-size: 1rem; }
+.app-version-info > button { margin: .25rem .5rem .25rem 0; }
 .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 2rem; margin-bottom: 1.5rem; }
 .page-heading h2, .state-panel h2, .state-panel h3 { margin: .3rem 0 .45rem; color: #17324d; }
 .page-heading h2 { font-size: 1.8rem; }

@@ -102,7 +102,8 @@ pub fn run() {
             import::apply_master_import,
             progress_link::complete_quest_with_linked_discoveries,
             progress_link::discover_with_linked_quest,
-            external_links::open_gvdb_site
+            external_links::open_gvdb_site,
+            external_links::open_releases_page
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

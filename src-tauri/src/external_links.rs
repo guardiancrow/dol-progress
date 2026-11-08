@@ -1,14 +1,20 @@
 use windows_sys::Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL};
 
 const GVDB_URL: &str = "https://gvdb.mydns.jp/db/";
+const RELEASES_URL: &str = "https://github.com/guardiancrow/dol-progress/releases";
 
 #[tauri::command]
 pub(crate) fn open_gvdb_site() -> Result<(), String> {
-    open_fixed_url()
+    open_fixed_url(GVDB_URL)
 }
 
-fn open_fixed_url() -> Result<(), String> {
-    let wide_url: Vec<u16> = GVDB_URL.encode_utf16().chain(std::iter::once(0)).collect();
+#[tauri::command]
+pub(crate) fn open_releases_page() -> Result<(), String> {
+    open_fixed_url(RELEASES_URL)
+}
+
+fn open_fixed_url(url: &'static str) -> Result<(), String> {
+    let wide_url: Vec<u16> = url.encode_utf16().chain(std::iter::once(0)).collect();
     let operation: Vec<u16> = "open".encode_utf16().chain(std::iter::once(0)).collect();
     // Both UTF-16 buffers remain alive and NUL-terminated throughout the Windows call.
     let result = unsafe {
@@ -41,6 +47,10 @@ mod tests {
     #[test]
     fn fixed_url_and_shell_result_boundary() {
         assert_eq!(GVDB_URL, "https://gvdb.mydns.jp/db/");
+        assert_eq!(
+            RELEASES_URL,
+            "https://github.com/guardiancrow/dol-progress/releases"
+        );
         assert!(check_shell_result(32).is_err());
         assert!(check_shell_result(33).is_ok());
     }
