@@ -264,13 +264,13 @@ export function QuestsPage({
 
       {isMasterLoading || isProgressLoading ? (
         <div className="state-panel" role="status">クエストを読み込んでいます…</div>
-      ) : masterError ? null : quests.length === 0 ? (
+      ) : masterError || progressError ? null : quests.length === 0 ? (
         <div className="state-panel empty-state">
           <h3>クエストのマスターデータがありません</h3>
           <p>「マスターデータ」画面でクエスト情報を取り込むと、クエストの一覧を表示できます。</p>
           <button type="button" className="button primary" onClick={onOpenMasterData}>マスターデータを開く</button>
         </div>
-      ) : progressError ? null : (
+      ) : (
         <QuestTable
           reportHold={reportHold}
           rows={rows}

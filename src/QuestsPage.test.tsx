@@ -130,6 +130,25 @@ describe("Quest UI", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
+  it("prioritizes progress errors over an empty master and restores the guidance after retry", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const repositories = createRepositories([profile(1, "航海者")], []);
+    repositories.progress.listCompletedQuestIds.mockRejectedValueOnce(new Error("synthetic progress failure"));
+    const user = await openQuestsWithoutTable(repositories);
+
+    expect(await screen.findByText("クエスト進捗を読み込めませんでした。")).toBeInTheDocument();
+    expect(screen.queryByText("クエストのマスターデータがありません")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "マスターデータを開く" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "再読み込み" }));
+    expect(await screen.findByRole("button", { name: "マスターデータを開く" })).toBeInTheDocument();
+    expect(screen.getByText("クエストのマスターデータがありません")).toBeInTheDocument();
+    expect(screen.queryByText("クエスト進捗を読み込めませんでした。")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("現在のプロフィール")).toHaveValue("1");
+    expect(repositories.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+  });
+
   it("shows quest master fields", async () => {
     const repositories = createRepositories(
       [profile(1, "航海者")],
