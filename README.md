@@ -60,18 +60,21 @@ SQLiteとWebView2 LoaderはEXEへ組み込まれているため、個別イン�
 2. Assets（配布ファイルの一覧）からWindows x64 Portable ZIPと、同じ名前に`.sha256`を付けたファイルを取得します。
 3. 下記の方法でZIPのSHA-256を確認します。一致しない場合は起動・更新せず、取得元と対象版を確認してください。
 
-v0.3.0のファイル名は`DOL-Progress-Manager_0.3.0_windows-x64_portable.zip`と`DOL-Progress-Manager_0.3.0_windows-x64_portable.zip.sha256`です。GitHubが表示する「Source code」のZIPは開発用ソースで、実行用Portable ZIPとは別です。
+Portable ZIPの名前は`DOL-Progress-Manager_<バージョン>_windows-x64_portable.zip`です。GitHubが表示する「Source code」のZIPは開発用ソースで、実行用Portable ZIPとは別です。
 
 Windows 10／11では、次の手順でPowerShellを開いて検証できます。
 
 1. 取得したZIPと`.sha256`ファイルを同じフォルダーに置き、エクスプローラーでそのフォルダーを開きます。
 2. ウィンドウ上部のアドレスバーに`powershell.exe`と入力し、Enterキーを押します。そのフォルダーでPowerShellが起動します。
-3. 下のコマンドのファイル名を取得した版に合わせ、1行ずつ入力または貼り付けて、Enterキーで実行します。
+3. 下のコマンドを1行ずつ入力または貼り付け、Enterキーで実行します。最初の行で入力を求められたら、取得したZIPのファイル名を拡張子`.zip`まで含め、引用符を付けずに入力します。
 
 ```powershell
-Get-FileHash -Algorithm SHA256 -LiteralPath .\DOL-Progress-Manager_0.3.0_windows-x64_portable.zip
-Get-Content -LiteralPath .\DOL-Progress-Manager_0.3.0_windows-x64_portable.zip.sha256
+$zip = Read-Host "ダウンロードしたZIPファイル名"
+Get-FileHash -Algorithm SHA256 -LiteralPath ".\$zip"
+Get-Content -LiteralPath ".\${zip}.sha256"
 ```
+
+エラーが表示された場合は、起動・更新せず、入力したファイル名と2つのファイルの保存先を確認してください。修正後、最初の行からやり直します。
 
 表示されたHashと、`.sha256`の先頭64桁が一致することを確認します。英字の大文字・小文字は区別しません。ZIP内のSHA256SUMS.txtは、EXEと同梱文書の4ファイルを照合するための一覧です。hashの一致はファイルの整合性確認であり、入手先の正当性を単独で保証するものではありません。
 
