@@ -28,13 +28,34 @@ function Get-PortableText([byte[]]$Bytes) {
 }
 
 function Get-PortableReadmeSections {
-    return @('主な機能','動作環境と起動方法','大航海時代データベースからのマスターデータ取得と取り込み','データと設定の保存場所','バックアップと復元',
-        'アプリのフォルダーの移動','更新','削除','旧版からの移行と既存カスタム保存場所','謝辞','License')
+    return @('主な機能','はじめて使う方へ','基本操作','データと設定の保存場所','バックアップと復元','アプリの更新',
+        'アプリのフォルダーの移動','アプリの削除','旧版からの移行と既存カスタム保存場所','困ったとき','謝辞','License')
+}
+
+function Get-PortableReadmeRequiredHeadings {
+    foreach ($title in (Get-PortableReadmeSections)) { '## '+$title }
+    return @('### 動作環境と必要な準備','### ダウンロードとファイルの確認','### 展開・起動と使用許諾',
+        '### プロフィールの作成','### マスターデータの取得と取り込み','#### 取り込みに失敗したとき','### 最初の進捗登録',
+        '### プロフィールの選択と編集','### クエストの達成状態を変更する','### 発見物の状態とカード所有を変更する',
+        '### 地図の状態と初回報告','### 検索・絞り込みと詳細情報の表示','### 概要で進捗を確認する',
+        '### 内蔵バックアップ','### バックアップから復元する','### 終了後のフォルダーバックアップ',
+        '### 復旧画面で既存の保存場所を指定し直す','### Microsoft Windows SDK由来コードの利用・再配布条件')
+}
+
+function Get-PortableReadmeMarkup([string]$Text) {
+    # Mask supported code without changing offsets; literal examples are not Markdown links or HTML.
+    $masked=[regex]::Replace($Text,'(?ms)^```[a-zA-Z0-9_-]*[ \t]*\r?\n.*?^```[ \t]*\r?(?=\n|\z)',
+        [Text.RegularExpressions.MatchEvaluator]{ param($m) [regex]::Replace($m.Value,'[^\r\n]',' ') })
+    $masked=[regex]::Replace($masked,'`[^`\r\n]+`',
+        [Text.RegularExpressions.MatchEvaluator]{ param($m) ' '*$m.Length })
+    if ($masked.Contains('`')) { throw 'README: unsupported or unclosed code.' }
+    return $masked
 }
 
 function Assert-PortableReadme([string]$Text) {
-    foreach ($title in (Get-PortableReadmeSections)) {
-        if ([regex]::Matches($Text,'(?m)^## '+[regex]::Escape($title)+'\r?$').Count -ne 1) { throw 'README: missing or duplicate section.' }
+    $markup=Get-PortableReadmeMarkup $Text
+    foreach ($heading in (Get-PortableReadmeRequiredHeadings)) {
+        if ([regex]::Matches($markup,'(?m)^'+[regex]::Escape($heading)+'\r?$').Count -ne 1) { throw 'README: missing or duplicate section.' }
     }
     foreach ($pattern in @('DOL Progress Manager','Windows[ \t]+[^。\r\n]*x64','dol-progress-manager\.exe','ZIP','展開','WebView2',
         'Microsoft Visual C\+\+ Redistributable x64','https://learn\.microsoft\.com/(?:ja-jp|en-us)/cpp/windows/latest-supported-vc-redist',
@@ -47,27 +68,57 @@ function Assert-PortableReadme([string]$Text) {
 
 function ConvertTo-PortableReadme([byte[]]$MarkdownBytes, [string]$Version='') {
     $markdown=(Get-PortableText $MarkdownBytes).Replace("`r`n","`n")
-    if ($markdown -notmatch '^# DOL Progress Manager\n' -or $markdown -match '(?m)^\[[^\]]+\]:|!\[|<[^>]+>|\]\([^)]*\([^)]*\)') { throw 'README: unsupported Markdown.' }
-    $blocks=[regex]::Split($markdown,'(?m)(?=^## )')
+    $markup=Get-PortableReadmeMarkup $markdown
+    if ($markdown -notmatch '^# DOL Progress Manager\n' -or $markup -match '(?m)^\[[^\]]+\]:|!\[|<[^>]+>|\]\([^)]*\([^)]*\)|\[[^\]\n]+\]\[[^\]\n]*\]') { throw 'README: unsupported Markdown.' }
+    $headings=[regex]::Matches($markup,'(?m)^## ([^\n]+)$')
+    if ($headings.Count -eq 0) { throw 'README: section extraction failed.' }
+    $blocks=New-Object 'Collections.Generic.List[object]'
+    for ($index=0; $index -lt $headings.Count; $index++) {
+        $end=if ($index+1 -lt $headings.Count) { $headings[$index+1].Index } else { $markdown.Length }
+        $blocks.Add([pscustomobject]@{Title=$headings[$index].Groups[1].Value;Text=$markdown.Substring($headings[$index].Index,$end-$headings[$index].Index)})
+    }
     $selected=New-Object 'Collections.Generic.List[string]'
-    $selected.Add($blocks[0].TrimEnd())
+    $intro=$markdown.Substring(0,$headings[0].Index)
+    # These two exact TOC entries point to deliberately excluded developer sections.
+    $excludedToc=[regex]::Matches((Get-PortableReadmeMarkup $intro),'(?m)^- \[(開発者向け情報|仕様書)\]\(#\1\)\n?')
+    for ($index=$excludedToc.Count-1; $index -ge 0; $index--) {
+        $intro=$intro.Remove($excludedToc[$index].Index,$excludedToc[$index].Length)
+    }
+    $selected.Add($intro.TrimEnd())
     foreach ($title in (Get-PortableReadmeSections)) {
-        $matching=@($blocks | Where-Object { $_ -match ('^## '+[regex]::Escape($title)+'\n') })
+        $matching=@($blocks | Where-Object { $_.Title -ceq $title })
         if ($matching.Count -ne 1) { throw 'README: section extraction failed.' }
-        $selected.Add($matching[0].TrimEnd())
+        $selected.Add($matching[0].Text.TrimEnd())
     }
     $text=$selected -join "`n`n"
-    $text=[regex]::Replace($text,'\[([^\]\r\n]+)\]\(([^\s()]+)\)',[Text.RegularExpressions.MatchEvaluator]{ param($m)
-        $label=$m.Groups[1].Value; $target=$m.Groups[2].Value
-        if ($target -match '^https://') { return $label+' ('+$target+')' }
-        if ($target -ceq 'LICENSE') { return $label+' (LICENSE.txt)' }
-        if ($target -ceq 'THIRD-PARTY-NOTICES.txt') { return $label+' (THIRD-PARTY-NOTICES.txt)' }
-        if ($target -ceq 'docs/third-party-licenses.md') { return $label+' (THIRD-PARTY-NOTICES.txt)' }
+    $markup=Get-PortableReadmeMarkup $text
+    $anchors=[Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
+    foreach ($heading in [regex]::Matches($markup,'(?m)^#{1,6} ([^\n]+)$')) {
+        $title=$heading.Groups[1].Value
+        $anchor=$title.ToLowerInvariant() -replace '[^\p{L}\p{N}_\- ]','' -replace ' ','-'
+        if ($anchors.ContainsKey($anchor)) { throw 'README: ambiguous heading.' }
+        $anchors.Add($anchor,$title)
+    }
+    $links=[regex]::Matches($markup,'\[([^\]\r\n]+)\]\(([^\s()]+)\)')
+    for ($index=$links.Count-1; $index -ge 0; $index--) {
+        $m=$links[$index]
+        $label=$text.Substring($m.Groups[1].Index,$m.Groups[1].Length)
+        $target=$text.Substring($m.Groups[2].Index,$m.Groups[2].Length)
+        if ($target.StartsWith('#')) {
+            if (-not $anchors.ContainsKey($target.Substring(1))) { throw 'README: unresolved internal link.' }
+            $replacement=$label+' (「'+$anchors[$target.Substring(1)]+'」を参照)'
+        }
+        elseif ($target -match '^https://') { $replacement=$label+' ('+$target+')' }
+        elseif ($target -ceq 'LICENSE') { $replacement=$label+' (LICENSE.txt)' }
+        elseif ($target -ceq 'THIRD-PARTY-NOTICES.txt') { $replacement=$label+' (THIRD-PARTY-NOTICES.txt)' }
+        elseif ($target -ceq 'docs/third-party-licenses.md') { $replacement=$label+' (THIRD-PARTY-NOTICES.txt)' }
         # Supplementary development references are explicitly identified; no URL is discarded.
-        if ($target -match '^docs/[a-z-]+\.md$') { return $label+' (開発資料: '+$target+'、ZIPには含みません)' }
-        throw 'README: unresolved link.'
-    })
-    if ($text -match '\]\(' -or $text -match '(?m)^## (開発と検証|Windows build|仕様書)$') { throw 'README: incomplete conversion.' }
+        elseif ($target -match '^docs/[a-z-]+\.md$') { $replacement=$label+' (開発資料: '+$target+'、ZIPには含みません)' }
+        else { throw 'README: unresolved link.' }
+        $text=$text.Substring(0,$m.Index)+$replacement+$text.Substring($m.Index+$m.Length)
+    }
+    $convertedMarkup=Get-PortableReadmeMarkup $text
+    if ($convertedMarkup -match '\]\(' -or $convertedMarkup -match '(?m)^## (開発者向け情報|開発と検証|Windows build|仕様書)$') { throw 'README: incomplete conversion.' }
     Assert-PortableReadme $text
     if ($Version -ne '') {
         if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'README: invalid source version.' }

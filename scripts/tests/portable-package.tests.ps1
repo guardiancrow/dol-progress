@@ -256,9 +256,9 @@ Case 'Standard NET ZIP reader and extraction retain usable calendar fields and b
 Case 'README BOM CRLF complete section and external URL retention' {
     Expect ($readme[0] -eq 239 -and $readme[1] -eq 187 -and $readme[2] -eq 191)
     $text=Get-PortableText $readme; Assert-PortableReadme $text
-    Expect ($text -notmatch '(?<!\r)\n' -and $text -notmatch '## 開発と検証|## Windows build|## 仕様書')
+    Expect ($text -notmatch '(?<!\r)\n' -and $text -notmatch '## 開発者向け情報|## 開発と検証|## Windows build|## 仕様書')
     Expect ($text.Contains('https://gvdb.mydns.jp/db/') -and $text.Contains('https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section'))
-    Expect ($text.Contains('大航海時代データベースからのマスターデータ取得と取り込み') -and $text -cnotmatch 'GVDB')
+    Expect ($text.Contains('### マスターデータの取得と取り込み') -and $text -cnotmatch 'GVDB')
     Expect ($text.Contains('Microsoft Visual C++ Redistributable x64') -and $text.Contains('https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist'))
     Expect ($text.Contains('LICENSE.txt') -and $text.Contains('THIRD-PARTY-NOTICES.txt') -and $text.Contains('data/configを削除・上書きしない'))
     Expect (-not $text.Contains('ユーザーレビュー待ち') -and $text.Contains('通知の正式レビューは完了しています'))
@@ -268,17 +268,21 @@ Case 'README BOM CRLF complete section and external URL retention' {
 Case 'README public distribution and integrity guidance retained' {
     $text=Get-PortableText $readme
     Expect ($text.Contains('https://github.com/guardiancrow/dol-progress/releases'))
-    Expect ($text.Contains('DOL-Progress-Manager_0.3.0_windows-x64_portable.zip.sha256'))
+    Expect ($text.Contains('DOL-Progress-Manager_<バージョン>_windows-x64_portable.zip'))
+    Expect ($text.Contains('$zip = Read-Host "ダウンロードしたZIPファイル名"'))
+    Expect ($text.Contains('Get-Content -LiteralPath ".\${zip}.sha256"'))
     Expect ($text.Contains('Source code') -and $text.Contains('実行用Portable ZIPとは別'))
     Expect ($text.Contains('Get-FileHash -Algorithm SHA256 -LiteralPath') -and $text.Contains('Get-Content -LiteralPath'))
     Expect ($text.Contains('先頭64桁') -and $text.Contains('一致しない場合は起動・更新せず'))
+    Expect ($text.Contains('エラーが表示された場合は、起動・更新せず'))
     Expect ($text.Contains('Authenticode未署名') -and $text.Contains('ソースのGit署名は、EXEのAuthenticode署名とは別'))
 }
 Case 'README portable operation and data safety retained' {
     $text=Get-PortableText $readme
     Expect ($text.Contains('書き込み可能な新しいフォルダーへZIP全体を展開'))
     Expect ($text.Contains('外部Runtime、インストーラー、進捗DB、設定、マスターデータはZIPに含みません'))
-    Expect ($text.Contains('初回は使用許諾を確認') -and $text.Contains('拒否または画面を閉じた場合は起動しません'))
+    Expect ($text.Contains('初回の使用許諾を読み') -and $text.Contains('表示された利用条件を確認し、同意します'))
+    Expect ($text.Contains('同意しない／終了する') -and $text.Contains('画面を閉じた場合は起動しません'))
     Expect ($text.Contains('更新前に内蔵バックアップを保存') -and $text.Contains('完全に終了'))
     Expect ($text.Contains('既存のアプリとは別の新しいフォルダーへ全体を展開'))
     Expect ($text.Contains('展開したEXEと同梱文書だけ') -and $text.Contains('data/configを削除・上書きしない'))
@@ -339,10 +343,91 @@ Case 'README Japanese VC official URL retained' {
 Case 'README canonical notice link mapped' {
     Expect ((Get-PortableText $readme).Contains('THIRD-PARTY-NOTICES.txt (THIRD-PARTY-NOTICES.txt)'))
 }
-Case 'README missing section' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('## 更新','## Unknown'))) } }
-Case 'README duplicate section' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme+"`n## 更新`nDuplicate")) } }
+Case 'README missing section' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('## アプリの更新','## Unknown'))) } }
+Case 'README duplicate section' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme+"`n## アプリの更新`nDuplicate")) } }
 Case 'README missing official URL' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section','https://example.invalid'))) } }
 Case 'README unknown relative link' { Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('(LICENSE)','(../unknown.txt)'))) } }
+Case 'README current onboarding operations and history safety retained' {
+    $text=Get-PortableText $readme
+    foreach ($phrase in @('### 最初の進捗登録','### プロフィールの選択と編集','### 地図の状態と初回報告','#### 取り込みに失敗したとき',
+        'クエストマスターを更新しました。','このファイルは既にインポートされています。','現在状態も未報告または未発見へ訂正する方法を選ぶ',
+        '現在の発見・報告・カード所有・維持設定','クエスト達成、過去の報告履歴','データベースの更新履歴がバージョン1〜4',
+        '## 困ったとき','### 復旧画面で既存の保存場所を指定し直す')) { Expect ($text.Contains($phrase)) }
+}
+Case 'README all PowerShell examples retained literally' {
+    $text=(Get-PortableText $readme).Replace("`r`n","`n")
+    foreach ($example in [regex]::Matches($fixtureReadme.Replace("`r`n","`n"),'(?ms)^```powershell\n.*?^```')) {
+        Expect ($text.Contains($example.Value))
+    }
+}
+Case 'README internal references name included sections' {
+    $text=Get-PortableText $readme
+    Expect ($text.Contains('取り込み手順 (「マスターデータの取得と取り込み」を参照)'))
+    Expect ($text.Contains('ダウンロードとファイルの確認 (「ダウンロードとファイルの確認」を参照)'))
+    Expect ($text.Contains('開発者向け情報') -eq $false -and $text.Contains('仕様書 (「仕様書」を参照)') -eq $false)
+    Expect (-not $text.Contains('](#'))
+}
+Case 'README all selected external URLs retained' {
+    $blocks=[regex]::Split($fixtureReadme.Replace("`r`n","`n"),'(?m)(?=^## )')
+    foreach ($block in $blocks) {
+        if ($block -eq $blocks[0] -or @(Get-PortableReadmeSections | Where-Object { $block.StartsWith('## '+$_+"`n") }).Count -gt 0) {
+            foreach ($url in [regex]::Matches($block,'\]\((https://[^\s()]+)\)')) { Expect ((Get-PortableText $readme).Contains($url.Groups[1].Value)) }
+        }
+    }
+}
+foreach ($heading in (Get-PortableReadmeRequiredHeadings)) {
+    Case ('README missing required heading '+$heading) {
+        Expect ($fixtureReadme.Contains($heading))
+        Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace($heading,($heading+' TEST_ONLY missing')))) }
+    }
+}
+Case 'README unknown internal reference rejected' {
+    Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('(#主な機能)','(#存在しない節)'))) }
+}
+Case 'README excluded developer section reference in body rejected' {
+    $inputText=$fixtureReadme.Replace('## 主な機能',("## 主な機能`n`n本文の[開発資料](#開発者向け情報)"))
+    Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($inputText)) }
+}
+Case 'README duplicate nested heading rejected' {
+    $duplicate=$fixtureReadme.Replace('## 主な機能',("## 主な機能`n`n### 内蔵バックアップ`nDuplicate"))
+    Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($duplicate)) }
+    $inputText=$fixtureReadme.Replace('## 主な機能',("## 主な機能`n`n### 参照テスト!`n`n### 参照テスト?"))
+    Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($inputText)) }
+}
+Case 'README code examples are literal and do not create headings or references' {
+    $literal=@'
+```text
+## コード内の見出し
+[コード内の文字列](#存在しない参照)
+<tag>
+```
+'@
+    $inputText=$fixtureReadme.Replace('## 主な機能',('## 主な機能'+"`n`n"+$literal))
+    $text=(Get-PortableText (ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($inputText)))).Replace("`r`n","`n")
+    Expect ($text.Contains($literal.Replace("`r`n","`n")))
+    $hiddenHeading=$fixtureReadme.Replace('## アプリの更新',('```text'+"`n## アプリの更新`n"+'```'))
+    Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($hiddenHeading)) }
+}
+Case 'README introductory code is not mistaken for excluded TOC or sections' {
+    $literal=@'
+```text
+- [開発者向け情報](#開発者向け情報)
+## 開発者向け情報
+```
+'@
+    $inputText=$fixtureReadme.Replace('## 主な機能',($literal+"`n`n## 主な機能"))
+    $text=(Get-PortableText (ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($inputText)))).Replace("`r`n","`n")
+    Expect ($text.Contains($literal.Replace("`r`n","`n")))
+}
+foreach ($unsupported in @('<span>HTML</span>','![image](https://example.invalid/image.png)',
+    '[reference]: https://example.invalid','[label][reference]','[nested](https://example.invalid/a(b))','```text', '`unclosed')) {
+    Case ('README unsupported syntax rejected '+$unsupported) {
+        Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme+"`n"+$unsupported)) }
+    }
+}
+Case 'README non-HTTPS external reference rejected' {
+    Reject { ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme.Replace('https://github.com/guardiancrow/dol-progress/releases','http://github.com/guardiancrow/dol-progress/releases'))) }
+}
 Case 'LICENSE bytes copied without text transformation' { Expect ((Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $staging 'LICENSE.txt'))) -ceq (Get-ReleaseSHA256 $payload['LICENSE.txt'])) }
 Case 'Manifest exact four lines no BOM final LF' { $b=Read-PortableBytes (Join-Path $staging 'SHA256SUMS.txt'); $text=Get-PortableText $b; Expect ($b[0] -ne 239 -and $text.Split([char]10).Count -eq 5 -and $text.EndsWith("`n") -and -not $text.Contains("`r")) }
 Case 'Wrong external ZIP hash' { $bad=New-TestPath '.sha256'; Write-PortableBytes $fixtures $bad ([Text.Encoding]::UTF8.GetBytes(('0'*64)+'  '+[IO.Path]::GetFileName($zipPath)+"`n")); Reject { Test-PortableArchive $zipPath $bad (New-TestPath '.verify') $hashes '0.3.0' $payload $prefixes $committerTimestamp } }
