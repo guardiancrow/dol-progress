@@ -121,9 +121,9 @@ DOL-Progress-Manager/dol-progress-manager.exe
 
 DB／data／config／WAL／SHM／backup／取得CSV、PDB／ILK／log、source／.git／node_modules／target／tmp／tests／scripts、NSIS／MSI／Runtime／bootstrapperを含めない。ユーザーデータや保存場所・Recovery・Runtime動作はPackage工程で操作しない。
 
-README.mdの冒頭と指定11節を全文抽出する。主な機能、起動・Runtime、手動import、保存場所、backup／restore、移動、更新、削除、旧版／Custom移行、謝辞、Licenseを含め、開発・Windows build・仕様書一覧は除外する。必要見出しの一意性、Windows x64、Runtimeの公式URL、安全説明を確認し、不足・未対応Markdown・未解決linkは失敗とする。正確な見出し一覧は`Get-PortableReadmeSections`にある。
+README.mdの冒頭と、`Get-PortableReadmeSections`で指定する利用者向け12節を全文抽出する。初回利用、基本操作、データ保全、トラブル対応、謝辞、Licenseを収録し、開発者向け情報と仕様書一覧は除外する。冒頭の目次からも、除外する2節の項目だけを取り除く。必須の節・小見出しの一意性、Windows x64、Runtimeの公式URL、安全説明を確認し、不足・未対応Markdown・未解決リンクは失敗とする。必須見出しの一覧は`Get-PortableReadmeRequiredHeadings`にある。
 
-README.txtはUTF-8 BOM、CRLF、末尾CRLFで、trusted sourceのApplication versionを先頭へ付ける。HTTPS linkはlabelとURLを保持し、LICENSEはLICENSE.txt、第三者方針はTHIRD-PARTY-NOTICES.txtへ対応付ける。他の補助docs linkは開発資料でZIPにない旨を明記し、安全説明を非同梱docsだけに依存させない。LICENSEと通知は原本bytesを保持し、staging／ZIP展開後のhashを照合する。
+README.txtはUTF-8 BOM、CRLF、末尾CRLFで、trusted sourceのApplication versionを先頭へ付ける。コードブロックとインラインコードは原文のまま保持し、その中の`<バージョン>`などをHTMLと誤判定しない。本文中のHTMLや未対応・閉じられていないコード構文は拒否する。ページ内リンクは、同梱する見出しが一意に存在することを確認し、「見出し名」を参照する文章へ変換する。存在しない見出しや除外された節への参照は拒否する。HTTPSリンクはラベルとURLを保持し、LICENSEはLICENSE.txt、第三者方針はTHIRD-PARTY-NOTICES.txtへ対応付ける。他の補助docsリンクは開発資料でZIPにない旨を明記し、安全説明を非同梱docsだけに依存させない。LICENSEと通知は原本bytesを保持し、staging／ZIP展開後のhashを照合する。
 
 SHA256SUMS.txtは自身を除く4basenameをOrdinal順に記載する。形式はlowercase hex64桁、ASCII空白2個、basename、LF、UTF-8 BOMなし、最終LF。ZIP名はsource versionから`DOL-Progress-Manager_<version>_windows-x64_portable.zip`を作り、ZIP外の`<ZIP名>.sha256`には同じ形式でZIPだけの1行を記す。ZIPを閉じて独立検証した後に外部hashを確定する。
 
