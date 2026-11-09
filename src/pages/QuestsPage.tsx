@@ -15,12 +15,14 @@ import type {
 } from "../quests/types";
 
 interface QuestsPageProps {
+  onOpenMasterData(): void;
   questRepository: QuestRepositoryPort;
   questProgressRepository: QuestProgressRepositoryPort;
   progressLinkService: ProgressLinkServicePort;
 }
 
 export function QuestsPage({
+  onOpenMasterData,
   questRepository,
   questProgressRepository,
   progressLinkService,
@@ -265,7 +267,8 @@ export function QuestsPage({
       ) : masterError ? null : quests.length === 0 ? (
         <div className="state-panel empty-state">
           <h3>クエストのマスターデータがありません</h3>
-          <p>マスターデータの取り込み機能は後続フェーズで提供します。</p>
+          <p>「マスターデータ」画面でクエスト情報を取り込むと、クエストの一覧を表示できます。</p>
+          <button type="button" className="button primary" onClick={onOpenMasterData}>マスターデータを開く</button>
         </div>
       ) : progressError ? null : (
         <QuestTable
