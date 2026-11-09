@@ -305,13 +305,18 @@ export function DiscoveriesPage({
       {updateFeedback && <div className="progress-feedback" role="status">{updateFeedback}</div>}
       {isMasterLoading || isProgressLoading ? (
         <div className="state-panel" role="status">発見物を読み込んでいます…</div>
-      ) : masterError ? null : discoveries.length === 0 ? (
+      ) : masterError || progressError ? null : discoveries.length === 0 ? (
         <div className="state-panel empty-state">
           <h3>発見物のマスターデータがありません</h3>
           <p>「マスターデータ」画面で発見物情報を取り込むと、発見物の一覧を表示できます。</p>
           <button type="button" className="button primary" onClick={onOpenMasterData}>マスターデータを開く</button>
         </div>
-      ) : progressError ? null : (
+      ) : rows.length === 0 ? (
+        <div className="state-panel empty-state">
+          <h3>表示できる有効な発見物がありません</h3>
+          <p>「マスターデータ」画面で登録状況を確認してください。</p>
+        </div>
+      ) : (
         <DiscoveryTable
           historyReadState={reportHold.summaryReadState}
           reportHold={reportHold}

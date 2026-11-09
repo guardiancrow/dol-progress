@@ -859,18 +859,44 @@ describe("Discovery UI", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
+  it("prioritizes progress errors over an empty master and restores the guidance after retry", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const repositories = setup([profile(1)], []);
+    repositories.progress.listByProfile.mockRejectedValueOnce(new Error("synthetic progress failure"));
+    const user = await openWithoutTable(repositories);
+
+    expect(await screen.findByText("発見物進捗を読み込めませんでした。")).toBeInTheDocument();
+    expect(screen.queryByText("発見物のマスターデータがありません")).not.toBeInTheDocument();
+    expect(screen.queryByText("表示できる有効な発見物がありません")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "マスターデータを開く" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "再読み込み" }));
+    expect(await screen.findByRole("button", { name: "マスターデータを開く" })).toBeInTheDocument();
+    expect(screen.getByText("発見物のマスターデータがありません")).toBeInTheDocument();
+    expect(screen.queryByText("発見物進捗を読み込めませんでした。")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("現在のプロフィール")).toHaveValue("1");
+    expect(repositories.link.discoverWithLinkedQuest).not.toHaveBeenCalled();
+  });
+
   it("shows a filtered-empty state separately", async () => {
     const repositories = setup([profile(1)], [discovery(1, "発見")]);
     const user = await open(repositories);
     await user.type(screen.getByLabelText("発見物名を検索"), "不存在");
     expect(screen.getByText("条件に一致する発見物がありません")).toBeInTheDocument();
+    expect(screen.getByText("検索条件または絞り込み条件を変更してください。")).toBeInTheDocument();
+    expect(screen.queryByText("表示できる有効な発見物がありません")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "マスターデータを開く" })).not.toBeInTheDocument();
   });
 
   it("does not treat inactive-only master data as unregistered", async () => {
     const repositories = setup([profile(1)], [discovery(1, "合成発見物", { isActive: false })]);
     await openWithoutTable(repositories);
-    expect(await screen.findByText("条件に一致する発見物がありません")).toBeInTheDocument();
+    expect(await screen.findByText("表示できる有効な発見物がありません")).toBeInTheDocument();
+    expect(screen.getByText("「マスターデータ」画面で登録状況を確認してください。")).toBeInTheDocument();
+    expect(screen.queryByText("発見物のマスターデータがありません")).not.toBeInTheDocument();
+    expect(screen.queryByText("条件に一致する発見物がありません")).not.toBeInTheDocument();
+    expect(screen.queryByText("検索条件または絞り込み条件を変更してください。")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "マスターデータを開く" })).not.toBeInTheDocument();
   });
 
