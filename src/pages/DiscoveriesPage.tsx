@@ -19,6 +19,7 @@ import type {
 } from "../progressLink";
 
 interface DiscoveriesPageProps {
+  onOpenMasterData(): void;
   discoveryRepository: DiscoveryRepositoryPort;
   discoveryProgressRepository: DiscoveryProgressRepositoryPort;
   progressLinkService: ProgressLinkServicePort;
@@ -27,6 +28,7 @@ interface DiscoveriesPageProps {
 }
 
 export function DiscoveriesPage({
+  onOpenMasterData,
   discoveryRepository,
   discoveryProgressRepository,
   progressLinkService,
@@ -304,7 +306,11 @@ export function DiscoveriesPage({
       {isMasterLoading || isProgressLoading ? (
         <div className="state-panel" role="status">発見物を読み込んでいます…</div>
       ) : masterError ? null : discoveries.length === 0 ? (
-        <div className="state-panel empty-state"><h3>発見物のマスターデータがありません</h3><p>マスターデータを取り込んでからご利用ください。</p></div>
+        <div className="state-panel empty-state">
+          <h3>発見物のマスターデータがありません</h3>
+          <p>「マスターデータ」画面で発見物情報を取り込むと、発見物の一覧を表示できます。</p>
+          <button type="button" className="button primary" onClick={onOpenMasterData}>マスターデータを開く</button>
+        </div>
       ) : progressError ? null : (
         <DiscoveryTable
           historyReadState={reportHold.summaryReadState}

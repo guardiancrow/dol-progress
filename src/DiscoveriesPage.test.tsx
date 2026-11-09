@@ -16,6 +16,7 @@ import type {
   DiscoveryRepositoryPort,
 } from "./discoveries/types";
 import type { ProfileRepositoryPort } from "./profiles/ProfileContext";
+import type { MasterDataStatusRepositoryPort } from "./masterData/types";
 import type { UpdateProfileInput } from "./repositories/profileRepository";
 import type { ProgressLinkServicePort } from "./progressLink";
 import type { ProgressStats, DiscoveryCategoryProgressStats } from "./overview/types";
@@ -416,6 +417,7 @@ describe("Discovery UI", () => {
     await open(repositories);
     expect(screen.getByRole("heading", { name: "発見物進捗を表示するプロフィールを選択してください" })).toBeInTheDocument();
     expect(repositories.progress.listByProfile).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "マスターデータを開く" })).not.toBeInTheDocument();
   });
 
   it("shows all required master and relation fields", async () => {
@@ -799,10 +801,62 @@ describe("Discovery UI", () => {
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "発見の発見状態" })).not.toBeChecked());
   });
 
-  it("shows the master-empty state separately", async () => {
+  it("explains an empty master and opens Master Data", async () => {
     const repositories = setup([profile(1)], []);
-    await open(repositories);
+    const masterDataStatusRepository: MasterDataStatusRepositoryPort = {
+      getStatus: vi.fn<MasterDataStatusRepositoryPort["getStatus"]>(async () => ({
+        datasets: {
+          quests: { dataset: "quests", activeCount: 0, latestImport: null },
+          discoveries: { dataset: "discoveries", activeCount: 0, latestImport: null },
+        },
+        recentHistory: [],
+      })),
+    };
+    const user = await open(repositories, masterDataStatusRepository);
     expect(await screen.findByText("発見物のマスターデータがありません")).toBeInTheDocument();
+    expect(screen.getByText("「マスターデータ」画面で発見物情報を取り込むと、発見物の一覧を表示できます。")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "マスターデータを開く" }));
+    expect(await screen.findByRole("heading", { name: "マスターデータ" })).toBeInTheDocument();
+    await screen.findByRole("button", { name: "discovery_items.csv を選択" });
+    expect(masterDataStatusRepository.getStatus).toHaveBeenCalledTimes(1);
+    expect(repositories.link.discoverWithLinkedQuest).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("現在のプロフィール")).toHaveValue("1");
+  });
+
+  it("keeps the profile-loading state ahead of the master-empty guidance", async () => {
+    const repositories = setup([profile(1)], []);
+    let finish!: () => void;
+    const pending = new Promise<void>((resolve) => { finish = resolve; });
+    repositories.profiles.list = vi.fn(async () => { await pending; return repositories.profiles.items; });
+    await openWithoutTable(repositories);
+    expect(screen.getByText("プロフィールを読み込んでいます…")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "マスターデータを開く" })).not.toBeInTheDocument();
+    await act(async () => finish());
+    expect(await screen.findByRole("button", { name: "マスターデータを開く" })).toBeInTheDocument();
+  });
+
+  it.each(["master", "progress"] as const)("waits for %s loading before showing the master-empty guidance", async (source) => {
+    const repositories = setup([profile(1)], []);
+    let finish!: () => void;
+    const pending = new Promise<void>((resolve) => { finish = resolve; });
+    if (source === "master") repositories.master.listWithRelations = vi.fn(async () => { await pending; return []; });
+    else repositories.progress.listByProfile = vi.fn(async () => { await pending; return []; });
+    await openWithoutTable(repositories);
+    expect(screen.getByText("発見物を読み込んでいます…")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "マスターデータを開く" })).not.toBeInTheDocument();
+    await act(async () => finish());
+    expect(await screen.findByRole("button", { name: "マスターデータを開く" })).toBeInTheDocument();
+  });
+
+  it.each(["master", "progress"] as const)("keeps %s errors separate from missing master data", async (source) => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const repositories = setup([profile(1)], [discovery(1, "合成発見物")]);
+    if (source === "master") repositories.master.listWithRelations = vi.fn().mockRejectedValue(new Error("synthetic master failure"));
+    else repositories.progress.listByProfile = vi.fn().mockRejectedValue(new Error("synthetic progress failure"));
+    await openWithoutTable(repositories);
+    expect(await screen.findByText(source === "master" ? "発見物を読み込めませんでした。" : "発見物進捗を読み込めませんでした。")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "マスターデータを開く" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
   it("shows a filtered-empty state separately", async () => {
@@ -810,6 +864,14 @@ describe("Discovery UI", () => {
     const user = await open(repositories);
     await user.type(screen.getByLabelText("発見物名を検索"), "不存在");
     expect(screen.getByText("条件に一致する発見物がありません")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "マスターデータを開く" })).not.toBeInTheDocument();
+  });
+
+  it("does not treat inactive-only master data as unregistered", async () => {
+    const repositories = setup([profile(1)], [discovery(1, "合成発見物", { isActive: false })]);
+    await openWithoutTable(repositories);
+    expect(await screen.findByText("条件に一致する発見物がありません")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "マスターデータを開く" })).not.toBeInTheDocument();
   });
 
   it("uses one batch master query and one batch progress query", async () => {
@@ -817,6 +879,7 @@ describe("Discovery UI", () => {
     await open(repositories);
     expect(repositories.master.listWithRelations).toHaveBeenCalledTimes(1);
     expect(repositories.progress.listByProfile).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "マスターデータを開く" })).not.toBeInTheDocument();
   });
 });
 
@@ -862,15 +925,15 @@ function setup(profiles: Profile[], master: DiscoveryWithRelations[], byProfile 
   return { profiles: new MockProfiles(profiles), master: new MockMaster(master), progress, link: new MockProgressLink(progress) };
 }
 
-async function open(repositories: Repositories) {
-  const user = await openWithoutTable(repositories);
+async function open(repositories: Repositories, masterDataStatusRepository?: MasterDataStatusRepositoryPort) {
+  const user = await openWithoutTable(repositories, masterDataStatusRepository);
   if (repositories.profiles.items.length && repositories.master.items.length) expect(await screen.findByRole("table")).toBeInTheDocument();
   return user;
 }
 
-async function openWithoutTable(repositories: Repositories) {
+async function openWithoutTable(repositories: Repositories, masterDataStatusRepository?: MasterDataStatusRepositoryPort) {
   const user = userEvent.setup();
-  render(<App profileRepository={repositories.profiles} discoveryRepository={repositories.master} discoveryProgressRepository={repositories.progress} progressLinkService={repositories.link} />);
+  render(<App profileRepository={repositories.profiles} masterDataStatusRepository={masterDataStatusRepository} discoveryRepository={repositories.master} discoveryProgressRepository={repositories.progress} progressLinkService={repositories.link} />);
   await screen.findByRole("heading", { name: "プロフィール" });
   await user.click(screen.getByRole("button", { name: "発見物" }));
   return user;

@@ -98,12 +98,14 @@ function App({
           <ProfilesPage />
         ) : page === "quests" ? (
           <QuestsPage
+            onOpenMasterData={() => navigate("master-data")}
             questRepository={questRepository}
             questProgressRepository={questProgressRepository}
             progressLinkService={progressLinkService}
           />
         ) : page === "discoveries" ? (
           <DiscoveriesPage
+            onOpenMasterData={() => navigate("master-data")}
             initialFilter={discoveryFilter}
             onNavigationConsumed={consumeDiscoveryNavigation}
             discoveryRepository={discoveryRepository}
