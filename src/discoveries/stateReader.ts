@@ -52,6 +52,24 @@ export function matchesSummary(s: DiscoveryStateSummary, snapshot: DiscoveryStat
     && Boolean(s.automaticReporting) === snapshot.automaticReporting;
 }
 
+export function matchesSnapshot(expected: DiscoveryState, actual: DiscoveryState): boolean {
+  const p = expected.progress, q = actual.progress;
+  const h = expected.history, k = actual.history;
+  return expected.profileId === actual.profileId && expected.discoveryId === actual.discoveryId
+    && expected.active === actual.active && expected.categoryName === actual.categoryName
+    && expected.masterUpdatedAt === actual.masterUpdatedAt && expected.automaticReporting === actual.automaticReporting
+    && (p === null ? q === null : q !== null && p.reported === q.reported && p.reportHold === q.reportHold
+      && p.cardOwned === q.cardOwned && p.memo === q.memo && p.updatedAt === q.updatedAt)
+    && (h === null ? k === null : k !== null && h.status === k.status
+      && h.legacyMeritCredit === k.legacyMeritCredit && h.updatedAt === k.updatedAt)
+    && expected.relatedQuests.length === actual.relatedQuests.length
+    && expected.relatedQuests.every((quest, index) => {
+      const other = actual.relatedQuests[index]!;
+      return quest.id === other.id && quest.active === other.active && quest.offerMethod === other.offerMethod
+        && quest.updatedAt === other.updatedAt && quest.discoveryCount === other.discoveryCount;
+    });
+}
+
 export type VisibleMapState = Exclude<MapCurrentState, "reportHold">;
 export const stateLabels: Record<VisibleMapState, string> = {
   undiscovered: "未発見", unreported: "未報告", reported: "報告済み",

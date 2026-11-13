@@ -459,3 +459,87 @@ it.each(["not_reported","confirmed"] as const)("restores focus when a non-map co
   await waitFor(() => expect(historyCheckbox()).toHaveFocus());
   expect(t.dependencies.service.update).toHaveBeenCalledTimes(1);
 });
+
+const resetCases = [0,1].flatMap(mapRelated => [0,1].flatMap(discovered =>
+  (["not_reported","confirmed"] as const).flatMap(firstReportStatus => [100,null].map(experience =>
+    ({mapRelated,discovered,firstReportStatus,experience})))));
+
+it.each(resetCases)("explicitly resets safe map/non-map history without changing current progress: %j", async initial => {
+  const s = summary({...initial,progressUpdatedAt:initial.discovered ? "p" : null,historyUpdatedAt:"h",categoryName:"気象・現象"});
+  const before = snapshot(s).progress;
+  const t = setup(s);
+  const user = userEvent.setup();
+  const checkbox = await screen.findByRole("checkbox", {name:"共有発見物の初回報告"});
+  checkbox.focus();
+  await user.keyboard(" ");
+  const choice = await screen.findByLabelText("初回報告履歴");
+  expect(choice).toHaveValue(initial.firstReportStatus === "confirmed" ? "not_reported" : "confirmed");
+  expect(within(choice).getAllByRole("option").map(o=>o.getAttribute("value"))).toEqual(["","unknown","not_reported","confirmed"]);
+  await user.selectOptions(choice, initial.firstReportStatus);
+  expect(screen.getByRole("button", {name:"記録を保存"})).toBeDisabled();
+  await user.selectOptions(choice, "unknown");
+  expect(screen.getByRole("dialog")).toHaveTextContent("確認結果を撤回し、不明に戻します");
+  expect(screen.getByRole("dialog")).toHaveTextContent("現在の発見進捗・カード所有・メモ・クエスト達成は変更しません");
+  const impact = screen.getByRole("status");
+  if (initial.firstReportStatus === "not_reported") expect(impact).toHaveTextContent("算入資格は変わりません");
+  else expect(impact).toHaveTextContent(initial.experience === null ? "経験値不明の算入対象が1件減り" : "−100");
+  expect(t.dependencies.service.update).not.toHaveBeenCalled();
+  t.prepare({...s,firstReportStatus:"unknown",historyUpdatedAt:"reset"});
+  await user.click(screen.getByRole("button", {name:"記録を保存"}));
+  const button = await screen.findByRole("button", {name:"共有発見物の初回報告を確認"});
+  expect(button).toHaveTextContent("不明");
+  await waitFor(()=>expect(button).toHaveFocus());
+  expect(snapshot(t.profiles[1]![0]!).progress).toEqual(before);
+  expect(t.profiles[1]![0]).toMatchObject({historyUpdatedAt:"reset",legacyMeritCredit:0});
+  expect(t.dependencies.service.get).toHaveBeenCalledTimes(2);
+  expect(t.dependencies.service.update).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({history:expect.objectContaining({status:initial.firstReportStatus})}),
+    {kind:"correctHistory",status:"unknown",removeLegacyCredit:false,currentState:null},null);
+  for (const handler of Object.values(t.handlers)) expect(handler).not.toHaveBeenCalled();
+});
+
+it.each(["confirmed","not_reported","unknown"] as const)("blocks unknown while currently reported, including saved %s", async firstReportStatus => {
+  const t = setup(summary({mapRelated:0,reported:1,firstReportStatus,historyUpdatedAt:"h"}));
+  const user = userEvent.setup();
+  await screen.findByText("共有発見物");
+  const trigger = screen.getByRole(firstReportStatus === "not_reported" ? "button" : "checkbox",
+    {name:firstReportStatus === "not_reported" ? "共有発見物の初回報告を確認" : "共有発見物の初回報告"});
+  await user.click(trigger);
+  await user.selectOptions(await screen.findByLabelText("初回報告履歴"), "not_reported");
+  await user.selectOptions(screen.getByLabelText("現在進捗の同時訂正"), "unreported");
+  await user.selectOptions(screen.getByLabelText("初回報告履歴"), "unknown");
+  expect(screen.getByRole("alert")).toHaveTextContent("現在報告済みのまま履歴を不明には戻せません");
+  expect(screen.queryByLabelText("現在進捗の同時訂正")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", {name:"記録を保存"})).toBeDisabled();
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(t.dependencies.service.update).not.toHaveBeenCalled();
+});
+
+it.each([null,"explicit"])("treats absent and explicit unknown history as the same selection: %s", async historyUpdatedAt => {
+  const t = setup(summary({mapRelated:0,historyUpdatedAt}));
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", {name:"共有発見物の初回報告を確認"}));
+  await user.selectOptions(await screen.findByLabelText("初回報告履歴"), "unknown");
+  expect(screen.getByRole("button", {name:"記録を保存"})).toBeDisabled();
+  await user.keyboard("{Escape}");
+  expect(t.dependencies.service.update).not.toHaveBeenCalled();
+});
+
+it.each([
+  {active:false}, {automaticReporting:true}, {categoryName:"レリック"}, {profileId:2},
+  {progress:{reported:true,reportHold:false,cardOwned:true,memo:"keep",updatedAt:"p"}},
+  {progress:{reported:false,reportHold:false,cardOwned:false,memo:"changed",updatedAt:"p"}},
+  {history:{status:"confirmed" as const,legacyMeritCredit:false,updatedAt:"h"}},
+  {relatedQuests:[{id:20,active:true,offerMethod:"地理学",updatedAt:"q",discoveryCount:1}]},
+])("rejects a changed snapshot immediately before saving unknown: %j", async change => {
+  const initial=summary({mapRelated:0,firstReportStatus:"not_reported",historyUpdatedAt:"h"});
+  const t=setup(initial);
+  const user=userEvent.setup();
+  await user.click(await screen.findByRole("checkbox", {name:"共有発見物の初回報告"}));
+  await user.selectOptions(await screen.findByLabelText("初回報告履歴"), "unknown");
+  vi.mocked(t.dependencies.service.get).mockResolvedValueOnce({...snapshot(initial),...change});
+  await user.click(screen.getByRole("button", {name:"記録を保存"}));
+  expect(await screen.findByRole("alert")).toHaveTextContent("状態が変更されています");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(t.dependencies.service.update).not.toHaveBeenCalled();
+  expect(t.dependencies.reader.list).toHaveBeenCalledTimes(2);
+});

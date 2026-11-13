@@ -890,3 +890,80 @@ async fn non_map_history_conflicts_require_atomic_current_correction() {
         );
     }
 }
+
+#[tokio::test]
+async fn resetting_confirmed_history_to_unknown_preserves_progress_and_never_restores_legacy_credit(
+) {
+    for map_related in [false, true] {
+        for status in [FirstReportStatus::NotReported, FirstReportStatus::Confirmed] {
+            for remove_current in [false, true] {
+                for experience in [Some(125_i64), None] {
+                    let mut db = fixture().await;
+                    db.execute("INSERT INTO discovery_categories(id,name) VALUES(3,'気象・現象'); UPDATE discoveries SET category_id=3 WHERE id=5; INSERT INTO quest_progress(profile_id,quest_id,memo) VALUES(1,3,'synthetic quest');").await.unwrap();
+                    sqlx::query("UPDATE discoveries SET experience=? WHERE id=5")
+                        .bind(experience)
+                        .execute(&mut db)
+                        .await
+                        .unwrap();
+                    if map_related {
+                        db.execute("INSERT INTO quest_discoveries VALUES(1,5)")
+                            .await
+                            .unwrap();
+                    }
+                    let discovered = register(&mut db, 5, CurrentState::Unreported).await;
+                    assert!(discovered.history.is_none());
+                    db.execute("UPDATE discovery_progress SET card_owned=0,memo='synthetic weather',report_hold=1 WHERE profile_id=1 AND discovery_id=5; INSERT INTO discovery_reporting_history(profile_id,discovery_id,legacy_merit_credit) VALUES(1,5,1);").await.unwrap();
+                    let confirmed = change(
+                        &mut db,
+                        5,
+                        Operation::CorrectHistory {
+                            status,
+                            remove_legacy_credit: false,
+                            current_state: None,
+                        },
+                    )
+                    .await;
+                    assert!(!confirmed.history.unwrap().legacy_merit_credit);
+                    if remove_current {
+                        let removed = change(&mut db, 5, Operation::RemoveCurrent).await;
+                        assert_eq!(removed.history.unwrap().status, status);
+                    }
+                    let before = read_state(&mut db, 1, 5).await.unwrap();
+                    let quests: Vec<(i64, Option<String>, String)> = sqlx::query_as("SELECT quest_id,memo,updated_at FROM quest_progress WHERE profile_id=1 ORDER BY quest_id").fetch_all(&mut db).await.unwrap();
+                    let operation = || Operation::CorrectHistory {
+                        status: FirstReportStatus::Unknown,
+                        remove_legacy_credit: false,
+                        current_state: None,
+                    };
+                    db.execute("CREATE TRIGGER fail_unknown_history BEFORE UPDATE ON discovery_reporting_history BEGIN SELECT RAISE(ABORT,'synthetic'); END;").await.unwrap();
+                    assert!(update(
+                        &mut db,
+                        UpdateRequest {
+                            expected: before.clone(),
+                            source_map_id: None,
+                            operation: operation()
+                        }
+                    )
+                    .await
+                    .is_err());
+                    assert_eq!(read_state(&mut db, 1, 5).await.unwrap(), before);
+                    db.execute("DROP TRIGGER fail_unknown_history")
+                        .await
+                        .unwrap();
+                    let reset = change(&mut db, 5, operation()).await;
+                    assert_eq!(
+                        reset.history.as_ref().unwrap().status,
+                        FirstReportStatus::Unknown
+                    );
+                    assert!(!reset.history.unwrap().legacy_merit_credit);
+                    assert_eq!(reset.progress, before.progress);
+                    assert_eq!(reset.related_quests, before.related_quests);
+                    assert_eq!(sqlx::query_scalar::<_,i64>("SELECT COUNT(*) FROM discovery_reporting_history WHERE profile_id=1 AND discovery_id=5").fetch_one(&mut db).await.unwrap(), 1);
+                    assert_eq!(sqlx::query_as::<_,(i64,Option<String>,String)>("SELECT quest_id,memo,updated_at FROM quest_progress WHERE profile_id=1 ORDER BY quest_id").fetch_all(&mut db).await.unwrap(), quests);
+                    assert_eq!(merit(&mut db, 1).await, (0, 0));
+                    assert!(read_state(&mut db, 2, 5).await.unwrap().history.is_none());
+                }
+            }
+        }
+    }
+}

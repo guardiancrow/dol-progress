@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DiscoveryStateService, type DiscoveryState, type DiscoveryStateOperation, type FirstReportStatus, type MapCurrentState } from "./stateService";
-import { discoveryStateReader, matchesSummary, currentState, type DiscoveryStateSummary } from "./stateReader";
+import { discoveryStateReader, matchesSummary, matchesSnapshot, currentState, type DiscoveryStateSummary } from "./stateReader";
 import { matchesOfferMethod } from "../quests/offerMethods";
 
 const defaultService = new DiscoveryStateService();
@@ -90,6 +90,15 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
     const token = epoch.current;
     locked.current = true; setBusy(true); setError(null); setNotice(null);
     try {
+      if (d.kind === "history") {
+        const latest = await dependencies.service.get(profileId, d.snapshot.discoveryId);
+        if (epoch.current !== token || profile.current !== profileId) return;
+        if (!matchesSnapshot(d.snapshot, latest) || !latest.active || latest.automaticReporting || latest.categoryName === "レリック" ||
+          d.operation.kind === "correctHistory" && d.operation.status === "unknown" &&
+            (latest.progress?.reported || d.operation.removeLegacyCredit || d.operation.currentState !== null)) {
+          throw {kind:"DiscoveryStateConflict"};
+        }
+      }
       await dependencies.service.update(d.snapshot, d.operation, d.mapId);
       if (epoch.current !== token || profile.current !== profileId) return;
       close();

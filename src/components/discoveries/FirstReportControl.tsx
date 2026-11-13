@@ -17,7 +17,7 @@ export function FirstReportControl({ row, controller: c }: {
   if (state.checked !== null) {
     const checked = state.checked;
     return <input type="checkbox" aria-label={`${row.name}の初回報告`}
-      title={`${state.title}。変更すると過去の報告実績を訂正します。`}
+      title={`${state.title}。確認画面で訂正できます。不明に戻せるのは現在が未報告・未発見の場合です。`}
       data-report-focus={`first-${row.id}`} checked={checked} disabled={disabled}
       onChange={e => {
         e.currentTarget.checked = checked;

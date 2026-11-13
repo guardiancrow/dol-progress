@@ -205,8 +205,9 @@ describe("report hold controls and snapshot workflow",()=>{
     expect(t.service.update).not.toHaveBeenCalled();
   });
 
-  it.each([0,1])("ignores delayed history reads and writes across profile switches and prevents duplicate submission (map=%i)", async mapRelated => {
-    const t = setup(summary({mapRelated}),true);
+  it.each([[0,"confirmed"],[1,"confirmed"],[0,"unknown"],[1,"unknown"]] as const)("ignores delayed history reads and writes across profile switches (map=%i, target=%s)", async (mapRelated,status) => {
+    const initial=summary({mapRelated,firstReportStatus:status === "unknown" ? "not_reported" : "unknown",historyUpdatedAt:"h"});
+    const t = setup(initial,true);
     const user = userEvent.setup();
     let finishRead!: (s:DiscoveryState) => void;
     t.service.get.mockImplementationOnce(() => new Promise(resolve => {finishRead=resolve;}));
@@ -217,31 +218,31 @@ describe("report hold controls and snapshot workflow",()=>{
     await waitFor(() => expect(screen.getByRole("combobox")).toBeEnabled());
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", {name:"テスト地図の報告履歴"}));
-    await user.selectOptions(await screen.findByLabelText("初回報告履歴"), "confirmed");
+    await user.selectOptions(await screen.findByLabelText("初回報告履歴"), status);
     let finishSave!: (s:DiscoveryState) => void;
     t.service.update.mockImplementationOnce(() => new Promise(resolve => {finishSave=resolve;}));
     await user.dblClick(screen.getByRole("button", {name:"記録を保存"}));
     expect(t.service.update).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({profileId:2}),
-      {kind:"correctHistory",status:"confirmed",removeLegacyCredit:false,currentState:null},null);
+      {kind:"correctHistory",status,removeLegacyCredit:false,currentState:null},null);
     await user.click(screen.getByRole("button", {name:"プロフィール切替"}));
-    finishSave(snapshot(summary({mapRelated,firstReportStatus:"confirmed",historyUpdatedAt:"late"}),2));
+    finishSave(snapshot(summary({mapRelated,firstReportStatus:status,historyUpdatedAt:"late"}),2));
     await waitFor(() => expect(screen.getByRole("combobox")).toBeEnabled());
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByText("状態を保存しました。")).not.toBeInTheDocument();
     expect(t.changed).not.toHaveBeenCalled();
   });
 
-  it.each(["DatabaseError","DiscoveryStateConflict"])("reloads a failed non-map history save once and suppresses editing when reload fails: %s", async kind => {
-    const t = setup(summary({mapRelated:0}),true);
+  it.each([["DatabaseError","confirmed"],["DiscoveryStateConflict","confirmed"],["DatabaseError","unknown"],["DiscoveryStateConflict","unknown"]] as const)("reloads a failed non-map save once and suppresses editing when reload fails: %s / %s", async (kind,status) => {
+    const t = setup(summary({mapRelated:0,firstReportStatus:status === "unknown" ? "not_reported" : "unknown",historyUpdatedAt:"h"}),true);
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", {name:"テスト地図の報告履歴"}));
-    await user.selectOptions(await screen.findByLabelText("初回報告履歴"), "confirmed");
+    await user.selectOptions(await screen.findByLabelText("初回報告履歴"), status);
     t.service.update.mockRejectedValueOnce({kind});
     t.reader.list.mockRejectedValueOnce(new Error("synthetic read failure"));
     await user.click(screen.getByRole("button", {name:"記録を保存"}));
     expect(await screen.findByRole("alert")).toHaveTextContent("再取得に失敗");
     await user.click(screen.getByRole("button", {name:"テスト地図の報告履歴"}));
-    expect(t.service.get).toHaveBeenCalledTimes(1);
+    expect(t.service.get).toHaveBeenCalledTimes(2);
     expect(t.reader.list).toHaveBeenCalledTimes(2);
     expect(t.service.update).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -255,5 +256,45 @@ describe("report hold controls and snapshot workflow",()=>{
     expect(t.service.get).not.toHaveBeenCalled();
     expect(t.service.update).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("ignores a late pre-save snapshot after switching profiles", async () => {
+    const initial=summary({mapRelated:0,firstReportStatus:"not_reported",historyUpdatedAt:"h"});
+    const t=setup(initial,true);
+    const user=userEvent.setup();
+    await user.click(await screen.findByRole("button", {name:"テスト地図の報告履歴"}));
+    await user.selectOptions(await screen.findByLabelText("初回報告履歴"), "unknown");
+    let finish!: (s:DiscoveryState) => void;
+    t.service.get.mockImplementationOnce(() => new Promise(resolve=>{finish=resolve;}));
+    await user.dblClick(screen.getByRole("button", {name:"記録を保存"}));
+    expect(t.service.get).toHaveBeenCalledTimes(2);
+    await user.click(screen.getByRole("button", {name:"プロフィール切替"}));
+    finish(snapshot(initial));
+    await waitFor(()=>expect(screen.getByRole("combobox")).toBeEnabled());
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(t.service.update).not.toHaveBeenCalled();
+    expect(t.changed).not.toHaveBeenCalled();
+  });
+
+  it("does not send a write when the pre-save snapshot cannot be read", async () => {
+    const t=setup(summary({mapRelated:0,firstReportStatus:"not_reported",historyUpdatedAt:"h"}),true);
+    const user=userEvent.setup();
+    await user.click(await screen.findByRole("button", {name:"テスト地図の報告履歴"}));
+    await user.selectOptions(await screen.findByLabelText("初回報告履歴"), "unknown");
+    t.service.get.mockRejectedValueOnce(new Error("synthetic read failure"));
+    await user.click(screen.getByRole("button", {name:"記録を保存"}));
+    expect(await screen.findByRole("alert")).toHaveTextContent("保存を確認できませんでした");
+    expect(t.reader.list).toHaveBeenCalledTimes(2);
+    expect(t.service.update).not.toHaveBeenCalled();
+  });
+
+  it("preserves existing legacy credit in an unknown preview without allowing a redundant save", async () => {
+    const t=setup(summary({mapRelated:0,legacyMeritCredit:1,historyUpdatedAt:"h"}),true);
+    const user=userEvent.setup();
+    await user.click(await screen.findByRole("button", {name:"テスト地図の報告履歴"}));
+    await user.selectOptions(await screen.findByLabelText("初回報告履歴"), "unknown");
+    expect(screen.getByRole("status")).toHaveTextContent("算入資格は変わりません");
+    expect(screen.getByRole("button", {name:"記録を保存"})).toBeDisabled();
+    expect(t.service.update).not.toHaveBeenCalled();
   });
 });

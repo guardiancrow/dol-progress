@@ -108,6 +108,18 @@ describe.skipIf(sqlite === null)("current-unreported history groups with actual 
       expect(currentUnreportedHistory({canReport:true,progress:{profileId:1,discoveryId:1,reported:false,cardOwned:false,memo:null,updatedAt:"p"},
         effectiveReported:false,firstReportStatus:s.firstReportStatus,historyPresent:true,unreportedHistoryReady:true})).toBe(status);
       expect(s.mapRelated).toBe(0);
+      f.db.exec("UPDATE discovery_reporting_history SET first_report_status='unknown' WHERE profile_id=1 AND discovery_id=1;");
+      const reset=await f.read();
+      partition(reset,[1,0,0,1]);
+      expect(reset.categories[0]?.unreportedBreakdown).toEqual({notReported:0,confirmed:0,unknown:1});
+      expect(reset.adventureMerit).toEqual({knownMerit:0,reportedCount:0,knownExperienceCount:0,unknownExperienceCount:0});
+      const explicitUnknown=(await f.reader.list(1))[0]!;
+      expect(explicitUnknown).toMatchObject({firstReportStatus:"unknown",legacyMeritCredit:0,mapRelated:0,discovered:1,reported:0});
+      expect(explicitUnknown.historyUpdatedAt).not.toBeNull();
+      // 履歴行なしと明示unknownは、保存行の有無を区別しつつ同じ内訳になる。
+      f.db.exec("DELETE FROM discovery_reporting_history WHERE profile_id=1 AND discovery_id=1;");
+      expect(await f.read()).toEqual(reset);
+      expect((await f.reader.list(1))[0]?.historyUpdatedAt).toBeNull();
     } finally {f.db.close();}
   });
 
