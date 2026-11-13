@@ -86,10 +86,10 @@ describe("Master information in tables", () => {
   it("keeps discovery and each related quest separate even with matching IDs, and reuses focus and close behavior", async () => {
     const row = discovery(1, "発見物の説明", "発見物の備考");
     row.relatedQuests = [
-      { id: 1, title: "関連依頼A", notes: "依頼Aの備考\n次の行" },
-      { id: 2, title: "関連依頼B", notes: "依頼Bの備考" },
-      { id: 3, title: "備考なし", notes: null },
-      { id: 4, title: "空白のみ", notes: " \n　" },
+      { id: 1, title: "関連依頼A", notes: "依頼Aの備考\n次の行", offerCity: null },
+      { id: 2, title: "関連依頼B", notes: "依頼Bの備考", offerCity: null },
+      { id: 3, title: "備考なし", notes: null, offerCity: null },
+      { id: 4, title: "空白のみ", notes: " \n　", offerCity: null },
     ];
     render(discoveryTable([row]));
     const user = userEvent.setup();
@@ -114,6 +114,55 @@ describe("Master information in tables", () => {
     fireEvent.change(screen.getByLabelText("発見物名を検索"), { target: { value: "不存在" } });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+  it.each([
+    ["リスボン", null, "リスボン"],
+    ["リスボン,セビリア,ロンドン", null, "リスボン、セビリア、ロンドン"],
+    ["　リスボン , セビリア\t, ,リスボン,,ロンドン,", "依頼の備考\n次の行", "リスボン、セビリア、ロンドン"],
+    [null, "依頼の備考\n次の行", null],
+    ["", "依頼の備考\n次の行", null],
+    [" \n　\t", "依頼の備考\n次の行", null],
+  ])("shows related quest cities and notes independently (%j / %j)", async (offerCity, notes, expectedCities) => {
+    const row = discovery(1, null, null);
+    row.relatedQuests = [{ id: 1, title: "関連依頼", notes, offerCity }];
+    render(discoveryTable([row]));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /関連依頼の.*を表示/ }));
+    const popup = screen.getByRole("dialog", { name: "関連依頼" });
+    const cities = within(popup).queryByRole("heading", { name: "オファー都市" });
+    if (expectedCities) expect(cities?.nextElementSibling?.textContent).toBe(expectedCities);
+    else expect(cities).not.toBeInTheDocument();
+    const remarks = within(popup).queryByRole("heading", { name: "備考" });
+    if (notes) expect(remarks?.nextElementSibling?.textContent).toBe(notes);
+    else expect(remarks).not.toBeInTheDocument();
+    expect(row.relatedQuests[0]?.offerCity).toBe(offerCity);
+  });
+
+  it.each([null, "", " \n\t　", " ,　,,"])("omits related quest i when both cities and notes are empty (%j)", (offerCity) => {
+    const row = discovery(1, null, null);
+    row.relatedQuests = [{ id: 1, title: "空の関連依頼", notes: " \n　", offerCity }];
+    render(discoveryTable([row]));
+    expect(screen.queryByRole("button", { name: /空の関連依頼の.*を表示/ })).not.toBeInTheDocument();
+  });
+
+  it("opens city-only related quest information with Enter and Space and restores focus", async () => {
+    const row = discovery(1, null, null);
+    row.relatedQuests = [{ id: 1, title: "都市だけの依頼", notes: "　", offerCity: "ロンドン,セビリア" }];
+    render(discoveryTable([row]));
+    const user = userEvent.setup();
+    const button = screen.getByRole("button", { name: "都市だけの依頼のオファー都市を表示" });
+    button.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("dialog")).toHaveTextContent("ロンドン、セビリア");
+    expect(screen.getByRole("button", { name: "閉じる" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(button).toHaveFocus();
+    await user.keyboard(" ");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "閉じる" }));
+    expect(button).toHaveFocus();
+  });
+
   it("only shows quest triggers for nonblank notes and preserves the complete multiline text", async () => {
     const text = `  合成の日本語長文\n${"攻略ABC123".repeat(500)}\nhttps://example.invalid/${"x".repeat(500)}  `;
     const onUpdate = vi.fn();

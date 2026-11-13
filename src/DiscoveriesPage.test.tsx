@@ -1020,6 +1020,6 @@ function discovery(id: number, name: string, overrides: { isActive?: boolean; au
     automaticReporting: overrides.automaticReporting ?? false,
     discovery: { id, gvdbId: id + 1000, categoryId: overrides.category === null ? null : (overrides.category?.id ?? 1), name, rank: overrides.rank ?? null, description: overrides.description ?? null, era: overrides.era ?? null, points: overrides.points ?? null, difficulty: overrides.difficulty ?? null, experience: overrides.experience ?? null, notes: overrides.notes ?? null, sourceUpdatedAt: null, isActive: overrides.isActive ?? true, rawRowJson: "{}", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
     category: overrides.category === null ? null : (overrides.category ?? { id: 1, name: "地理", sortOrder: 10 }),
-    relatedQuests: (overrides.relatedQuests ?? []).map((quest) => ({ ...quest, notes: quest.notes ?? null })),
+    relatedQuests: (overrides.relatedQuests ?? []).map((quest) => ({ ...quest, notes: quest.notes ?? null, offerCity: null })),
   };
 }

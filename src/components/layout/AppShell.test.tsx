@@ -47,7 +47,7 @@ it.each(["0.3.0", "7.8.9-beta.1"])("displays the runtime version %s and preserve
   const user = userEvent.setup();
   render(<Harness />);
   expect(await screen.findByLabelText("アプリケーションのバージョン")).toHaveTextContent(`v${version}`);
-  expect(within(screen.getByRole("contentinfo")).getByText("データはこのPCのSQLiteに保存されます")).toBeInTheDocument();
+  expect(within(screen.getByRole("contentinfo")).getByText("進捗データはローカルに保存されます")).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "通常画面 profiles" })).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "発見物" }));
   expect(screen.getByRole("heading", { name: "通常画面 discoveries" })).toBeInTheDocument();
@@ -62,7 +62,7 @@ it("keeps the footer and screens usable while the version promise is pending", a
   const getVersion = vi.mocked(appApi.getVersion).mockReturnValue(request.promise);
   const user = userEvent.setup();
   render(<Harness />);
-  expect(screen.getByText("データはこのPCのSQLiteに保存されます")).toBeInTheDocument();
+  expect(screen.getByText("進捗データはローカルに保存されます")).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "通常画面 profiles" })).toBeInTheDocument();
   expect(screen.queryByLabelText("アプリケーションのバージョン")).not.toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "概要" }));
@@ -80,7 +80,7 @@ it("omits the version after rejection without displaying an application error or
   await act(async () => request.reject(new Error("synthetic version failure")));
   expect(screen.queryByLabelText("アプリケーションのバージョン")).not.toBeInTheDocument();
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  expect(screen.getByText("データはこのPCのSQLiteに保存されます")).toBeInTheDocument();
+  expect(screen.getByText("進捗データはローカルに保存されます")).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "保存場所" }));
   expect(screen.getByRole("heading", { name: "通常画面 data-root" })).toBeInTheDocument();
   expect(getVersion).toHaveBeenCalledTimes(1);
@@ -95,7 +95,7 @@ it("safely renders with the real API when the browser has no Tauri bridge", asyn
   expect(screen.queryByLabelText("アプリケーションのバージョン")).not.toBeInTheDocument();
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "通常画面 profiles" })).toBeInTheDocument();
-  expect(screen.getByText("データはこのPCのSQLiteに保存されます")).toBeInTheDocument();
+  expect(screen.getByText("進捗データはローカルに保存されます")).toBeInTheDocument();
 });
 
 it.each(["success", "failure"])("reuses one request in StrictMode and handles %s", async (outcome) => {
@@ -107,7 +107,7 @@ it.each(["success", "failure"])("reuses one request in StrictMode and handles %s
     if (outcome === "success") request.resolve("0.3.0");
     else request.reject(new Error("synthetic failure in StrictMode"));
   });
-  expect(screen.getByText("データはこのPCのSQLiteに保存されます")).toBeInTheDocument();
+  expect(screen.getByText("進捗データはローカルに保存されます")).toBeInTheDocument();
   if (outcome === "success") expect(screen.getByLabelText("アプリケーションのバージョン")).toHaveTextContent("v0.3.0");
   else expect(screen.queryByLabelText("アプリケーションのバージョン")).not.toBeInTheDocument();
   expect(getVersion).toHaveBeenCalledTimes(1);

@@ -23,7 +23,7 @@ function snapshot(s:DiscoveryStateSummary,profileId=1):DiscoveryState {
 function row(s:DiscoveryStateSummary,profile:number):DiscoveryRowViewModel {
   const p=snapshot(s,profile).progress;
   return {firstReportStatus:s.firstReportStatus,historyPresent:s.historyUpdatedAt!==null,legacyMeritCredit:!!s.legacyMeritCredit,id:s.id,name:s.id===1?"共有発見物":"通常発見物",description:null,notes:null,category:{id:1,name:"史跡",sortOrder:1},rank:null,era:null,points:1,difficulty:1,experience:100,
-    relatedQuests:[{id:10,title:"地図A",notes:null},{id:11,title:"地図B",notes:null}],mapRelated:!!s.mapRelated,mapNeedsReview:!!s.mapNeedsReview,canReport:s.categoryName!=="レリック",hasCard:s.categoryName!=="レリック",
+    relatedQuests:[{id:10,title:"地図A",notes:null,offerCity:null},{id:11,title:"地図B",notes:null,offerCity:null}],mapRelated:!!s.mapRelated,mapNeedsReview:!!s.mapNeedsReview,canReport:s.categoryName!=="レリック",hasCard:s.categoryName!=="レリック",
     progress:p?{...p,profileId:profile,discoveryId:s.id}:null,automaticReporting:!!s.automaticReporting,effectiveReported:!!s.discovered && !!(s.reported||s.automaticReporting),
     status:!s.discovered?"undiscovered":s.reported||s.automaticReporting?"reported":"unreported",updating:false};
 }
@@ -216,7 +216,7 @@ it("places the map filter last without reordering the others",async()=>{
   await screen.findByText("共有発見物");
   const filters=document.querySelector(".discovery-filters")!;
   expect(Array.from(filters.children).map(e=>e.firstChild?.textContent)).toEqual(["発見物名を検索","分類","状態","未報告の内訳","カード所有","地図"]);
-  expect(within(screen.getByRole("combobox",{name:"地図"})).getAllByRole("option").map(o=>o.getAttribute("value"))).toEqual(["all","related","suppressed","candidate","review"]);
+  expect(within(screen.getByRole("combobox",{name:"地図"})).getAllByRole("option").map(o=>o.getAttribute("value"))).toEqual(["all","related","unrelated","suppressed","candidate","review"]);
 });
 
 it.each([0,1])("exposes contradictory history for mapRelated=%i without writes",async mapRelated=>{

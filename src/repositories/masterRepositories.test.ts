@@ -197,6 +197,7 @@ describe("DiscoveryRepository", () => {
         relatedQuestId: 10,
         relatedQuestTitle: "テスト依頼A",
         relatedQuestNotes: "合成の備考",
+        relatedQuestOfferCity: "リスボン,セビリア,ロンドン",
       },
       {
         ...discoveryRow,
@@ -205,6 +206,7 @@ describe("DiscoveryRepository", () => {
         relatedQuestId: 11,
         relatedQuestTitle: "古代の調査",
         relatedQuestNotes: null,
+        relatedQuestOfferCity: null,
       },
     ]);
     const repository = new DiscoveryRepository(async () => database);
@@ -215,8 +217,8 @@ describe("DiscoveryRepository", () => {
         discovery: expect.objectContaining({ id: 20, name: "発見物" }),
         category: { id: 3, name: "史跡", sortOrder: 4 },
         relatedQuests: [
-          { id: 10, title: "テスト依頼A", notes: "合成の備考" },
-          { id: 11, title: "古代の調査", notes: null },
+          { id: 10, title: "テスト依頼A", notes: "合成の備考", offerCity: "リスボン,セビリア,ロンドン" },
+          { id: 11, title: "古代の調査", notes: null, offerCity: null },
         ],
       },
     ]);
@@ -224,6 +226,8 @@ describe("DiscoveryRepository", () => {
     expect(database.selectCalls[0]?.sql).toContain("LEFT JOIN discovery_categories");
     expect(database.selectCalls[0]?.sql).toContain("LEFT JOIN quest_discoveries");
     expect(database.selectCalls[0]?.sql).toContain("q.is_active = 1");
+    expect(database.selectCalls[0]?.sql).toContain("q.offer_city AS relatedQuestOfferCity");
+    expect(database.executeCalls).toHaveLength(0);
     expect(database.selectCalls[0]?.sql).toContain(
       "ORDER BY d.source_order IS NULL, d.source_order, d.id, q.id",
     );

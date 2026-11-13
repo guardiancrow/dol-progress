@@ -49,7 +49,7 @@ export function AppShell({
         {children}
       </main>
       <footer className="status-bar">
-        <span>データはこのPCのSQLiteに保存されます</span>
+        <span>進捗データはローカルに保存されます</span>
         {version && <AppVersionInfo version={version} />}
       </footer>
     </div>
