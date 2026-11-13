@@ -32,6 +32,63 @@ afterEach(() => {
 });
 
 describe("Discovery UI", () => {
+  it.each(["not_reported", "confirmed"] as const)("registers weather as unconfirmed and explicitly saves %s with list and overview updates", async status => {
+    const category = {id:1,name:"気象・現象",sortOrder:10};
+    const storage = new Map<number,DiscoveryProgress[]>();
+    const repositories = setup([profile(1)], [discovery(1,"合成の気象",{category,experience:100})],storage);
+    const saved = progress(1,1);
+    let current = historySummary(1,"unknown",{categoryName:category.name,experience:100,discovered:0,progressUpdatedAt:null,historyUpdatedAt:null});
+    vi.mocked(discoveryStateReader.list).mockImplementation(async()=>[current]);
+    const stats = categoryStats([category]);
+    stats.discoveries={total:1,discovered:0,undiscovered:1,unreported:0,reported:0,cardOwned:0,cardCapableDiscovered:0,
+      unreportedBreakdown:{notReported:0,confirmed:0,unknown:0}};
+    stats.adventureMerit={knownMerit:0,reportedCount:0,knownExperienceCount:0,unknownExperienceCount:0};
+    repositories.link.discoverWithLinkedQuest.mockImplementation(async(p,id,selectedQuestId)=>{
+      await repositories.progress.markDiscovered(p,id);
+      current={...current,discovered:1,progressUpdatedAt:saved.updatedAt};
+      return {discoveryCreated:true,questCompleted:false,questAlreadyCompleted:false,selectedQuestId};
+    });
+    vi.spyOn(DiscoveryStateService.prototype,"get").mockImplementation(async()=>({
+      profileId:1,discoveryId:1,active:true,categoryName:category.name,masterUpdatedAt:current.masterUpdatedAt,automaticReporting:false,
+      progress:{reported:false,reportHold:false,cardOwned:true,memo:null,updatedAt:saved.updatedAt},history:null,relatedQuests:[],
+    }));
+    const update = vi.spyOn(DiscoveryStateService.prototype,"update").mockImplementation(async snapshot=>{
+      current={...current,firstReportStatus:status,historyUpdatedAt:"saved"};
+      const breakdown={notReported:status === "not_reported"?1:0,confirmed:status === "confirmed"?1:0,unknown:0};
+      stats.discoveries={...stats.discoveries,discovered:1,undiscovered:0,unreported:1,cardOwned:1,cardCapableDiscovered:1,unreportedBreakdown:breakdown};
+      stats.categories[0]={...stats.categories[0]!,total:1,discovered:1,undiscovered:0,unreported:1,cardOwned:1,unreportedBreakdown:breakdown};
+      if(status === "confirmed") stats.adventureMerit={knownMerit:100,reportedCount:1,knownExperienceCount:1,unknownExperienceCount:0};
+      return {...snapshot,history:{status,legacyMeritCredit:false,updatedAt:"saved"}};
+    });
+    const user = await openDrilldown(repositories,stats);
+    await user.click(screen.getByRole("button", {name:"発見物"}));
+    await user.click(await screen.findByRole("checkbox", {name:"合成の気象の発見状態"}));
+    await waitFor(()=>expect(screen.getByRole("checkbox", {name:"合成の気象の発見状態"})).toBeChecked());
+    await user.selectOptions(screen.getByLabelText("地図"), "unrelated");
+    await user.selectOptions(screen.getByLabelText("未報告の内訳"), "unknown");
+    const button = await screen.findByRole("button", {name:"合成の気象の初回報告を確認"});
+    expect(button).toHaveTextContent("不明");
+    expect(current.historyUpdatedAt).toBeNull();
+    expect(update).not.toHaveBeenCalled();
+    await user.click(button);
+    expect(await screen.findByLabelText("初回報告履歴")).toHaveValue("");
+    await user.selectOptions(screen.getByLabelText("初回報告履歴"), status);
+    await user.click(screen.getByRole("button", {name:"記録を保存"}));
+    await screen.findByText("条件に一致する発見物がありません");
+    await user.selectOptions(screen.getByLabelText("未報告の内訳"), status);
+    expect(await screen.findByRole("checkbox", {name:"合成の気象の初回報告"})).toHaveProperty("checked",status === "confirmed");
+    expect(screen.getByRole("checkbox", {name:"合成の気象の報告状態"})).not.toBeChecked();
+    expect(update).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({history:null,relatedQuests:[]}),
+      {kind:"correctHistory",status,removeLegacyCredit:false,currentState:null},null);
+    expect(repositories.progress.setReported).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", {name:"概要"}));
+    const total=(await screen.findByRole("heading", {name:"現在未報告"})).closest("article")!;
+    expect(within(total).getByText("1件",{selector:".overview-value"})).toBeInTheDocument();
+    expect(total).toHaveTextContent(status === "not_reported" ? "初回未報告1件再報告待ち0件" : "初回未報告0件再報告待ち1件");
+    expect(screen.getByRole("heading", {name:"冒険勲功値"}).closest("article")).toHaveTextContent(`算入対象発見物 ${status === "confirmed" ? 1 : 0}件`);
+    expect(screen.getByRole("heading", {name:"気象・現象"}).closest("article")).toHaveTextContent(status === "not_reported" ? "初回未報告1件再報告待ち0件" : "初回未報告0件再報告待ち1件");
+  });
+
   it("waits for batch history, distinguishes absent history from failure and retries without writing progress", async () => {
     const repositories = setup([profile(1)], [discovery(1,"非地図の発見物")], new Map([[1,[progress(1,1)]]]));
     let rejectRead!: (error: Error) => void;
@@ -153,10 +210,10 @@ describe("Discovery UI", () => {
     const user=await openDrilldown(repositories,stats);
     expect(screen.getByRole("heading",{name:"現在未報告"}).closest("article")).toHaveTextContent("初回未報告0件再報告待ち1件");
     await user.click(screen.getByRole("button",{name:"発見物"}));
-    await user.click(await screen.findByRole("checkbox",{name:"履歴対象の地図の初回報告"}));
+    await user.click(await screen.findByRole("checkbox",{name:"履歴対象の初回報告"}));
     await screen.findByRole("dialog");
     await user.click(screen.getByRole("button",{name:"記録を保存"}));
-    await waitFor(()=>expect(screen.getByRole("checkbox",{name:"履歴対象の地図の初回報告"})).not.toBeChecked());
+    await waitFor(()=>expect(screen.getByRole("checkbox",{name:"履歴対象の初回報告"})).not.toBeChecked());
     expect(screen.getByRole("checkbox",{name:"履歴対象のカード所有状態"})).toBeChecked();
     expect(update).toHaveBeenCalledExactlyOnceWith(snapshot,{kind:"correctHistory",status:"not_reported",removeLegacyCredit:false,currentState:null},null);
     await user.click(screen.getByRole("button",{name:"概要"}));

@@ -82,6 +82,35 @@ function partition(stats: ProgressStats, expected: [number, number, number, numb
 const baselineMerit = { knownMerit: 4800, reportedCount: 8, knownExperienceCount: 7, unknownExperienceCount: 1 };
 
 describe.skipIf(sqlite === null)("current-unreported history groups with actual repository SQL", () => {
+  it.each([
+    ["not_reported",100,0], ["confirmed",100,0], ["not_reported",null,0], ["confirmed",null,0],
+    ["not_reported",100,1], ["confirmed",100,1], ["not_reported",null,1], ["confirmed",null,1],
+  ] as const)("reflects persisted non-map weather history %s, experience %s and legacy %i in counts and filters", async (status,experience,legacy) => {
+    const f=fixture(false);
+    try {
+      f.db.exec(`INSERT INTO profiles(id,name) VALUES(1,'synthetic');
+        INSERT INTO discovery_categories(id,name) VALUES(1,'気象・現象');
+        INSERT INTO discoveries(id,gvdb_id,name,category_id,experience,raw_row_json) VALUES(1,1,'合成の気象',1,${experience ?? "NULL"},'{}');
+        INSERT INTO discovery_progress(profile_id,discovery_id,reported) VALUES(1,1,0);`);
+      if(legacy) f.db.exec("INSERT INTO discovery_reporting_history(profile_id,discovery_id,legacy_merit_credit) VALUES(1,1,1);");
+      partition(await f.read(),[1,0,0,1]);
+      const before=await f.reader.list(1);
+      expect(before[0]).toMatchObject({firstReportStatus:"unknown",mapRelated:0,discovered:1,reported:0});
+      f.db.exec(`INSERT INTO discovery_reporting_history(profile_id,discovery_id,first_report_status,legacy_merit_credit)
+        VALUES(1,1,'${status}',0) ON CONFLICT(profile_id,discovery_id) DO UPDATE SET first_report_status=excluded.first_report_status,legacy_merit_credit=0;`);
+      const stats=await f.read();
+      partition(stats,[1,status === "not_reported"?1:0,status === "confirmed"?1:0,0]);
+      expect(stats.categories[0]).toMatchObject({categoryName:"気象・現象",unreported:1,unreportedBreakdown:stats.discoveries.unreportedBreakdown});
+      expect(stats.adventureMerit).toEqual({knownMerit:status === "confirmed" ? experience ?? 0 : 0,
+        reportedCount:status === "confirmed"?1:0,knownExperienceCount:status === "confirmed" && experience !== null?1:0,
+        unknownExperienceCount:status === "confirmed" && experience === null?1:0});
+      const s=(await f.reader.list(1))[0]!;
+      expect(currentUnreportedHistory({canReport:true,progress:{profileId:1,discoveryId:1,reported:false,cardOwned:false,memo:null,updatedAt:"p"},
+        effectiveReported:false,firstReportStatus:s.firstReportStatus,historyPresent:true,unreportedHistoryReady:true})).toBe(status);
+      expect(s.mapRelated).toBe(0);
+    } finally {f.db.close();}
+  });
+
   it("matches list filters to C7/C8 totals for each profile and preserves all saved progress", async () => {
     const f = fixture();
     try {

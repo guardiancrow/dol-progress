@@ -727,3 +727,166 @@ async fn combined_unreported_history_correction_is_atomic_and_preserves_card_mem
     );
     assert!(read_state(&mut db, 2, 1).await.unwrap().history.is_none());
 }
+
+#[tokio::test]
+async fn non_map_weather_history_requires_explicit_confirmation_and_preserves_current_progress() {
+    for experience in [Some(125_i64), None] {
+        for status in [FirstReportStatus::NotReported, FirstReportStatus::Confirmed] {
+            for legacy in [false, true] {
+                let mut db = fixture().await;
+                db.execute("INSERT INTO discovery_categories(id,name) VALUES(3,'気象・現象'); UPDATE discoveries SET category_id=3 WHERE id=5;").await.unwrap();
+                sqlx::query("UPDATE discoveries SET experience=? WHERE id=5")
+                    .bind(experience)
+                    .execute(&mut db)
+                    .await
+                    .unwrap();
+                let registered = register(&mut db, 5, CurrentState::Unreported).await;
+                assert!(registered.related_quests.is_empty());
+                assert!(registered.history.is_none());
+                assert!(!registered.progress.unwrap().reported);
+                db.execute("UPDATE discovery_progress SET card_owned=0,memo='synthetic weather',report_hold=1 WHERE profile_id=1 AND discovery_id=5").await.unwrap();
+                if legacy {
+                    db.execute("INSERT INTO discovery_reporting_history(profile_id,discovery_id,legacy_merit_credit) VALUES(1,5,1)").await.unwrap();
+                }
+                let before = read_state(&mut db, 1, 5).await.unwrap();
+                let corrected = change(
+                    &mut db,
+                    5,
+                    Operation::CorrectHistory {
+                        status,
+                        remove_legacy_credit: false,
+                        current_state: None,
+                    },
+                )
+                .await;
+                assert_eq!(corrected.progress, before.progress);
+                assert_eq!(corrected.history.as_ref().unwrap().status, status);
+                assert!(!corrected.history.as_ref().unwrap().legacy_merit_credit);
+                let expected_merit = if status == FirstReportStatus::Confirmed {
+                    (experience.unwrap_or(0), 1)
+                } else {
+                    (0, 0)
+                };
+                assert_eq!(merit(&mut db, 1).await, expected_merit);
+                assert_eq!(
+                    sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM quest_progress")
+                        .fetch_one(&mut db)
+                        .await
+                        .unwrap(),
+                    0
+                );
+                let other_profile = read_state(&mut db, 2, 5).await.unwrap();
+                assert!(other_profile.history.is_none());
+                assert!(other_profile.progress.is_none());
+                // 古いsnapshotを再送しても、確定した履歴を上書きしない。
+                assert_eq!(
+                    update(
+                        &mut db,
+                        UpdateRequest {
+                            expected: before,
+                            source_map_id: None,
+                            operation: Operation::CorrectHistory {
+                                status: FirstReportStatus::Unknown,
+                                remove_legacy_credit: false,
+                                current_state: None
+                            },
+                        }
+                    )
+                    .await
+                    .unwrap_err()
+                    .kind,
+                    "DiscoveryStateConflict"
+                );
+                assert_eq!(read_state(&mut db, 1, 5).await.unwrap(), corrected);
+                if status == FirstReportStatus::Confirmed {
+                    let reported = change(&mut db, 5, Operation::Report).await;
+                    let rediscovered =
+                        change(&mut db, 5, Operation::Rediscover { hold: false }).await;
+                    assert_eq!(rediscovered.history, reported.history);
+                    change(&mut db, 5, Operation::RemoveCurrent).await;
+                    let registered = register(&mut db, 5, CurrentState::Unreported).await;
+                    assert_eq!(registered.history, reported.history);
+                    assert_eq!(merit(&mut db, 1).await, expected_merit);
+                }
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn non_map_history_conflicts_require_atomic_current_correction() {
+    for target in [CurrentState::Unreported, CurrentState::Undiscovered] {
+        let mut db = fixture().await;
+        register(&mut db, 5, CurrentState::Reported).await;
+        db.execute("UPDATE discovery_progress SET memo='synthetic keep' WHERE profile_id=1 AND discovery_id=5").await.unwrap();
+        let before = read_state(&mut db, 1, 5).await.unwrap();
+        assert!(before.related_quests.is_empty());
+        assert!(update(
+            &mut db,
+            UpdateRequest {
+                expected: before.clone(),
+                source_map_id: None,
+                operation: Operation::CorrectHistory {
+                    status: FirstReportStatus::NotReported,
+                    remove_legacy_credit: false,
+                    current_state: None
+                },
+            }
+        )
+        .await
+        .is_err());
+        assert_eq!(read_state(&mut db, 1, 5).await.unwrap(), before);
+        db.execute("CREATE TRIGGER fail_weather_history BEFORE UPDATE ON discovery_reporting_history BEGIN SELECT RAISE(ABORT,'synthetic'); END;").await.unwrap();
+        assert!(update(
+            &mut db,
+            UpdateRequest {
+                expected: before.clone(),
+                source_map_id: None,
+                operation: Operation::CorrectHistory {
+                    status: FirstReportStatus::NotReported,
+                    remove_legacy_credit: false,
+                    current_state: Some(target)
+                },
+            }
+        )
+        .await
+        .is_err());
+        assert_eq!(read_state(&mut db, 1, 5).await.unwrap(), before);
+        db.execute("DROP TRIGGER fail_weather_history")
+            .await
+            .unwrap();
+        let corrected = change(
+            &mut db,
+            5,
+            Operation::CorrectHistory {
+                status: FirstReportStatus::NotReported,
+                remove_legacy_credit: false,
+                current_state: Some(target),
+            },
+        )
+        .await;
+        if matches!(target, CurrentState::Unreported) {
+            let progress = corrected.progress.unwrap();
+            assert!(!progress.reported);
+            assert_eq!(
+                progress.card_owned,
+                before.progress.as_ref().unwrap().card_owned
+            );
+            assert_eq!(progress.memo, before.progress.unwrap().memo);
+        } else {
+            assert!(corrected.progress.is_none());
+        }
+        assert_eq!(
+            corrected.history.unwrap().status,
+            FirstReportStatus::NotReported
+        );
+        assert_eq!(merit(&mut db, 1).await, (0, 0));
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM quest_progress")
+                .fetch_one(&mut db)
+                .await
+                .unwrap(),
+            0
+        );
+    }
+}

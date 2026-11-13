@@ -81,7 +81,12 @@ function HistoryForm({ controller: c }: { controller: ReportHoldController }) {
         <option value="" disabled>選択してください</option>
         <option value="confirmed">初回報告済み</option><option value="not_reported">初回報告前</option>
       </select></label>}
-    {status === "not_reported" && <p>過去の報告実績を取り消します。再発見後も初回報告済みなら、チェックは外さず現在状態だけ未報告にしてください。</p>}
+    {status === "not_reported" && <>
+      <p>{s.history?.status === "confirmed"
+        ? "過去の報告実績を取り消す訂正です。再発見後も初回報告済みなら、チェックは外さず現在状態だけ未報告にしてください。"
+        : "初回報告をまだ行っていないことを記録します。"}</p>
+      {s.history?.legacyMeritCredit && <p>この訂正で、旧データから引き継いだ冒険勲功値の算入資格を解除します。</p>}
+    </>}
     {needsCurrentCorrection && <label>現在進捗の同時訂正<select aria-label="現在進捗の同時訂正" value={current} disabled={c.busy} onChange={e => setCurrent(e.target.value as typeof current)}>
       <option value="keep">訂正方法を選択してください</option><option value="unreported">未報告へ訂正</option>
       <option value="undiscovered">未発見へ訂正（現在進捗を削除）</option>

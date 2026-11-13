@@ -18,7 +18,7 @@ function snapshot(s: DiscoveryStateSummary, profileId = 1): DiscoveryState {
   return {profileId,discoveryId:s.id,progress:s.discovered ? {reported:!!s.reported,reportHold:!!s.reportHold,cardOwned:true,memo:"keep",updatedAt:s.progressUpdatedAt!} : null,
     history:s.historyUpdatedAt ? {status:s.firstReportStatus,legacyMeritCredit:!!s.legacyMeritCredit,updatedAt:s.historyUpdatedAt}:null,
     active:!!s.active,categoryName:s.categoryName,masterUpdatedAt:"m",automaticReporting:!!s.automaticReporting,
-    relatedQuests:[{id:10,offerMethod:"地理学",active:true,updatedAt:"q",discoveryCount:1}]};
+    relatedQuests:s.mapRelated?[{id:10,offerMethod:"地理学",active:true,updatedAt:"q",discoveryCount:1}]:[]};
 }
 function setup(initial: DiscoveryStateSummary, mode = false) {
   let rows = [initial];
@@ -108,12 +108,14 @@ describe("report hold controls and snapshot workflow",()=>{
     expect(t.service.update).not.toHaveBeenCalled();
   });
 
-  it("previews legacy qualification loss in the same simple history confirmation",async()=>{
-    const user=userEvent.setup();const t=setup(summary({legacyMeritCredit:1,historyUpdatedAt:"h"}),true);
+  it.each([0,1])("previews legacy qualification loss in the same history confirmation (map=%i)",async mapRelated=>{
+    const user=userEvent.setup();const t=setup(summary({mapRelated,legacyMeritCredit:1,historyUpdatedAt:"h"}),true);
     await user.click(await screen.findByRole("button",{name:"テスト地図の報告履歴"}));
     expect(await screen.findByLabelText("初回報告履歴")).toHaveValue("");
     expect(screen.getByRole("button",{name:"記録を保存"})).toBeDisabled();
     await user.selectOptions(screen.getByLabelText("初回報告履歴"),"not_reported");
+    expect(screen.getByRole("dialog")).toHaveTextContent("旧データから引き継いだ冒険勲功値の算入資格を解除");
+    expect(screen.getByRole("dialog")).not.toHaveTextContent("過去の報告実績を取り消す");
     expect(screen.getByRole("status")).toHaveTextContent("−100");
     await user.click(screen.getByRole("button",{name:"記録を保存"}));
     await waitFor(()=>expect(t.service.update).toHaveBeenCalledWith(expect.anything(),{kind:"correctHistory",status:"not_reported",removeLegacyCredit:false,currentState:null},null));
@@ -181,8 +183,8 @@ describe("report hold controls and snapshot workflow",()=>{
     expect(screen.queryByText("状態を保存しました。")).not.toBeInTheDocument();
   });
 
-  it("requires explicit combined correction and previews the current-progress deletion",async()=>{
-    const user=userEvent.setup();const t=setup(summary({reported:1,firstReportStatus:"confirmed",historyUpdatedAt:"h"}),true);
+  it.each([0,1])("requires combined correction and previews deletion (map=%i)",async mapRelated=>{
+    const user=userEvent.setup();const t=setup(summary({mapRelated,reported:1,firstReportStatus:"confirmed",historyUpdatedAt:"h"}),true);
     await user.click(await screen.findByRole("button",{name:"テスト地図の報告履歴"}));
     await user.selectOptions(await screen.findByLabelText("初回報告履歴"),"not_reported");
     expect(screen.getByRole("button",{name:"記録を保存"})).toBeDisabled();
@@ -191,5 +193,67 @@ describe("report hold controls and snapshot workflow",()=>{
     expect(await screen.findByRole("dialog")).toHaveTextContent("現在進捗・カード所有・発見物メモ・維持設定を削除");
     await user.click(screen.getByRole("button",{name:"記録を保存"}));
     await waitFor(()=>expect(t.service.update).toHaveBeenCalledWith(expect.anything(),{kind:"correctHistory",status:"not_reported",removeLegacyCredit:false,currentState:"undiscovered"},null));
+  });
+
+  it.each(["not_reported","confirmed"] as const)("previews unknown experience when selecting %s for a non-map discovery", async status => {
+    const t = setup(summary({mapRelated:0,experience:null,legacyMeritCredit:status === "not_reported" ? 1 : 0,historyUpdatedAt:"h"}),true);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", {name:"テスト地図の報告履歴"}));
+    await user.selectOptions(await screen.findByLabelText("初回報告履歴"), status);
+    expect(screen.getByRole("status")).toHaveTextContent(`経験値不明の算入対象が1件${status === "confirmed" ? "増え" : "減り"}ます`);
+    expect(screen.getByRole("status")).toHaveTextContent("判明分の合計は変わりません");
+    expect(t.service.update).not.toHaveBeenCalled();
+  });
+
+  it.each([0,1])("ignores delayed history reads and writes across profile switches and prevents duplicate submission (map=%i)", async mapRelated => {
+    const t = setup(summary({mapRelated}),true);
+    const user = userEvent.setup();
+    let finishRead!: (s:DiscoveryState) => void;
+    t.service.get.mockImplementationOnce(() => new Promise(resolve => {finishRead=resolve;}));
+    await user.dblClick(await screen.findByRole("button", {name:"テスト地図の報告履歴"}));
+    expect(t.service.get).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", {name:"プロフィール切替"}));
+    finishRead(snapshot(summary({mapRelated}),1));
+    await waitFor(() => expect(screen.getByRole("combobox")).toBeEnabled());
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name:"テスト地図の報告履歴"}));
+    await user.selectOptions(await screen.findByLabelText("初回報告履歴"), "confirmed");
+    let finishSave!: (s:DiscoveryState) => void;
+    t.service.update.mockImplementationOnce(() => new Promise(resolve => {finishSave=resolve;}));
+    await user.dblClick(screen.getByRole("button", {name:"記録を保存"}));
+    expect(t.service.update).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({profileId:2}),
+      {kind:"correctHistory",status:"confirmed",removeLegacyCredit:false,currentState:null},null);
+    await user.click(screen.getByRole("button", {name:"プロフィール切替"}));
+    finishSave(snapshot(summary({mapRelated,firstReportStatus:"confirmed",historyUpdatedAt:"late"}),2));
+    await waitFor(() => expect(screen.getByRole("combobox")).toBeEnabled());
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByText("状態を保存しました。")).not.toBeInTheDocument();
+    expect(t.changed).not.toHaveBeenCalled();
+  });
+
+  it.each(["DatabaseError","DiscoveryStateConflict"])("reloads a failed non-map history save once and suppresses editing when reload fails: %s", async kind => {
+    const t = setup(summary({mapRelated:0}),true);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", {name:"テスト地図の報告履歴"}));
+    await user.selectOptions(await screen.findByLabelText("初回報告履歴"), "confirmed");
+    t.service.update.mockRejectedValueOnce({kind});
+    t.reader.list.mockRejectedValueOnce(new Error("synthetic read failure"));
+    await user.click(screen.getByRole("button", {name:"記録を保存"}));
+    expect(await screen.findByRole("alert")).toHaveTextContent("再取得に失敗");
+    await user.click(screen.getByRole("button", {name:"テスト地図の報告履歴"}));
+    expect(t.service.get).toHaveBeenCalledTimes(1);
+    expect(t.reader.list).toHaveBeenCalledTimes(2);
+    expect(t.service.update).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    summary({mapRelated:0,active:0}), summary({mapRelated:0,automaticReporting:1}), summary({mapRelated:0,categoryName:"レリック"}),
+  ])("rejects protected summary history even when called without a table control: %j", async initial => {
+    const t = setup(initial,true);
+    await userEvent.click(await screen.findByRole("button", {name:"テスト地図の報告履歴"}));
+    expect(t.service.get).not.toHaveBeenCalled();
+    expect(t.service.update).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
