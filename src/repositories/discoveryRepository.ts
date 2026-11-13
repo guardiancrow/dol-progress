@@ -83,7 +83,8 @@ export class DiscoveryRepository {
                c.sort_order AS categorySortOrder,
                q.id AS relatedQuestId,
                q.title AS relatedQuestTitle,
-               q.notes AS relatedQuestNotes
+               q.notes AS relatedQuestNotes,
+               q.offer_city AS relatedQuestOfferCity
         FROM discoveries d
         LEFT JOIN discovery_categories c ON c.id = d.category_id
         LEFT JOIN quest_discoveries qd ON qd.discovery_id = d.id
@@ -114,6 +115,7 @@ export class DiscoveryRepository {
             id: row.relatedQuestId,
             title: row.relatedQuestTitle,
             notes: row.relatedQuestNotes,
+            offerCity: row.relatedQuestOfferCity,
           });
         }
       }
@@ -154,4 +156,5 @@ interface DiscoveryWithRelationsRow extends DiscoveryRow {
   relatedQuestId: number | null;
   relatedQuestTitle: string | null;
   relatedQuestNotes: string | null;
+  relatedQuestOfferCity: string | null;
 }

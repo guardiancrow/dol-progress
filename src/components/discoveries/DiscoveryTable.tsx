@@ -22,6 +22,7 @@ import {
 
 import type { DiscoveryInitialFilter, DiscoveryRowViewModel } from "../../discoveries/types";
 import { MasterInfoButton, MasterInfoProvider } from "../MasterInfoPopover";
+import { formatOfferCities } from "../../domain/offerCities";
 
 const featureSet = tableFeatures({
   columnFilteringFeature,
@@ -260,9 +261,16 @@ export function DiscoveryTable({
     <MasterInfoProvider
       items={table.getRowModel().rows.flatMap(({ original }) => [
         { id: original.id, title: original.name, description: original.description, notes: original.notes },
-        ...original.relatedQuests.map((quest) => ({
-          id: `quest:${original.id}:${quest.id}`, title: quest.title, notes: quest.notes, hint: "備考を表示",
-        })),
+        ...original.relatedQuests.map((quest) => {
+          const cities = formatOfferCities(quest.offerCity === null ? [] : [quest.offerCity]);
+          return {
+            id: `quest:${original.id}:${quest.id}`, title: quest.title, notes: quest.notes,
+            hint: cities
+              ? quest.notes?.trim() ? "オファー都市・備考を表示" : "オファー都市を表示"
+              : "備考を表示",
+            details: cities ? [{ label: "オファー都市", value: cities }] : [],
+          };
+        }),
       ])}
       resetKey={JSON.stringify([paginationResetKey, columnFilters, sorting, pagination])}
       hint="説明・備考を表示"
@@ -274,7 +282,7 @@ export function DiscoveryTable({
         <label>状態<select value={String(table.getColumn("status")?.getFilterValue() ?? "all")} onChange={(event) => setFilter("status", event.target.value === "all" ? undefined : event.target.value)}><option value="all">すべて</option><option value="undiscovered">未発見</option><option value="unreported">発見済み・未報告</option><option value="reported">報告済み</option></select></label>
         <label title="発見済み・未報告の発見物を初回報告履歴で絞り込みます。地図以外も対象です。">未報告の内訳<select value={String(table.getColumn("unreportedBreakdown")?.getFilterValue() ?? "all")} onChange={event => setFilter("unreportedBreakdown", event.target.value === "all" ? undefined : event.target.value)}><option value="all">すべて</option><option value="not_reported">初回未報告</option><option value="confirmed">再報告待ち</option><option value="unknown">履歴未確定</option></select></label>
         <label>カード所有<select value={cardOwnedFilterValue(table.getColumn("cardOwned")?.getFilterValue())} onChange={(event) => setFilter("cardOwned", event.target.value === "all" ? undefined : event.target.value === "owned")}><option value="all">すべて</option><option value="owned">所有</option><option value="not-owned">未所有（発見済みのみ）</option></select></label>
-        <label title="地図によって発見する発見物。判定保留は、一つの地図に複数発見物が関連する場合、または報告対象外の場合です。初回報告履歴の不明とは別の判定です。">地図<select value={String(table.getColumn("mapReacquisition")?.getFilterValue() ?? "all")} onChange={e=>setFilter("mapReacquisition",e.target.value === "all" ? undefined : e.target.value)}><option value="all">すべて</option><option value="related">地図のみ</option><option value="suppressed">地図・未報告（再入手抑止）</option><option value="candidate">地図・再入手候補</option><option value="review">地図・判定保留</option></select></label>
+        <label title="地図のみは、対象の7学問分類に属する有効な地図に関連する発見物です。地図以外は、その関連がない発見物です。すべてのマスター関係で地図と無関係であることを保証するものではありません。判定保留は、一つの地図に複数発見物が関連する場合、または報告対象外の場合です。初回報告履歴の不明とは別の判定です。">地図<select value={String(table.getColumn("mapReacquisition")?.getFilterValue() ?? "all")} onChange={e=>setFilter("mapReacquisition",e.target.value === "all" ? undefined : e.target.value)}><option value="all">すべて</option><option value="related">地図のみ</option><option value="unrelated">地図以外</option><option value="suppressed">地図・未報告（再入手抑止）</option><option value="candidate">地図・再入手候補</option><option value="review">地図・判定保留</option></select></label>
       </div>
       {breakdownUnavailable ? <div className="state-panel" role="status">{historyReadState === "loading" ? "未報告の内訳を読み込んでいます…" : "未報告の内訳を確認できません。地図・報告履歴を再読み込みしてください。"}</div> : <>
       <div className="quest-summary" aria-live="polite"><span>{rows.length.toLocaleString("ja-JP")}件中 {filteredRows.length.toLocaleString("ja-JP")}件表示</span><span>発見済み {discoveredCount.toLocaleString("ja-JP")}件</span><span>未報告 {unreportedCount.toLocaleString("ja-JP")}件</span><span>カード所有 {cardOwnedCount.toLocaleString("ja-JP")}件</span></div>

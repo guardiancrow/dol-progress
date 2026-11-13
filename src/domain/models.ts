@@ -94,6 +94,7 @@ export interface DiscoveryRelatedQuestSummary {
   id: number;
   title: string;
   notes: string | null;
+  offerCity: string | null;
 }
 
 export interface DiscoveryWithRelations {
