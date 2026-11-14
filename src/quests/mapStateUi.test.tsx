@@ -105,7 +105,7 @@ it("combines acquisition with city and discovery filters and refreshes after pro
   await user.selectOptions(screen.getByLabelText("オファー都市"),"ロンドン");
   await user.selectOptions(screen.getByLabelText("発見物"),"has-any");
   await user.selectOptions(screen.getByLabelText("地図の入手"),"all");
-  expect(screen.getByLabelText("オファー都市")).toHaveValue("ロンドン");
+  expect(screen.getByLabelText("オファー都市")).toHaveValue("city:ロンドン");
   expect(screen.getByLabelText("発見物")).toHaveValue("has-any");
   expect(titles()).toEqual(["地図A","地図C","複数関連","通常"]);
   await user.selectOptions(screen.getByLabelText("地図の入手"),"suppressed");
