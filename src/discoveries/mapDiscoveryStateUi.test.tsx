@@ -42,6 +42,47 @@ function setup(initial=summary()) {
 }
 const select=()=>screen.getByRole("combobox",{name:"共有発見物の地図の状態"});
 
+it("aligns the twelve visible headers and cells with the action columns beside the discovery name",async()=>{
+  setup();
+  await screen.findByRole("combobox",{name:"共有発見物の地図の状態"});
+  const ids=["status","name","reported","firstReport","cardOwned","category","rank","era","points","difficulty","experience","relatedQuests"];
+  const headers=screen.getAllByRole("columnheader");
+  expect(headers.map(header=>header.getAttribute("data-column"))).toEqual(ids);
+  for(const [index,label] of ["発見状態","発見物名","報告状態","初回報告","カード所有","分類","ランク","時代","ポイント","難易度","経験","関連クエスト"].entries()) {
+    expect(headers[index]).toHaveTextContent(label);
+  }
+  for(const dataRow of screen.getAllByRole("row").slice(1)) {
+    expect(within(dataRow).getAllByRole("cell").map(cell=>cell.getAttribute("data-column"))).toEqual(ids);
+  }
+  const cells=within(screen.getAllByRole("row")[1]!).getAllByRole("cell");
+  expect(within(cells[0]!).getByRole("checkbox",{name:"共有発見物の発見状態"})).toBeChecked();
+  expect(cells[1]).toHaveTextContent("共有発見物");
+  expect(within(cells[2]!).getByRole("combobox",{name:"共有発見物の地図の状態"})).toHaveValue("unreported");
+  expect(within(cells[3]!).getByRole("button",{name:"共有発見物の初回報告を確認"})).toHaveTextContent("不明");
+  expect(within(cells[4]!).getByRole("checkbox",{name:"共有発見物のカード所有状態"})).toBeChecked();
+  expect(cells[5]).toHaveTextContent("史跡");
+  expect(cells[11]).toHaveTextContent("地図A地図B");
+  expect(screen.queryByRole("columnheader",{name:"未報告の内訳"})).not.toBeInTheDocument();
+  expect(screen.queryByRole("columnheader",{name:"地図"})).not.toBeInTheDocument();
+});
+
+it.each([true,false])("tabs through discovery, report, history and card in visual order (map=%s)",async map=>{
+  const t=setup(summary({mapRelated:map?1:0,firstReportStatus:map?"not_reported":"unknown",historyUpdatedAt:map?"h":null}));
+  const user=userEvent.setup();
+  const report=await screen.findByRole(map?"combobox":"checkbox",{name:map?"共有発見物の地図の状態":"共有発見物の報告状態"});
+  const history=screen.getByRole(map?"checkbox":"button",{name:map?"共有発見物の初回報告":"共有発見物の初回報告を確認"});
+  await waitFor(()=>expect(history).toBeEnabled());
+  screen.getByRole("checkbox",{name:"共有発見物の発見状態"}).focus();
+  for(const control of [report,history,screen.getByRole("checkbox",{name:"共有発見物のカード所有状態"})]) {
+    await user.tab();
+    expect(control).toHaveFocus();
+  }
+  await user.tab({shift:true});
+  expect(history).toHaveFocus();
+  expect(t.dependencies.service.update).not.toHaveBeenCalled();
+  for(const handler of Object.values(t.handlers)) expect(handler).not.toHaveBeenCalled();
+});
+
 it.each([
   [summary({discovered:0,progressUpdatedAt:null}),"undiscovered"],
   [summary(),"unreported"], [summary({reported:1}),"reported"], [summary({reportHold:1}),"unreported"],

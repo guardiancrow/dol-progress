@@ -118,7 +118,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .quest-table.quest-master-table th[data-column="offerMethod"], .quest-table.quest-master-table th[data-column="offerCity"] { width: 10rem; }
 .quest-table.quest-master-table th[data-column="requiredSkills"] { width: 13rem; }
 .quest-table.quest-master-table th[data-column="discoveries"] { width: 16rem; }
-.quest-table.discovery-table th[data-column="status"] { width: 9rem; }
+.quest-table.discovery-table th[data-column="status"] { width: 9rem; text-align: center; }
 .quest-table.discovery-table th[data-column="name"] { width: 15rem; }
 .quest-table.discovery-table th[data-column="category"], .quest-table.discovery-table th[data-column="era"] { width: 8rem; }
 .quest-table.discovery-table th[data-column="rank"], .quest-table.discovery-table th[data-column="points"], .quest-table.discovery-table th[data-column="difficulty"], .quest-table.discovery-table th[data-column="experience"] { width: 5.5rem; }
@@ -179,11 +179,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .quest-table { width: 100%; min-width: 70rem; border-collapse: collapse; table-layout: fixed; font-size: .82rem; }
 .quest-master-table { min-width: 100rem; }
 .quest-table th { position: sticky; top: 0; z-index: 1; padding: .55rem .5rem; color: #fff; background: #294d69; border-right: 1px solid #496a82; text-align: left; }
-.quest-table th:nth-child(1) { width: 6.5rem; text-align: center; }
-.quest-table th:nth-child(2) { width: 18rem; }
-.quest-table th:nth-child(3) { width: 5.5rem; }
-.quest-table th:nth-child(4), .quest-table th:nth-child(5) { width: 11rem; }
-.quest-table th:nth-child(6), .quest-table th:nth-child(7) { width: 15rem; }
+.quest-master-table th:nth-child(1) { width: 6.5rem; text-align: center; }
+.quest-master-table th:nth-child(2) { width: 18rem; }
+.quest-master-table th:nth-child(3) { width: 5.5rem; }
+.quest-master-table th:nth-child(4), .quest-master-table th:nth-child(5) { width: 11rem; }
+.quest-master-table th:nth-child(6), .quest-master-table th:nth-child(7) { width: 15rem; }
 .quest-master-table th:nth-child(8) { width: 18rem; }
 .quest-table td { padding: .55rem .5rem; border-top: 1px solid #e0e6eb; vertical-align: top; }
 .quest-table tbody tr:nth-child(even) { background: #f7f9fb; }
@@ -303,17 +303,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .restore-confirmation h4 { margin: 0 0 .7rem; color: #7a2e0e; }
 .restore-confirmation p { color: inherit; }
 .discovery-table { min-width: 92rem; }
-.discovery-table th:nth-child(1) { width: 9rem; }
-.discovery-table th:nth-child(2) { width: 15rem; }
-.discovery-table th:nth-child(3) { width: 8rem; }
-.discovery-table th:nth-child(4),
-.discovery-table th:nth-child(6),
-.discovery-table th:nth-child(7),
-.discovery-table th:nth-child(8) { width: 5.5rem; }
-.discovery-table th:nth-child(5) { width: 8rem; }
-.discovery-table th:nth-child(9) { width: 16rem; }
-.discovery-table th[data-column="reported"],
-.discovery-table th[data-column="cardOwned"] { width: 8rem; }
 
 @media (max-width: 56rem), (max-height: 50rem) {
   .main-content--workspace { padding: .75rem; }
