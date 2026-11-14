@@ -1,4 +1,5 @@
 import { WorkspaceFilters } from "../layout/WorkspaceFilters";
+import { matchesOfferCity, offerCityDisplay, offerCityFilterValue, validOfferCities } from "../../quests/offerCityUi";
 import { useWorkspaceView } from "../layout/WorkspaceView";
 import { DiscoveryStateControl } from "../discoveries/ReportHoldControls";
 import type { ReportHoldController } from "../../discoveries/useReportHold";
@@ -182,9 +183,12 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
           id: "offerCity",
           header: "オファー都市",
           filterFn: (row, _columnId, value) =>
-            value === undefined || row.original.offerCities.includes(String(value)),
+            matchesOfferCity(row.original.offerCities, value),
           sortFn: nullableTextSort,
-          cell: ({ getValue }) => getValue<string | null>() ?? "未設定",
+          cell: ({ row }) => {
+            const display = offerCityDisplay(row.original);
+            return <span title={display.title}>{display.text}</span>;
+          },
         }),
         columnHelper.accessor("requiredSkills", {
           id: "requiredSkills",
@@ -299,9 +303,16 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
     table.setPageIndex(0);
   }, [offerMethodOptions, selectedOfferMethod, table]);
   const offerCities = useMemo(
-    () => uniqueValues(rows.flatMap((row) => row.offerCities)),
+    () => uniqueValues(rows.flatMap((row) => validOfferCities(row.offerCities))),
     [rows],
   );
+  const selectedOfferCity = String(table.getColumn("offerCity")?.getFilterValue() ?? "");
+  useEffect(() => {
+    if (selectedOfferCity === "" || selectedOfferCity === "unset"
+      || offerCities.some(city => offerCityFilterValue(city) === selectedOfferCity)) return;
+    table.getColumn("offerCity")?.setFilterValue(undefined);
+    table.setPageIndex(0);
+  }, [offerCities, selectedOfferCity, table]);
   const requiredSkills = useMemo(
     () => uniqueValues(rows.flatMap((row) => row.requiredSkillNames)),
     [rows],
@@ -483,14 +494,13 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
             )}
           </select>
         </label>
-        <FilterSelect
-          label="オファー都市"
-          value={String(
-            table.getColumn("offerCity")?.getFilterValue() ?? "",
-          )}
-          options={offerCities}
-          onChange={(value) => setFilter("offerCity", value || undefined)}
-        />
+        <label>オファー都市
+          <select value={selectedOfferCity} onChange={event => setFilter("offerCity", event.target.value || undefined)}>
+            <option value="">すべて</option>
+            {offerCities.map(city => <option key={city} value={offerCityFilterValue(city)}>{city}</option>)}
+            <option value="unset">未設定</option>
+          </select>
+        </label>
         <FilterSelect
           label="必要スキル"
           value={String(
