@@ -156,9 +156,10 @@ if ($MyInvocation.InvocationName -ne '.') {
     $ErrorActionPreference='Stop'; $run=$null; $gate='Notices'; $exitCode=1
     try {
         $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-        Assert-PortableNoticeAvailability $root
+        $applicationVersion=(Get-PortableText (Read-PortableBytes (Join-Path $root 'package.json')) | ConvertFrom-Json).version
+        Assert-PortableNoticeAvailability $root $applicationVersion
         $gate='Source'; $source=Get-PortableSource $root $ExpectedSourceHead
-        $notices=Read-PortableNotices $root $source.Version $source.Hashes
+        $notices=Read-PortableNotices $root $source.Version $source.Hashes $source.Head
         $prefixes=Get-PrivacyPrefixes $root ''
         $gate='Compile'; $exe=Get-PortableCompile $root $CompileRunId $source $prefixes
         if ($PackageRunId -notmatch '^[0-9a-f]{32}$') { throw 'Package: invalid identifier.' }

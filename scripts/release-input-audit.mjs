@@ -26,9 +26,16 @@ function same(actual, expected, gate) { check(isDeepStrictEqual(actual, expected
 function safeRelative(name) { check(typeof name === 'string' && /^[a-zA-Z0-9._/-]+$/.test(name) && !name.startsWith('/') && !name.split('/').some(s => s === '.' || s === '..'), 'relative_path'); return name; }
 const parse = bytes => JSON.parse(bytes.toString('utf8'));
 
-export function readReleaseInputs(root) {
+export function readReleaseInputs(root, { archived = false } = {}) {
   const files = new Map();
-  const read = name => { safeRelative(name); if (!files.has(name)) files.set(name, fs.readFileSync(path.join(root, name))); return files.get(name); };
+  // These historical reports are hash-bound to committed evidence, not a checkout's EOL conversion.
+  const evidence = new Set(['docs/map-c12f-2-notices-review.md', 'docs/map-c12f-3-verification.md']);
+  const committed = (commit, name) => execFileSync('git', ['-C', root, 'show', commit + ':' + name], { maxBuffer: 16 * 1024 * 1024 });
+  const read = name => {
+    safeRelative(name);
+    if (!files.has(name)) files.set(name, evidence.has(name) ? committed(preparedCheckpoint, name) : fs.readFileSync(path.join(root, name)));
+    return files.get(name);
+  };
   check(parse(read(refreshPath)).input_checkpoint === checkpoint, 'review_checkpoint');
   const historical = {};
   for (const name of ['manifest.json', 'inventory.json', 'review.json', 'source.json', 'mapping.json', 'v0.4.0-preparation.json']) {
@@ -44,7 +51,18 @@ export function readReleaseInputs(root) {
   read(approvalPath); read(reviewedPath);
   for (const name of snapshotPaths) read(name);
   const prepared = new Map(snapshotPaths.map(name => [name, execFileSync('git', ['-C', root, 'show', preparedCheckpoint + ':' + name], { maxBuffer: 16 * 1024 * 1024 })]));
-  return { files, historical, prepared };
+  if (archived) {
+    const releaseCommit = 'e14ba29c877805043c5f40ec103a3f733d5598e9';
+    files.set('THIRD-PARTY-NOTICES.txt', committed(releaseCommit, 'THIRD-PARTY-NOTICES.txt'));
+    // v0.4.0 approved the Windows CRLF lock representation. Reconstruct only that
+    // named historical representation; validatePreparedInputs still checks its original hashes.
+    for (const name of ['package-lock.json', 'src-tauri/Cargo.lock']) {
+      const blob = committed(releaseCommit, name);
+      check(!blob.includes(Buffer.from('\r')), 'archived_lock_blob_eol');
+      files.set(name, Buffer.from(blob.toString('utf8').replaceAll('\n', '\r\n')));
+    }
+  }
+  return { files, historical, prepared, scope: archived ? 'ARCHIVED_V0_4_0' : 'CURRENT_V0_4_0' };
 }
 
 // Inspect the genuine archived PREPARED bytes, without relabeling current inputs.
@@ -185,6 +203,35 @@ export function validateReleaseInputs(model) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  try { console.log(JSON.stringify(validateReleaseInputs(readReleaseInputs(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'))))); }
-  catch (error) { console.error('Release input audit failed: ' + (error.gate ?? 'input_read_or_parse')); process.exitCode = 1; }
+  const main = async () => {
+    try {
+      const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+      const args = process.argv.slice(2);
+      const requested = args.length === 0 ? JSON.parse(fs.readFileSync(path.join(root, 'package.json'))).version : args[1];
+      const { approvedNoticeDecisions } = await import('./notice-approval-decisions.mjs');
+      if (Object.hasOwn(approvedNoticeDecisions, requested)) {
+        const explicit = args[0] === '--version' && args[1] === requested;
+        if (explicit && args.length === 3 && args[2] === '--candidate') {
+          const { auditCandidate } = await import('./release-candidate-audit.mjs');
+          console.log(JSON.stringify({ ...auditCandidate(root, { commit: approvedNoticeDecisions[requested].candidate_commit }),
+            scope: 'FIXED_CANDIDATE_ARCHIVE', candidate_commit: approvedNoticeDecisions[requested].candidate_commit }));
+        } else if (explicit && args.length === 3 && args[2] === '--reviewed-inputs') {
+          const { inspectRegisteredNoticeInputs } = await import('./notice-approval-binding.mjs');
+          console.log(JSON.stringify(inspectRegisteredNoticeInputs(root, requested)));
+        } else {
+          check(args.length === 0 || explicit && (args.length === 2 || args.length === 5
+            && args[2] === '--formal' && args[3] === '--expected-source-head'), 'audit_arguments');
+          const { verifyRegisteredNoticeApproval } = await import('./notice-approval-binding.mjs');
+          console.log(JSON.stringify(verifyRegisteredNoticeApproval(root, requested, args[4])));
+        }
+      } else {
+        const archived = args.length === 1 && args[0] === '--archive-v0.4.0';
+        check(archived || args.length === 0 && requested === '0.4.0', 'unsupported_release_version');
+        const model = readReleaseInputs(root, { archived });
+        console.log(JSON.stringify({ ...validateReleaseInputs(model), scope: model.scope }));
+      }
+    }
+    catch (error) { console.error('Release input audit failed: ' + (error.gate ?? 'input_read_or_parse')); process.exitCode = 1; }
+  };
+  main();
 }

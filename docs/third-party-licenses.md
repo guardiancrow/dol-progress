@@ -16,9 +16,17 @@
 
 Noticesは保守的な包含候補と提供元通知も含む。通知に載る全componentが最適化後のEXEへ残ると認定したものではない。WebView2 SDKのpackage全体NOTICEを添付したことだけで、そこに列挙される全componentのnative Loader包含や追加source義務を認定しない。
 
-## 正式レビューの状態
+## 現在の候補と正式レビューの状態
 
-v0.3.0の通知対象201件・除外6件、原文148種類・357参照は正式レビュー済みで、当時のmanifest／review／sourceはREVIEWEDだった。依存版はnpm／Cargoのlockfileで固定する。原文、著作権表示、出典、除外根拠、lockとtoolchainを対応付けた既存結果を保持し、文書整理のために再監査・再承認しない。v0.4.0候補の状態は次項で区別する。
+v0.4.0は[GitHub Release](https://github.com/guardiancrow/dol-progress/releases/tag/v0.4.0)で公開済みである。既存の承認記録と当時の検証結果は、その対象範囲の履歴として保持する。
+
+v0.5.0のmetadataは`release/notices/v0.5.0/`へ分離している。Ownerが固定した候補commitとsnapshotのhash、16入力、201通知・6除外・149原文・358参照の継承、toolchainを限定承認したため、manifest・review・sourceをREVIEWEDへ昇格した。原文・coverage・inventoryは変更していない。実際の承認内容は`approval.json`に記録し、日時の指定がないためapproved_onはnullと明示している。
+
+`preparation.json`は候補作成時のPREPARED原本として保持し、hashを変更しない。入力承認は新しい検証コードの承認を含まない。コード用の信頼設定は未登録であり、正式Packageは引き続き拒否する。`--candidate`は固定commitの候補原本を検証し、`--reviewed-inputs`は現在の限定承認と昇格状態を検証する。正式検証はこれらとは別に、コードの明示承認と署名付きclean sourceを要求する。[承認・昇格方式](notice-approval.md)を参照する。
+
+旧版のmanifest・inventory・review・source・approval・reviewed・PREPARED snapshot・mapping・原文は変更しない。`--archive-v0.4.0`で固定した公開commitと当時の承認hashを照合できる。これは過去の入力の検証であり、v0.5.0を自動承認する処理ではない。
+
+v0.3.0の通知対象201件・除外6件、原文148種類・357参照は正式レビュー済みで、当時のmanifest／review／sourceはREVIEWEDだった。依存版はnpm／Cargoのlockfileで固定する。原文、著作権表示、出典、除外根拠、lockとtoolchainを対応付けた既存結果を保持し、文書整理のために再監査・再承認しない。v0.4.0の準備・承認履歴は次項で区別する。
 
 正式レビューは通知に関する確認範囲の判断であり、全原文の逐語確認、包括的な法的保証、Microsoft契約の受入、一般公開の承認を意味しない。既存HEADの正式Compile・Package・独立Verifierは成功済みだが、新HEADの検証結果へ流用しない。
 
@@ -77,6 +85,10 @@ source_evidenceは`release/notices/evidence/`または`release/notices/texts/`�
 
 ## Microsoft関連の確認範囲と残件
 
+v0.5.0準備では使用主体、ソース上のSDK／MSVCの選択設定、リンク方式、同意本文、Runtime同梱方針を変更していない。同一構成についての既存Owner判断を継承し、古い未完了表記だけを理由に再審査しない。実際に選択されるnative toolchainは正式Compile時に照合する。新しい技術検証と、Ownerの新しい入力・公開承認は別に扱う。
+
+以下の表と留保は、過去の監査記録時点の状況である。その後の判断を公開Releaseの存在から推測して補わず、既存の決定記録を優先する。この準備で新しい契約上の承認や許諾を付与した事実はない。
+
 | 区分 | 確認済みの範囲 | 未解決事項・判断主体 |
 | --- | --- | --- |
 | Community／Build Tools | 同一個人の自作アプリ開発という既存申告に基づく利用資格の評価 | 利用主体・開発形態の変更へ一般化しない。開発利用資格だけで再配布条件を免除しない |
@@ -86,9 +98,9 @@ source_evidenceは`release/notices/evidence/`または`release/notices/texts/`�
 | 外部Runtime・OS DLL | 本体・installerを同梱しない | 非同梱という理由だけでEXE内の組込みcodeの条件が消えるとは扱わない |
 | 配布者の補償・防御等 | SDK契約の配布者義務と、利用者の条件を区別 | 受入可否と負担の不確実性は配布者本人が判断。MIT免責・通知同梱・Microsoftの責任上限で解消するとは記載しない |
 
-SDK対象コードに限定した9段落をREADMEとConsent v2へ同一文面で実装している。文面の採用は契約適合性の認定ではない。同程度の保護、SDK製品向け条件の限定・省略、起動しない再配布者を含む合意成立、責任制限の効力は最終確認が必要である。MSVC startupの個別再配布根拠も未解決のままとする。特定のIssues投稿をMicrosoftの要求として追加しない。
+SDK対象コードに限定した9段落をREADMEとConsent v2へ同一文面で実装している。過去の監査では、同程度の保護、SDK製品向け条件の限定・省略、起動しない再配布者を含む合意成立、責任制限の効力、MSVC startupの個別再配布根拠を留保していた。この過去の記録と既存Owner判断を区別し、文面の実装だけから新しい契約判断を推定しない。特定のIssues投稿をMicrosoftの要求として追加しない。
 
-Consent v2の制定日・正式採用日はユーザーの確定した2026年10月18日とし、本文末尾に記載する。termsVersion 2／canonicalVersion 1と既存方式によるhash・再同意を使い、改訂日の別行は追加しない。旧v1本文・制定日・version・hashは固定fixtureで保全し、旧記録をv2へ自動承認しない。配布者の補償・防御等は本人判断が未完了であり、本文採用によって受諾済みと記録しない。利用者への根拠のない補償転嫁も行わない。
+Consent v2の制定日・正式採用日はユーザーの確定した2026年10月18日とし、本文末尾に記載する。termsVersion 2／canonicalVersion 1と既存方式によるhash・再同意を使い、改訂日の別行は追加しない。旧v1本文・制定日・version・hashは固定fixtureで保全し、旧記録をv2へ自動承認しない。配布者の補償・防御等の本人判断は既存の決定記録によるものとし、本文採用だけから受諾済みと記録しない。利用者への根拠のない補償転嫁も行わない。
 
 ## その他の現行判断と配布手順
 

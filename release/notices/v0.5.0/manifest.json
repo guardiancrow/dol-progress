@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "version": "0.5.0",
+  "status": "REVIEWED",
+  "scope": "DISTRIBUTION",
+  "test_only": false,
+  "source_head": "41b6dc86affcbf1413ff6f13937490656afedb59",
+  "unresolved": [],
+  "inventory_sha256": "4f04712cf35e8ce5fe18dd332fd6f9dbae990ae7603dd5449f83081e382476e7",
+  "review_sha256": "6e7047d101d9057778518e34577b5c0d4de7f5917017e87ff1152283a8450bbc",
+  "source_sha256": "ac33f900223f8a87c1f945198fc6ae3a3d286b0430eddaa0aa4d0220d0f91895",
+  "notices_sha256": "63a9b9aca4238c2721f711e553547eb198efb11e0d7e840d0c404fe647313f62",
+  "cargo_lock_sha256": "4b46f32f5837a2dae8e04ad9d8e0ec94ef97ad2cf64bee79e248f1b9d84ed0c4",
+  "npm_lock_sha256": "091227d1eb8c0ed20fdea192be62226795e22de6e822f076a395b4b5993962e2",
+  "toolchain_sha256": "39bdb50fedc616aec10d26e9c7d5dcf818932912fbc249bc69e0de517a053a49",
+  "owner_approval": {
+    "path": "release/notices/v0.5.0/approval.json",
+    "sha256": "c9b29710e420c340f03568857568166973d350a82276656f5fda84fca16356a9"
+  },
+  "approved_candidate": {
+    "commit": "57f0325f1daaa699569c82c221de35ddc2a79605",
+    "path": "release/notices/v0.5.0/preparation.json",
+    "sha256": "5cafbfda822c9471f9b4061135c90ec93fdf9493f9ae21f11dd3848a834bf794"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "purpose": "PACKAGE_NOTICE_SOURCE",
+  "version": "0.5.0",
+  "target": "x86_64-pc-windows-msvc",
+  "canonical_file": "THIRD-PARTY-NOTICES.txt",
+  "sha256": "63a9b9aca4238c2721f711e553547eb198efb11e0d7e840d0c404fe647313f62",
+  "source_commit": "41b6dc86affcbf1413ff6f13937490656afedb59",
+  "source_role": "Release scope baseline; approved candidate is identified separately.",
+  "previous_notice": {
+    "version": "0.4.0",
+    "release_commit": "e14ba29c877805043c5f40ec103a3f733d5598e9",
+    "sha256": "93bd33f8353c7375cf8d9612e18ccbeb976f37165315d3f485b4050dc8cbb855"
+  },
+  "cargo_lock_sha256": "4b46f32f5837a2dae8e04ad9d8e0ec94ef97ad2cf64bee79e248f1b9d84ed0c4",
+  "npm_lock_sha256": "091227d1eb8c0ed20fdea192be62226795e22de6e822f076a395b4b5993962e2",
+  "formal_review_state": "REVIEWED",
+  "formal_package_gate": "PENDING_FORMAL_VERIFICATION",
+  "owner_approval": {
+    "path": "release/notices/v0.5.0/approval.json",
+    "sha256": "c9b29710e420c340f03568857568166973d350a82276656f5fda84fca16356a9"
+  },
+  "approved_candidate": {
+    "commit": "57f0325f1daaa699569c82c221de35ddc2a79605",
+    "path": "release/notices/v0.5.0/preparation.json",
+    "sha256": "5cafbfda822c9471f9b4061135c90ec93fdf9493f9ae21f11dd3848a834bf794"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schema": 2,
+  "purpose": "NOTICE_OWNER_INPUT_APPROVAL",
+  "version": "0.5.0",
+  "state": "APPROVED",
+  "approved_by": "Owner",
+  "approved_on": null,
+  "approved_date_status": "NOT_SPECIFIED_IN_OWNER_INSTRUCTION",
+  "basis": "OWNER_EXPLICIT_FIXED_SNAPSHOT_APPROVAL",
+  "candidate_commit": "57f0325f1daaa699569c82c221de35ddc2a79605",
+  "snapshot_path": "release/notices/v0.5.0/preparation.json",
+  "snapshot_sha256": "5cafbfda822c9471f9b4061135c90ec93fdf9493f9ae21f11dd3848a834bf794",
+  "scope": [
+    "Application version and exact current input bytes",
+    "Inherited notices and unchanged component coverage",
+    "Node and Windows PowerShell fingerprint changes",
+    "Release input selection and validation changes"
+  ],
+  "excludes": [
+    "New legal clearance",
+    "Formal Compile/Package/Verifier results",
+    "Binary or GitHub Release publication",
+    "Unconditional approval of additional or changed verification code",
+    "Final ZIP acceptance"
+  ],
+  "toolchain_sha256": "39bdb50fedc616aec10d26e9c7d5dcf818932912fbc249bc69e0de517a053a49",
+  "verification_review": "SEPARATE_OWNER_REVIEW_REQUIRED",
+  "public_release_approved": false
+}

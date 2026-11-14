@@ -11,9 +11,10 @@ try {
     if ($MyInvocation.InvocationName -eq '.') { throw 'Invocation: script required.' }
     $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
     # No owned run or ZIP is created before genuine notice inputs and signed source pass.
-    Assert-PortableNoticeAvailability $root
+    $applicationVersion=(Get-PortableText (Read-PortableBytes (Join-Path $root 'package.json')) | ConvertFrom-Json).version
+    Assert-PortableNoticeAvailability $root $applicationVersion
     $gate='Source'; $source=Get-PortableSource $root $ExpectedSourceHead
-    $gate='Notices'; $notices=Read-PortableNotices $root $source.Version $source.Hashes
+    $gate='Notices'; $notices=Read-PortableNotices $root $source.Version $source.Hashes $source.Head
     $prefixes=Get-PrivacyPrefixes $root ''
     $gate='Compile'; $exe=Get-PortableCompile $root $CompileRunId $source $prefixes
     $gate='Documents'

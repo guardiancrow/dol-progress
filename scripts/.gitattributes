@@ -1,0 +1,7 @@
+# Only new approval-verification files; inherited candidate inputs stay unchanged.
+.gitattributes text eol=lf
+notice-approval-binding.mjs text eol=lf
+notice-approval-decisions.mjs text eol=lf
+notice-input-promotion.mjs text eol=lf
+tests/notice-approval-binding.tests.mjs text eol=lf
+tests/notice-input-promotion.tests.mjs text eol=lf

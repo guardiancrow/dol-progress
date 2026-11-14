@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "purpose": "NOTICE_VERSION_REFRESH",
+  "version": "0.5.0",
+  "state": "PREPARED",
+  "release_scope_baseline": "41b6dc86affcbf1413ff6f13937490656afedb59",
+  "inherited_release_commit": "e14ba29c877805043c5f40ec103a3f733d5598e9",
+  "candidate_toolchain": {
+    "rustc": [
+      "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+      "binary: rustc",
+      "commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67",
+      "commit-date: 2026-10-13",
+      "host: x86_64-pc-windows-msvc",
+      "release: 1.99.1",
+      "LLVM version: 23.1.1"
+    ],
+    "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+    "node": "v26.13.1",
+    "npm": "11.20.0",
+    "tauri_cli": "2.11.4",
+    "powershell": "5.1.26100.9818"
+  },
+  "candidate_toolchain_sha256": "39bdb50fedc616aec10d26e9c7d5dcf818932912fbc249bc69e0de517a053a49",
+  "toolchain_changes": {
+    "node": [
+      "v26.13.0",
+      "v26.13.1"
+    ],
+    "powershell": [
+      "5.1.26100.9711",
+      "5.1.26100.9818"
+    ]
+  },
+  "final_review": {
+    "state": "PENDING_OWNER_REVIEW",
+    "approved": false
+  },
+  "public_release_approved": false,
+  "approval_scope": [
+    "Application version and exact current input bytes",
+    "Inherited notices and unchanged component coverage",
+    "Node and Windows PowerShell fingerprint changes",
+    "Release input selection and validation changes"
+  ],
+  "excluded_scope": [
+    "New legal clearance",
+    "Formal Compile/Package/Verifier results",
+    "Binary or GitHub Release publication"
+  ],
+  "candidate_input_sha256": {
+    "package.json": "e8a48281339dea51690258b79a8710d8cc47b270de3f96c5cd7974d4b069f096",
+    "package-lock.json": "091227d1eb8c0ed20fdea192be62226795e22de6e822f076a395b4b5993962e2",
+    "src-tauri/tauri.conf.json": "6dea31121780565a74dbdffcdf9cfe48d9213378e0f379ff46f1a500f595fee1",
+    "src-tauri/Cargo.toml": "e9052913261bddf6e6236329572dc6643a670d2824fd53fda29e12096cca9722",
+    "src-tauri/Cargo.lock": "4b46f32f5837a2dae8e04ad9d8e0ec94ef97ad2cf64bee79e248f1b9d84ed0c4",
+    "THIRD-PARTY-NOTICES.txt": "63a9b9aca4238c2721f711e553547eb198efb11e0d7e840d0c404fe647313f62",
+    ".gitattributes": "9bcae1699598492497a98dcbafbf4e710f145e113f27bf50f0c2489fad00facd",
+    "scripts/release-input-audit.mjs": "97db6120a305b73e91e4c038c69e58728b3ed1b1320bce6da1caa4f49db3dbf1",
+    "scripts/release-candidate-audit.mjs": "be728f7ab821ba5112fcf55607ac35253b6541504442d9e55093fedc2367c8b5",
+    "scripts/portable-package-safety.ps1": "22f412c1b03384796192d06193fc1c2e886457c7fbf77c995302ff38986613fe",
+    "scripts/build-portable-package.ps1": "36722d34e81352c6a9e447faa7d24d7e82a9ebc7e3c2cccb8b6a9dc6a8f15b0c",
+    "scripts/verify-portable-package.ps1": "03e74a61994f68ff1b0dd507530d44f1ccd6ca262b4f887673ec7a8691d7c883",
+    "release/notices/v0.5.0/inventory.json": "4f04712cf35e8ce5fe18dd332fd6f9dbae990ae7603dd5449f83081e382476e7",
+    "release/notices/v0.5.0/review.json": "3a33f9ed46f34e61863928df6e8fada9db05fab9b05d9727aa15f0241e9362d6",
+    "release/notices/v0.5.0/source.json": "c54f4dccbd32fdeb019c6541001b68d3b78152f109e62dcbe140b2a79a800c35",
+    "release/notices/v0.5.0/manifest.json": "23f3f944f4b5cefe99eb9250577336061752ad0cdc69c627aab538f36deb5642"
+  }
+}

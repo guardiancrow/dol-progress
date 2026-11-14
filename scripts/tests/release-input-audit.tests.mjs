@@ -5,7 +5,7 @@ import { readReleaseInputs, preparedReleaseInputs, validatePreparedInputs as val
 
 // Published notice inputs only. Mutations stay in memory; no approval or file write.
 // Keep the previous negative cases against the genuine committed PREPARED snapshot.
-const original = preparedReleaseInputs(readReleaseInputs(fileURLToPath(new URL('../../', import.meta.url))));
+const original = preparedReleaseInputs(readReleaseInputs(fileURLToPath(new URL('../../', import.meta.url)), { archived: true }));
 const prefix = 'release/notices/';
 const refreshPath = prefix + 'v0.4.0-refresh.json';
 const providerPath = prefix + 'texts/5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27.txt';

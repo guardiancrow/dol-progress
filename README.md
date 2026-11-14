@@ -1,5 +1,7 @@
 # DOL Progress Manager
 
+このソースはv0.5.0の準備版です。公開済みの配布版は[v0.4.0](https://github.com/guardiancrow/dol-progress/releases/tag/v0.4.0)です。v0.5.0では低解像度レイアウト、初回報告履歴の確認・訂正、都市未設定の絞り込み、前提クエストの進捗確認候補からの達成登録などを収録予定です。第三者通知の入力はOwnerの限定承認済みです。検証コードのレビューと正式配布物の検証は未完了です。
+
 『大航海時代 Online』のクエスト・発見物の進捗を、キャラクターごとにPC上で管理するWindows向けアプリです。キャラクターは「プロフィール」として登録します。大航海時代データベースから手動で取得したマスターデータを取り込むと、通常の進捗管理はオフラインで行えます。
 
 本プロジェクトはGitHubでソースコードを公開し、Windows x64 Portable ZIPをGitHub Releasesで配布する方針です。配布物の公開状況は[GitHub Releases](https://github.com/guardiancrow/dol-progress/releases)で確認してください。インストーラーを使わず、アプリのフォルダーをコピー・移動して利用できます。
@@ -386,7 +388,7 @@ WebView2のユーザーデータの保存場所は`%LOCALAPPDATA%\com.dolprogres
 
 本プロジェクト用に作成したsource code、documentation、synthetic tests／fixtures、独自iconのSVG sourceと生成assetには[MIT License](LICENSE)を適用します。
 
-第三者libraryと外部依存関係には各licenseが適用されます。大航海時代データベースのデータ・名称・service、『大航海時代 Online』、製品名・商標、ユーザーが外部からimportしたデータについて、第三者の権利を本プロジェクトのMIT Licenseで再licenseするものではありません。[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)に現行Windows x64 Releaseの第三者原文・表示を収録しています。配布時はEXEと同じ配布経路でこの通知を提供します。配布物内のTHIRD-PARTY-NOTICES.txtを参照してください。通知の正式レビューは完了していますが、一般公開の承認や正式license clearanceの完了を意味しません。詳細は[third-party license方針](docs/third-party-licenses.md)を参照してください。
+第三者libraryと外部依存関係には各licenseが適用されます。大航海時代データベースのデータ・名称・service、『大航海時代 Online』、製品名・商標、ユーザーが外部からimportしたデータについて、第三者の権利を本プロジェクトのMIT Licenseで再licenseするものではありません。[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)にWindows x64向けの第三者原文・表示を収録しています。配布時はEXEと同じ配布経路でこの通知を提供します。配布物内のTHIRD-PARTY-NOTICES.txtを参照してください。v0.4.0の通知の正式レビューは完了しています。v0.5.0では変更のない原文・判断を継承し、固定した入力snapshotとtoolchainの対応をOwnerが限定承認しました。検証コードは別のレビュー対象であり、正式配布工程は未実施です。通知レビューは一般公開の承認や正式license clearanceの完了を意味しません。詳細は[third-party license方針](docs/third-party-licenses.md)を参照してください。
 
 ### Microsoft Windows SDK由来コードの利用・再配布条件
 
