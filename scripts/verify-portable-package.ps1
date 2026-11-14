@@ -156,7 +156,8 @@ if ($MyInvocation.InvocationName -ne '.') {
     $ErrorActionPreference='Stop'; $run=$null; $gate='Notices'; $exitCode=1
     try {
         $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-        Assert-PortableNoticeAvailability $root
+        $applicationVersion=(Get-PortableText (Read-PortableBytes (Join-Path $root 'package.json')) | ConvertFrom-Json).version
+        Assert-PortableNoticeAvailability $root $applicationVersion
         $gate='Source'; $source=Get-PortableSource $root $ExpectedSourceHead
         $notices=Read-PortableNotices $root $source.Version $source.Hashes
         $prefixes=Get-PrivacyPrefixes $root ''

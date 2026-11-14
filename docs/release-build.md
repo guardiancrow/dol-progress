@@ -180,11 +180,27 @@ npm run typecheck
 
 ## 現在の確認結果と公開前の残件
 
+### 公開済みv0.4.0とv0.5.0候補
+
+[v0.4.0](https://github.com/guardiancrow/dol-progress/releases/tag/v0.4.0)は2026年11月8日に公開済みで、Releaseページに正式Compile・Package・独立VerifierとOwnerの最終ZIP確認の完了が記録されている。対象tagのcommitは`e14ba29c877805043c5f40ec103a3f733d5598e9`である。以下の古い確認状況は、その記録時点の履歴として区別する。
+
+v0.5.0はUI-R5Cまでを対象とし、進行ナビゲーションは次版以降とする。5ファイル・6値を0.5.0へ揃え、候補metadataを`release/notices/v0.5.0/`へ分離する。Notices本文のアプリ版表記以外の原文・coverageを継承するが、新しい版のOwner承認はまだない。
+
+候補の技術検証は`node scripts/release-input-audit.mjs --version 0.5.0 --candidate`で実行する。成功してもPREPARED、formal_approval=falseである。引数なしの正式検査と正式Notices読取は未承認候補を拒否する。承認候補は`preparation.json`の入力hashとtoolchain差分で示し、承認後のsnapshot固定・昇格処理は別Phaseとする。
+
+正式runnerの候補環境はWindows PowerShell 5.1.26100.9818、Node v26.13.1、npm 11.20.0、Rust/Cargo 1.99.1、Tauri CLI 2.11.4である。Windows標準のWindowsPowerShell/v1.0/powershell.exeを明示する方式を推奨する。PowerShell 7の実行結果をこのfingerprintへ読み替えない。Owner確認前の値は採用候補である。
+
+lockfileと版情報、候補hashに含まれる検証コード、承認参照文書に限定してLFを指定する。旧版で承認したCRLF lock表現は、固定した公開commitのLF blobから当時の表現だけを復元し、元の承認hashで検査する。これは`--archive-v0.4.0`による履歴検証であり、現行の配布bytesや未承認候補を認める処理ではない。歴史的な参照文書も承認commitのblobを読む。現行入力は実bytesを厳密に照合し、改行差を自動的に許容しない。
+
+この準備段階では正式3工程と最終EXE・ZIPを確定しない。Ownerによる入力承認、対象snapshotを固定する承認記録と検証処理、署名付きclean sourceの確定後、同じSHAから新しいrunで実施する。v0.4.0の承認ファイルや過去のrunは改変・流用しない。
+
+### 過去の確認状況
+
 既存の署名済みHEAD `482b9ae80f117946f6c36cc093b27f27666d044e` に対して正式Compile・Package・独立Verifierは成功済みである。これはそのHEADに限る検証結果で、文書変更後のHEADの成功とは扱わない。run識別子とhashを含む記録は[履歴の確認状況](release-build-history.md#現在の公開準備状況)に保持する。当時のNoticesはREVIEWEDであり、201通知・6除外、148原文・357参照のレビュー事実を保全する。
 
-上記はv0.3.0の過去の確認結果である。v0.4.0の入力はMap-C12FでPREPAREDへ分離し、F-3で新しいprovider原文と現行metadataを準備した。F-4では2026-11-08のOwner限定承認を記録し、NoticesをREVIEWEDへ移行した。正式3工程は未実行である。[Map-C12F-4の検証報告](map-c12f-4-verification.md)と[Noticesの承認状態](third-party-licenses.md)を参照する。Notices読取関数の成功は、署名付きclean source、Compile provenance、Package、Privacy R、バイナリ公開の承認を代替しない。
+上記はv0.3.0の過去の確認結果である。v0.4.0の入力はMap-C12FでPREPAREDへ分離し、F-3で新しいprovider原文とmetadataを準備した。F-4では2026-11-08のOwner限定承認を記録し、NoticesをREVIEWEDへ移行した。F-4記録時点では正式3工程は未実行だった。その後の正式Release完了は本節冒頭で区別する。[Map-C12F-4の検証報告](map-c12f-4-verification.md)と[Noticesの承認状態](third-party-licenses.md)を参照する。Notices読取関数の成功は、署名付きclean source、Compile provenance、Package、Privacy検査、バイナリ公開の承認を代替しない。
 
-SDK受領者条件はREADMEとConsent v2へ実装している。同程度の保護と合意方式の契約解釈、MSVC startupの個別再配布根拠、配布者の補償等の本人判断は未完了。[Microsoft関連の区分](third-party-licenses.md#microsoft関連の確認範囲と残件)を参照する。実装を契約適合性やバイナリ公開の承認と扱わない。
+SDK受領者条件はREADMEとConsent v2へ実装している。過去の監査時点の留保と、その後のOwner判断を区別し、同一構成の承認済み判断を継承する。[Microsoft関連の区分](third-party-licenses.md#microsoft関連の確認範囲と残件)を参照する。実装だけから新しい契約判断や公開承認を推定しない。
 
 現行ConsentはtermsVersion 2、canonicalVersion 1である。ユーザーが確定したv2の制定日・正式採用日2026年10月18日を本文末尾に記載し、改訂日の別行は設けない。本文hashは既存CanonicalTermsで算出し、旧v1本文・制定日・hashは固定fixtureで保全する。既存v1への同意を自動承認せず、Outdated／HashMismatchで全文再表示し、明示同意した場合だけ既存安全writerで更新する。公開前後で共通の参照先表記を使う。実際のGitHub公開状態と公開先URLは公開前に別途確認する。
 
@@ -192,6 +208,6 @@ SDK受領者条件はREADMEとConsent v2へ実装している。同程度の保�
 
 最終文面・必要条件の確定とレビュー、署名commit・clean HEAD確定、新HEADでの正式3工程、最終ZIPの手動smokeを順に行う。手動確認はテストユーザー／VMの新規書込み可能配置で、初回同意・通常画面・終了・再起動・同梱文書を確認し、実DB／config／backupを持ち込まない。
 
-その後に最新origin/mainとのfast-forward可否、公開する全履歴・branch・tag、Actions／ログ／成果物、Issues／PR等とGitHub設定を確認する。本人の別途承認後に同期・Public化、検証した最終HEADのsigned annotated tag、Release Draft、正式ZIPと外部hashの添付・確認、Publishを行う。公開・upload・tag操作はビルドrunnerに含まれない。
+その後に最新origin/mainとのfast-forward可否、今回公開する追加履歴・tag、Actions／ログ／成果物、Issues／PR等とGitHub設定を確認する。リポジトリは公開済みなので、通常の次版公開にPublic化は含めない。本人の別途承認後に同期、検証した最終HEADのsigned annotated tag、Release Draft、正式ZIPと外部hashの添付・確認、Publishを行う。公開・upload・tag操作はビルドrunnerに含まれない。
 
 EXEはAuthenticode未署名であり、Git署名と区別して利用者へ案内する。技術検証、Noticesレビュー、法的条件の充足、公開承認は別の判断である。過去の成功だけで公開可能と断定しない。

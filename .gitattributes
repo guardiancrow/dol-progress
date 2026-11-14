@@ -5,3 +5,16 @@ src-tauri/src/consent/fixtures/terms-v*.txt text eol=lf
 # Preserve the upstream license bytes embedded in the distribution notice.
 THIRD-PARTY-NOTICES.txt -text whitespace=-blank-at-eol,-blank-at-eof
 src-tauri/Cargo.toml text eol=lf
+# Release input hashes use these exact current bytes on every checkout.
+package-lock.json text eol=lf
+src-tauri/Cargo.lock text eol=lf
+package.json text eol=lf
+src-tauri/tauri.conf.json text eol=lf
+.gitattributes text eol=lf
+scripts/release-input-audit.mjs text eol=lf
+scripts/release-candidate-audit.mjs text eol=lf
+scripts/portable-package-safety.ps1 text eol=lf
+scripts/build-portable-package.ps1 text eol=lf
+scripts/verify-portable-package.ps1 text eol=lf
+docs/map-c12f-2-notices-review.md text eol=lf
+docs/map-c12f-3-verification.md text eol=lf

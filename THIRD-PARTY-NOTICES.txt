@@ -1,4 +1,4 @@
-DOL Progress Manager 0.4.0 — THIRD-PARTY LICENSES AND NOTICES
+DOL Progress Manager 0.5.0 — THIRD-PARTY LICENSES AND NOTICES
 
 本アプリ独自コードのMIT Licenseは別添LICENSE.txtを参照してください。以下の第三者コードには各原文の条件が適用されます。
 対象はWindows x64 Release。通常依存の包含候補は保守的に通知し、最適化後の全コードの包含を断定しません。

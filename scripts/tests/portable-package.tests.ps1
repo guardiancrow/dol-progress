@@ -27,6 +27,7 @@ function New-PublicNoticeFixture {
         Write-ReleaseNewText (Join-Path $root ('release/notices/'+$name)) '{"schema":1,"status":"PENDING","test_only":true}'
     }
     Write-ReleaseNewText (Join-Path $root 'THIRD-PARTY-NOTICES.txt') 'TEST_ONLY synthetic notice; never distribution input.'
+    Write-ReleaseNewText (Join-Path $root 'package.json') '{"version":"0.3.0"}'
     return $root
 }
 function Put16([byte[]]$Bytes,[int]$Offset,[uint16]$Value) { [BitConverter]::GetBytes($Value).CopyTo($Bytes,$Offset) }
@@ -258,7 +259,9 @@ Case 'README BOM CRLF complete section and external URL retention' {
     $text=Get-PortableText $readme; Assert-PortableReadme $text
     Expect ($text -notmatch '(?<!\r)\n' -and $text -notmatch '## 開発者向け情報|## 開発と検証|## Windows build|## 仕様書')
     Expect ($text.Contains('https://gvdb.mydns.jp/db/') -and $text.Contains('https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section'))
-    Expect ($text.Contains('### マスターデータの取得と取り込み') -and $text -cnotmatch 'GVDB')
+    # Existing progress-review instructions intentionally identify quests by GVDB ID.
+    # Keep the onboarding terminology check without rejecting that visible identifier.
+    Expect ($text.Contains('### マスターデータの取得と取り込み') -and ($text -creplace 'GVDB ID','') -cnotmatch 'GVDB')
     Expect ($text.Contains('Microsoft Visual C++ Redistributable x64') -and $text.Contains('https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist'))
     Expect ($text.Contains('LICENSE.txt') -and $text.Contains('THIRD-PARTY-NOTICES.txt') -and $text.Contains('data/configを削除・上書きしない'))
     Expect (-not $text.Contains('ユーザーレビュー待ち') -and $text.Contains('通知の正式レビューは完了しています'))
@@ -675,6 +678,28 @@ Case 'Public package entrypoint refuses notices before creating a run' {
     finally { $ErrorActionPreference=$preference }
     Expect ($code -ne 0 -and ($lines -join ' ').Contains('Gate=Source') -and -not ($lines -join ' ').Contains($repo))
     Expect (-not [IO.Directory]::Exists((Join-Path $root 'tmp/portable-release')))
+}
+foreach ($entrypoint in @('build-portable-package.ps1','verify-portable-package.ps1')) {
+    Case ('Prepared v0.5.0 rejected before source or run creation: '+$entrypoint) {
+        $root=New-PublicNoticeFixture
+        [IO.File]::WriteAllText((Join-Path $root 'package.json'),'{"version":"0.5.0"}',[Text.UTF8Encoding]::new($false))
+        foreach ($name in @('manifest.json','review.json')) {
+            [IO.File]::WriteAllText((Join-Path $root ('release/notices/'+$name)), '{"status":"REVIEWED"}', [Text.UTF8Encoding]::new($false))
+        }
+        $folder=Join-Path $root 'release/notices/v0.5.0'
+        New-Item -ItemType Directory -Path $folder | Out-Null
+        foreach ($name in @('manifest.json','inventory.json','review.json','source.json')) {
+            Write-ReleaseNewText (Join-Path $folder $name) '{"status":"PREPARED","test_only":true}'
+        }
+        $publicScript=Join-Path $root ('scripts/'+$entrypoint)
+        $entryArguments=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$publicScript,'-ExpectedSourceHead',('a'*40),'-CompileRunId',('a'*32))
+        if ($entrypoint -ceq 'verify-portable-package.ps1') { $entryArguments+=@('-PackageRunId',('b'*32)) }
+        $preference=$ErrorActionPreference
+        try { $ErrorActionPreference='Continue'; $lines=@(& powershell @entryArguments 2>&1); $code=$LASTEXITCODE }
+        finally { $ErrorActionPreference=$preference }
+        Expect ($code -ne 0 -and ($lines -join ' ').Contains('Gate=Notices'))
+        Expect (-not [IO.Directory]::Exists((Join-Path $root 'tmp/portable-release')))
+    }
 }
 Case 'Public verifier refuses unavailable notice evidence' {
     $root=New-PublicNoticeFixture -MissingInventory

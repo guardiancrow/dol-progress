@@ -168,14 +168,24 @@ function Get-PortableSource([string]$Root, [string]$Expected) {
     return [pscustomobject]@{Head=$head[0];Version=$package.version;Hashes=$hashes;CommitterTimestamp=$committerTimestamp}
 }
 
-function Assert-PortableNoticeAvailability([string]$Root) {
+function Get-PortableNoticePrefix([string]$Version) {
+    switch -CaseSensitive ($Version) {
+        '0.3.0' { return 'release/notices/' }
+        '0.4.0' { return 'release/notices/' }
+        '0.5.0' { return 'release/notices/v0.5.0/' }
+        default { throw 'Notices: unsupported version.' }
+    }
+}
+
+function Assert-PortableNoticeAvailability([string]$Root, [string]$Version='0.3.0') {
+    $prefix=Get-PortableNoticePrefix $Version
     foreach ($name in @('manifest.json','inventory.json','review.json')) {
-        if (-not [IO.File]::Exists((Join-Path $Root ('release/notices/'+$name)))) { throw 'Notices: reviewed inputs unavailable.' }
+        if (-not [IO.File]::Exists((Join-Path $Root ($prefix+$name)))) { throw 'Notices: reviewed inputs unavailable.' }
     }
     if (-not [IO.File]::Exists((Join-Path $Root 'THIRD-PARTY-NOTICES.txt')) -or
-        -not [IO.File]::Exists((Join-Path $Root 'release/notices/source.json'))) { throw 'Notices: canonical source unavailable.' }
+        -not [IO.File]::Exists((Join-Path $Root ($prefix+'source.json')))) { throw 'Notices: canonical source unavailable.' }
     foreach ($name in @('manifest.json','review.json')) {
-        $input=Get-PortableText (Read-PortableBytes (Join-Path $Root ('release/notices/'+$name)) 16777216) | ConvertFrom-Json
+        $input=Get-PortableText (Read-PortableBytes (Join-Path $Root ($prefix+$name)) 16777216) | ConvertFrom-Json
         if ($input.status -cne 'REVIEWED') { throw 'Notices: user review pending.' }
     }
 }
@@ -208,6 +218,10 @@ function Assert-PortableCopyrightMapping([string]$Root, $Record, $SourceHashes, 
 function Assert-PortableOwnerApproval([string]$Root, [string]$Version, $Manifest, $SourceHashes) {
     # Preserve the legacy v0.3.0 contract; newer inputs require explicit approval evidence.
     if ($Version -ceq '0.3.0' -and -not ($Manifest.PSObject.Properties.Name -contains 'owner_approval')) { return }
+    # No v0.5.0 trust anchor exists before the Owner reviews the prepared checkpoint.
+    # Reject even forged REVIEWED/APPROVED labels; promotion belongs to a later phase.
+    if ($Version -ceq '0.5.0') { throw 'Notices: v0.5.0 Owner approval pending.' }
+    if ($Version -cne '0.4.0') { throw 'Notices: unsupported approval version.' }
     $approval='release/notices/v0.4.0-approval.json'
     $reviewed='release/notices/v0.4.0-reviewed.json'
     $audit='scripts/release-input-audit.mjs'
@@ -225,10 +239,11 @@ function Assert-PortableOwnerApproval([string]$Root, [string]$Version, $Manifest
 }
 
 function Read-PortableNotices([string]$Root, [string]$Version, $SourceHashes) {
-    Assert-PortableNoticeAvailability $Root
+    $prefix=Get-PortableNoticePrefix $Version
+    Assert-PortableNoticeAvailability $Root $Version
     $raw=@{}
     foreach ($name in @('manifest.json','inventory.json','review.json','source.json')) {
-        $relative='release/notices/'+$name
+        $relative=$prefix+$name
         if (-not $SourceHashes.Contains($relative)) { throw 'Notices: input must be committed.' }
         $raw[$name]=Read-PortableBytes (Join-Path $Root $relative) 16777216
     }
@@ -305,7 +320,7 @@ function Get-PortableCompile([string]$Root, [string]$Id, $Source, $Prefixes) {
     $owner=Get-PortableText (Read-PortableBytes (Join-Path $run 'ownership.json')) | ConvertFrom-Json
     $result=Get-PortableText (Read-PortableBytes (Join-Path $run 'result.json')) | ConvertFrom-Json
     Assert-PortableCompileState $result $owner $Source.Head $Source.Version $Id
-    $noticeManifest=Get-PortableText (Read-PortableBytes (Join-Path $Root 'release/notices/manifest.json')) | ConvertFrom-Json
+    $noticeManifest=Get-PortableText (Read-PortableBytes (Join-Path $Root ((Get-PortableNoticePrefix $Source.Version)+'manifest.json'))) | ConvertFrom-Json
     $toolchainText=@()
     foreach ($name in @('rustc','cargo','node','npm','tauri_cli','powershell')) {
         $value=@($result.toolchain.$name)

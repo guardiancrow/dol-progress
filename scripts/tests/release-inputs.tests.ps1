@@ -3,9 +3,13 @@
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '../portable-package-safety.ps1')
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
-& node (Join-Path $root 'scripts/release-input-audit.mjs')
-if ($LASTEXITCODE -ne 0) { throw 'Release input inspection failed' }
 $package=Get-PortableText (Read-PortableBytes (Join-Path $root 'package.json')) | ConvertFrom-Json
+if ($package.version -ceq '0.5.0') {
+    & node (Join-Path $root 'scripts/release-input-audit.mjs') --version 0.5.0 --candidate
+} else {
+    & node (Join-Path $root 'scripts/release-input-audit.mjs')
+}
+if ($LASTEXITCODE -ne 0) { throw 'Release input inspection failed' }
 $tauri=Get-PortableText (Read-PortableBytes (Join-Path $root 'src-tauri/tauri.conf.json')) | ConvertFrom-Json
 $query="const p=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));console.log(p.version);console.log(p.packages[''].version);"
 $npmVersions=@(& node -e $query (Join-Path $root 'package-lock.json'))
@@ -14,6 +18,25 @@ Assert-PortableVersions $package.version $tauri.version ([IO.File]::ReadAllText(
 # Hash the actual tracked and pending source inputs. This does not certify a clean/signed HEAD.
 $files=@(Get-PortableGit $root @('ls-files','--cached','--others','--exclude-standard'))
 $hashes=Get-ReleaseInputHashes $root $files
+if ($package.version -ceq '0.5.0') {
+    $rejected=$false
+    try { Read-PortableNotices $root $package.version $hashes | Out-Null }
+    catch {
+        if ($_.Exception.Message -cne 'Notices: user review pending.') { throw }
+        $rejected=$true
+    }
+    if (-not $rejected) { throw 'Unapproved candidate passed formal reader' }
+    # Forged labels cannot bypass the explicit absence of a v0.5.0 approval anchor.
+    $rejected=$false
+    try { Assert-PortableOwnerApproval $root '0.5.0' ([pscustomobject]@{status='REVIEWED'}) $hashes }
+    catch {
+        if ($_.Exception.Message -cne 'Notices: v0.5.0 Owner approval pending.') { throw }
+        $rejected=$true
+    }
+    if (-not $rejected) { throw 'Fabricated approval passed formal reader' }
+    Write-Output 'PREPARED candidate technical validation PASS; formal notice reader correctly rejects pending approval.'
+    exit 0
+}
 $notices=Read-PortableNotices $root $package.version $hashes
 if ((Get-ReleaseSHA256 $notices) -cne $hashes['THIRD-PARTY-NOTICES.txt']) { throw 'Formal notice reader returned different bytes' }
 Write-Output 'REVIEWED notice reader PASS; actual bytes and approval evidence verified. Signed clean source and formal Release stages NOT assessed.'

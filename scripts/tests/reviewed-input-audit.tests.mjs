@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { readReleaseInputs, validateReleaseInputs, sha256 } from '../release-input-audit.mjs';
 
 // Negative inputs are changed in memory only; committed approval targets stay fixed.
-const original = readReleaseInputs(fileURLToPath(new URL('../../', import.meta.url)));
+const original = readReleaseInputs(fileURLToPath(new URL('../../', import.meta.url)), { archived: true });
 const prefix = 'release/notices/';
 const approvalPath = prefix + 'v0.4.0-approval.json', reviewedPath = prefix + 'v0.4.0-reviewed.json';
 const read = (m, p) => JSON.parse(m.files.get(p));
