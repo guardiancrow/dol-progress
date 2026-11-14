@@ -295,3 +295,158 @@ describe("prerequisite progress review UI and snapshot safety", () => {
     await act(async () => pending.resolve(f.dependencies)); await waitFor(() => expect(entry(1)).toBeInTheDocument());
   });
 });
+
+describe("explicit prerequisite completion from review candidates", () => {
+  const start = () => screen.getByRole("button", { name: "前提「前提1」を達成済みにする…" });
+  const confirmation = () => screen.getByRole("group", { name: "前提クエストの達成登録" });
+  const submit = () => within(confirmation()).getByRole("button", { name: "達成済みにする" });
+  async function open(f = fixtures()) {
+    const view = await ready(f); await view.user.click(entry(f.dependencies.length)); await view.user.click(start());
+    return { f, ...view };
+  }
+  it("opens an inline confirmation with identities and forward-link warning, without saving", async () => {
+    const { f, user } = await open();
+    expect(confirmation()).toHaveFocus(); expect(confirmation()).toHaveTextContent("合成プロフィール1");
+    expect(confirmation()).toHaveTextContent("GVDB ID: 1001"); expect(confirmation()).toHaveTextContent("現在は未達成");
+    expect(confirmation()).toHaveTextContent("未発見の発見物"); expect(confirmation()).toHaveTextContent("通常一覧と同じ達成処理");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(); expect(f.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+    await user.click(within(confirmation()).getByRole("button", { name: "キャンセル" }));
+    expect(screen.queryByRole("group", { name: "前提クエストの達成登録" })).not.toBeInTheDocument(); expect(start()).toHaveFocus();
+    expect(f.progress.markCompleted).not.toHaveBeenCalled(); expect(f.progress.markIncomplete).not.toHaveBeenCalled();
+  });
+  it("uses Enter, Tab, Space and Escape and preserves the table, main sorting and page on cancellation", async () => {
+    const f = fixtures(58), { user } = await ready(f);
+    await user.click(screen.getByRole("button", { name: "クエスト名／地図名で並べ替え" }));
+    await user.selectOptions(screen.getByLabelText("1ページの件数"), "100"); await user.click(screen.getByRole("button", { name: "次ページ" }));
+    const table = screen.getByRole("table"), name = table.querySelector(".quest-title")!.textContent;
+    await user.click(entry(58)); start().focus(); await user.keyboard("{Enter}"); expect(confirmation()).toHaveFocus();
+    await user.tab(); expect(within(confirmation()).getByRole("button", { name: "キャンセル" })).toHaveFocus();
+    await user.keyboard("{Escape}"); expect(start()).toHaveFocus(); expect(screen.getByText("2 / 2ページ")).toBeInTheDocument();
+    await user.keyboard(" "); expect(confirmation()).toHaveFocus();
+    await user.click(within(confirmation()).getByRole("button", { name: "キャンセル" }));
+    expect(screen.getByRole("table")).toBe(table); expect(table.querySelector(".quest-title")).toHaveTextContent(name!);
+    expect(screen.getByLabelText("1ページの件数")).toHaveValue("100"); expect(f.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+  });
+  it("only confirms the local predecessor ID, keeps forward linking, updates its checkbox and resolves candidates", async () => {
+    const f = fixtures(); f.link.completeQuestWithLinkedDiscoveries.mockImplementationOnce(async (profileId, questId) => {
+      f.stored.get(profileId)!.add(questId); return { questChanged: true, discoveriesCreated: 2, discoveriesAlreadyPresent: 1 };
+    });
+    const { user } = await open(f); await user.click(submit());
+    await waitFor(() => expect(entry(0)).toBeInTheDocument());
+    expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledExactlyOnceWith(1, 1);
+    expect(screen.getByRole("checkbox", { name: "前提1の達成状態" })).toBeChecked();
+    expect(panel()).toHaveTextContent("前提「前提1」を達成済みにしました。"); expect(panel()).toHaveTextContent("発見物 2件も発見済み");
+    expect(screen.getByRole("button", { name: "確認候補の詳細を閉じる" })).toHaveFocus();
+    expect(hold.reload).toHaveBeenCalled(); expect(f.progress.markIncomplete).not.toHaveBeenCalled(); expect(f.link.discoverWithLinkedQuest).not.toHaveBeenCalled();
+  });
+  it("distinguishes same-name quests by local ID rather than GVDB ID or title", async () => {
+    const f = fixtures(2); f.masters[0]!.quest.title = "同名"; f.masters[2]!.quest.title = "同名";
+    const { user } = await ready(f); await user.click(entry(2));
+    await user.click(screen.getAllByRole("button", { name: "前提「同名」を達成済みにする…" })[1]!);
+    expect(confirmation()).toHaveTextContent("GVDB ID: 1003"); await user.click(submit());
+    await waitFor(() => expect(entry(1)).toBeInTheDocument()); expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledExactlyOnceWith(1, 3);
+    expect(f.stored.get(1)!.has(1)).toBe(false);
+  });
+  it("does not recursively complete another predecessor", async () => {
+    const f = fixtures();
+    f.masters.push({ ...f.masters[0]!, quest: { ...f.masters[0]!.quest, id: 3, gvdbId: 1003, title: "祖先", rawRowJson: JSON.stringify({ 前提クエスト: "", 後続クエスト: "1001:前提" }) } });
+    f.masters[0]!.quest.rawRowJson = JSON.stringify({ 前提クエスト: "1003:祖先", 後続クエスト: "1002:後続" });
+    f.dependencies.push({ questId: 1, prerequisiteQuestId: 3 });
+    const { user } = await ready(f); await user.click(entry(1)); await user.click(start()); await user.click(submit());
+    await waitFor(() => expect(f.stored.get(1)!.has(1)).toBe(true)); expect(f.stored.get(1)!.has(3)).toBe(false);
+    expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledExactlyOnceWith(1, 1);
+  });
+  it.each([false, true])("does not equate a resolved handler with successful save after rejection (committed=%s)", async committed => {
+    const f = fixtures(); f.link.completeQuestWithLinkedDiscoveries.mockImplementationOnce(async () => {
+      if (committed) f.stored.get(1)!.add(1); throw new Error("synthetic uncertain save");
+    });
+    const { user } = await open(f); await user.click(submit());
+    await waitFor(() => expect(panel()).toHaveTextContent("保存完了を確認できませんでした。"));
+    expect(panel()).not.toHaveTextContent("前提「前提1」を達成済みにしました。"); expect(entry(committed ? 0 : 1)).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "前提1の達成状態" })).toHaveProperty("checked", committed);
+    expect(f.progress.listCompletedQuestIds).toHaveBeenCalledTimes(2);
+  });
+  it("leaves a failed recovery unconfirmed and permits retry", async () => {
+    const { f, user } = await open(); f.link.completeQuestWithLinkedDiscoveries.mockRejectedValueOnce(new Error("synthetic failure"));
+    f.progress.listCompletedQuestIds.mockRejectedValueOnce(new Error("synthetic recovery failure")); await user.click(submit());
+    await screen.findByText("進捗の再取得に失敗しました。再読み込みしてください。"); expect(numericEntry()).not.toBeInTheDocument();
+    expect(screen.queryByText(/前提「前提1」を達成済みにしました/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "再読み込み" })).toHaveFocus();
+    await user.click(screen.getByRole("button", { name: "再読み込み" })); await waitFor(() => expect(entry(1)).toBeInTheDocument());
+  });
+  it("prevents double submission and shares the target pending state with the normal checkbox", async () => {
+    const { f, user } = await open(), save = deferred<Awaited<ReturnType<Fixture["link"]["completeQuestWithLinkedDiscoveries"]>>>();
+    f.link.completeQuestWithLinkedDiscoveries.mockImplementationOnce(() => save.promise);
+    const button = submit(); fireEvent.click(button); fireEvent.click(button); fireEvent.click(button);
+    expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledTimes(1); expect(button).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "前提1の達成状態" })).toBeDisabled();
+    await user.keyboard("{Escape}"); expect(confirmation()).toBeInTheDocument();
+    await act(async () => { f.stored.get(1)!.add(1); save.resolve({ questChanged: true, discoveriesCreated: 0, discoveriesAlreadyPresent: 0 }); });
+    await waitFor(() => expect(entry(0)).toBeInTheDocument());
+  });
+  it("discards confirmation on profile change without saving", async () => {
+    const { f, user } = await open(); const stale = submit();
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    fireEvent.click(stale); await screen.findByRole("table");
+    expect(screen.queryByRole("group", { name: "前提クエストの達成登録" })).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "1"); await waitFor(() => expect(entry(1)).toBeInTheDocument());
+    expect(f.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+  });
+  it("does not show an old save result after a profile A/B/A switch", async () => {
+    const { f, user } = await open(), save = deferred<Awaited<ReturnType<Fixture["link"]["completeQuestWithLinkedDiscoveries"]>>>();
+    f.link.completeQuestWithLinkedDiscoveries.mockImplementationOnce(() => save.promise); await user.click(submit());
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2"); await screen.findByRole("table");
+    expect(screen.queryByText(/前提「前提1」を達成済みにしました/)).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "1");
+    await act(async () => { f.stored.get(1)!.add(1); save.resolve({ questChanged: true, discoveriesCreated: 2, discoveriesAlreadyPresent: 0 }); });
+    await waitFor(() => expect(f.progress.listCompletedQuestIds.mock.calls.length).toBeGreaterThanOrEqual(4));
+    expect(screen.queryByText(/前提「前提1」を達成済みにしました/)).not.toBeInTheDocument(); expect(f.stored.get(2)).toEqual(new Set([1, 2]));
+  });
+  it.each(["progress", "relation"])("refuses a stale confirmation after a %s refresh", async kind => {
+    const { f, user } = await open(); const stale = submit();
+    if (kind === "progress") f.stored.set(1, new Set());
+    else f.dependencies.splice(0);
+    act(() => { hold.changed(); fireEvent.click(stale); });
+    await waitFor(() => expect(screen.queryByRole("group", { name: "前提クエストの達成登録" })).not.toBeInTheDocument());
+    expect(f.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+    await waitFor(() => expect(entry(0)).toBeInTheDocument());
+    expect(panel()).toHaveTextContent(/再確認|再読み込み/);
+    await user.click(screen.getByRole("button", { name: "確認候補の詳細を閉じる" }));
+  });
+  it("invalidates confirmation when the normal checkbox starts saving the same predecessor", async () => {
+    const { f, user } = await open(); const stale = submit();
+    await user.click(screen.getByRole("checkbox", { name: "前提1の達成状態" })); fireEvent.click(stale);
+    await waitFor(() => expect(entry(0)).toBeInTheDocument()); expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledExactlyOnceWith(1, 1);
+    expect(screen.queryByText(/前提「前提1」を達成済みにしました/)).not.toBeInTheDocument();
+  });
+  it("keeps confirmation usable in narrow table priority mode", async () => {
+    const f = fixtures(), { user, resize } = await ready(f); act(() => resize(800, 600));
+    await user.click(screen.getByRole("button", { name: "検索・フィルターを隠す" })); const table = screen.getByRole("table");
+    await user.click(entry(1)); await user.click(start()); act(() => resize(1920, 1080));
+    expect(confirmation()).toBeVisible(); await user.click(submit()); await waitFor(() => expect(entry(0)).toBeInTheDocument());
+    expect(screen.getByRole("table")).toBe(table); expect(screen.getByRole("button", { name: "検索・フィルターを表示" })).toBeInTheDocument();
+  });
+  it("keeps a confirmed save distinct from a failed map-state reload", async () => {
+    const { f, user } = await open(); hold.reload.mockRejectedValueOnce(new Error("synthetic map read failure"));
+    await user.click(submit()); await screen.findByText("地図状態の再取得に失敗しました。");
+    expect(f.stored.get(1)!.has(1)).toBe(true); expect(panel()).toHaveTextContent("前提「前提1」を達成済みにしました。");
+  });
+  it("revalidates endpoint eligibility on a new master generation even if a repository reuses its arrays", async () => {
+    const { f, user } = await open();
+    f.masters[1]!.quest.offerMethod = "地理学"; act(() => hold.changed());
+    await waitFor(() => expect(entry(0)).toBeInTheDocument());
+    expect(screen.queryByRole("group", { name: "前提クエストの達成登録" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "前提「前提1」を達成済みにする…" })).not.toBeInTheDocument();
+    expect(f.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "確認候補の詳細を閉じる" }));
+  });
+  it("resolves every direct candidate sharing the same predecessor with one confirmed save", async () => {
+    const f = fixtures(2); f.dependencies[1]!.prerequisiteQuestId = 1;
+    f.masters[0]!.quest.rawRowJson = JSON.stringify({ 前提クエスト: "", 後続クエスト: "1002:後続1,1004:後続2" });
+    f.masters[2]!.quest.rawRowJson = "{}";
+    f.masters[3]!.quest.rawRowJson = JSON.stringify({ 前提クエスト: "1001:前提1", 後続クエスト: "" });
+    const { user } = await ready(f); await user.click(entry(2));
+    await user.click(screen.getAllByRole("button", { name: "前提「前提1」を達成済みにする…" })[0]!); await user.click(submit());
+    await waitFor(() => expect(entry(0)).toBeInTheDocument()); expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledExactlyOnceWith(1, 1);
+  });
+});
