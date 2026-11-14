@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { useState } from "react";
-import { act, cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { getVersion } from "@tauri-apps/api/app";
 import { AppShell } from "./AppShell";
 import type { AppPage } from "./Sidebar";
-import { ProfileProvider } from "../../profiles/ProfileContext";
+import { ProfileProvider, type ProfileRepositoryPort } from "../../profiles/ProfileContext";
 import { QuestTable } from "../quests/QuestTable";
 import { DiscoveryTable } from "../discoveries/DiscoveryTable";
 import type { QuestRowViewModel } from "../../quests/types";
@@ -36,9 +36,9 @@ const discoveries: DiscoveryRowViewModel[] = Array.from({ length: 205 }, (_, i) 
   automaticReporting: false, effectiveReported: false,
 }));
 
-function Harness({ initialPage = "quests", initialFilter = false }: { initialPage?: AppPage; initialFilter?: boolean }) {
+function Harness({ initialPage = "quests", initialFilter = false, repository = profiles }: { initialPage?: AppPage; initialFilter?: boolean; repository?: ProfileRepositoryPort }) {
   const [page, setPage] = useState(initialPage);
-  return <ProfileProvider repository={profiles}><AppShell currentPage={page} onNavigate={setPage}>
+  return <ProfileProvider repository={repository}><AppShell currentPage={page} onNavigate={setPage}>
     <section className="workspace-page"><h2>{page}</h2>
       {page === "quests" ? <QuestTable rows={quests} paginationResetKey={1} onToggleCompletion={write} />
         : page === "discoveries" ? <DiscoveryTable rows={discoveries} paginationResetKey={1}
@@ -56,7 +56,7 @@ it.each([
   const resize = mockWorkspaceMedia(width as number, height as number);
   const user = userEvent.setup();
   render(<Harness />);
-  await screen.findByText("合成プロフィール1", { selector: "strong" });
+  await waitFor(() => expect(screen.getByLabelText("現在のプロフィール")).toHaveValue("1"));
   const menu = screen.getByRole("button", { name: /^メニューを/ });
   const header = screen.getByRole("button", { name: /^ヘッダーを/ });
   const filters = screen.getByRole("button", { name: /^詳細フィルターを/ });
@@ -83,8 +83,15 @@ it("returns focus before automatic hiding, restores automatic panels on enlargem
   profile.focus();
   act(() => resize(800, 600));
   const menu = screen.getByRole("button", { name: "メニューを開く" });
+  expect(profile).toHaveFocus();
+  expect(screen.getByRole("combobox", { name: "現在のプロフィール" })).toBe(profile);
+  await user.tab();
+  expect(screen.getByRole("searchbox")).toHaveFocus();
+  act(() => resize(1920, 1080));
+  screen.getByRole("button", { name: "概要" }).focus();
+  act(() => resize(800, 600));
   expect(menu).toHaveFocus();
-  expect(screen.queryByRole("combobox", { name: "現在のプロフィール" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "概要" })).not.toBeInTheDocument();
   await user.tab();
   expect(screen.getByRole("button", { name: "ヘッダーを展開" })).toHaveFocus();
   act(() => resize(1920, 1080));
@@ -203,11 +210,71 @@ it("keeps header/menu choices across navigation and allows profile switching and
   await user.click(screen.getByRole("button", { name: "ヘッダーを展開" }));
   await user.click(screen.getByRole("button", { name: "メニューを開く" }));
   await user.selectOptions(await screen.findByLabelText("現在のプロフィール"), "2");
-  expect(screen.getByText("合成プロフィール2", { selector: "strong" })).toBeInTheDocument();
+  expect(screen.getByLabelText("現在のプロフィール")).toHaveDisplayValue("合成プロフィール2");
   for (const name of ["概要", "クエスト", "発見物", "プロフィール", "マスターデータ", "保存場所"]) {
     await user.click(screen.getByRole("button", { name }));
     expect(screen.getByRole("button", { name })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("button", { name: "ヘッダーを縮める" })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("button", { name: "メニューを閉じる" })).toHaveAttribute("aria-expanded", "true");
   }
+});
+
+it("keeps one header selector mounted and keyboard reachable with the menu and header closed", async () => {
+  const resize = mockWorkspaceMedia(800, 600);
+  const user = userEvent.setup();
+  write.mockClear(); profiles.create.mockClear(); profiles.update.mockClear(); profiles.delete.mockClear();
+  render(<Harness />);
+  const selector = screen.getByRole("combobox", { name: "現在のプロフィール" });
+  await waitFor(() => expect(selector).toHaveValue("1"));
+  expect(document.querySelectorAll(".profile-selector")).toHaveLength(1);
+  expect(screen.getByRole("banner")).toContainElement(selector);
+  expect(document.querySelector(".sidebar")).not.toContainElement(selector);
+  const header = screen.getByRole("button", { name: "ヘッダーを展開" });
+  header.focus();
+  await user.tab();
+  expect(selector).toHaveFocus();
+  await user.selectOptions(selector, "2");
+  expect(selector).toHaveDisplayValue("合成プロフィール2");
+  expect(screen.getByRole("heading", { name: "quests" })).toBeInTheDocument();
+  await user.click(header);
+  expect(header).toHaveAttribute("aria-expanded", "true");
+  expect(document.getElementById(header.getAttribute("aria-controls")!)).not.toContainElement(selector);
+  expect(header.compareDocumentPosition(selector) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  await user.selectOptions(selector, "1");
+  await user.click(screen.getByRole("button", { name: "メニューを開く" }));
+  await user.click(screen.getByRole("button", { name: "メニューを閉じる" }));
+  act(() => resize(1920, 1080));
+  await user.click(screen.getByRole("button", { name: "ヘッダーを縮める" }));
+  act(() => resize(600, 480));
+  expect(screen.getByRole("combobox", { name: "現在のプロフィール" })).toBe(selector);
+  expect(selector).toHaveValue("1");
+  expect(document.querySelectorAll(".profile-selector")).toHaveLength(1);
+  expect(write).not.toHaveBeenCalled();
+  for (const method of [profiles.create, profiles.update, profiles.delete]) expect(method).not.toHaveBeenCalled();
+});
+
+it("keeps the selector disabled during loading and after an empty result without replacing it", async () => {
+  mockWorkspaceMedia(800, 600);
+  let finish!: (value: Awaited<ReturnType<typeof profiles.list>>) => void;
+  const repository = { ...profiles, list: () => new Promise<Awaited<ReturnType<typeof profiles.list>>>(resolve => { finish = resolve; }) };
+  render(<Harness repository={repository} />);
+  const selector = screen.getByRole("combobox", { name: "現在のプロフィール" });
+  expect(selector).toBeDisabled();
+  await act(async () => finish([]));
+  expect(selector).toBeDisabled();
+  expect(selector).toHaveDisplayValue("プロフィールなし");
+  expect(screen.getByRole("combobox", { name: "現在のプロフィール" })).toBe(selector);
+  expect(document.querySelectorAll(".profile-selector")).toHaveLength(1);
+});
+
+it("keeps long names intact in the option and hover text instead of duplicating the profile name", async () => {
+  mockWorkspaceMedia(800, 600);
+  const name = "合成の長いプロフィール名".repeat(12);
+  const repository = { ...profiles, list: async () => [{ ...(await profiles.list())[0]!, name }] };
+  render(<Harness repository={repository} />);
+  const selector = screen.getByRole("combobox", { name: "現在のプロフィール" });
+  await waitFor(() => expect(selector).toHaveDisplayValue(name));
+  expect(selector).toHaveAttribute("title", name);
+  expect(within(selector).getByRole("option", { name })).toHaveTextContent(name);
+  expect(document.querySelector("header strong")).toBeNull();
 });

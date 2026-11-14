@@ -5,6 +5,7 @@ import { useProfiles } from "../../profiles/ProfileContext";
 import { Sidebar, type AppPage } from "./Sidebar";
 import { AppVersionInfo } from "./AppVersionInfo";
 import { DisclosureIcon } from "./DisclosureIcon";
+import { ProfileSelector } from "../profiles/ProfileSelector";
 import { COMPACT_WORKSPACE_QUERY, NARROW_WORKSPACE_QUERY, useResponsiveDisclosure } from "./useResponsiveDisclosure";
 
 interface AppShellProps {
@@ -18,7 +19,7 @@ export function AppShell({
   onNavigate,
   children,
 }: AppShellProps) {
-  const { selectedProfile } = useProfiles();
+  const { isLoading, profiles, selectedProfileId, selectProfile } = useProfiles();
   const isWorkspace = currentPage === "quests" || currentPage === "discoveries";
   const [version, setVersion] = useState<string | null>(null);
   const versionRequest = useRef<Promise<string> | null>(null);
@@ -39,28 +40,27 @@ export function AppShell({
   return (
     <div className={`app-shell${menu.expanded ? "" : " app-shell--menu-closed"}`}>
       <header className={`app-header${header.expanded ? "" : " app-header--compact"}`}>
-        <button type="button" className="shell-toggle" ref={menu.buttonRef}
-          aria-label={menu.expanded ? "メニューを閉じる" : "メニューを開く"}
-          title={menu.expanded ? "メニューを閉じる" : "メニューを開く"}
-          aria-expanded={menu.expanded} aria-controls={menu.id} onClick={menu.toggle}>
-          <DisclosureIcon kind="sidebar" expanded={menu.expanded} />
-        </button>
-        <div className="app-identity">
-          <div id={header.id} ref={header.panelRef} hidden={!header.expanded}>
-            <p className="app-kicker">大航海時代 Online 進捗管理</p>
+        <div className="header-controls">
+          <button type="button" className="shell-toggle" ref={menu.buttonRef}
+            aria-label={menu.expanded ? "メニューを閉じる" : "メニューを開く"}
+            title={menu.expanded ? "メニューを閉じる" : "メニューを開く"}
+            aria-expanded={menu.expanded} aria-controls={menu.id} onClick={menu.toggle}>
+            <DisclosureIcon kind="sidebar" expanded={menu.expanded} />
+          </button>
+          <div className="app-identity">
+            <div id={header.id} ref={header.panelRef} hidden={!header.expanded}>
+              <p className="app-kicker">大航海時代 Online 進捗管理</p>
+            </div>
+            <h1 title="DOL Progress Manager">DOL Progress Manager</h1>
           </div>
-          <h1 title="DOL Progress Manager">DOL Progress Manager</h1>
+          <button type="button" className="shell-toggle" ref={header.buttonRef}
+            aria-label={header.expanded ? "ヘッダーを縮める" : "ヘッダーを展開"}
+            title={header.expanded ? "ヘッダーを縮める" : "ヘッダーを展開"}
+            aria-expanded={header.expanded} aria-controls={header.id} onClick={header.toggle}>
+            <DisclosureIcon kind="chevron" expanded={header.expanded} />
+          </button>
         </div>
-        <div className="current-profile" aria-live="polite" role="group" aria-label="選択中プロフィール">
-          <span id={`${header.id}-profile`} hidden={!header.expanded}>選択中プロフィール</span>
-          <strong title={selectedProfile?.name ?? "未選択"}>{selectedProfile?.name ?? "未選択"}</strong>
-        </div>
-        <button type="button" className="shell-toggle" ref={header.buttonRef}
-          aria-label={header.expanded ? "ヘッダーを縮める" : "ヘッダーを展開"}
-          title={header.expanded ? "ヘッダーを縮める" : "ヘッダーを展開"}
-          aria-expanded={header.expanded} aria-controls={`${header.id} ${header.id}-profile`} onClick={header.toggle}>
-          <DisclosureIcon kind="chevron" expanded={header.expanded} />
-        </button>
+        <ProfileSelector profiles={profiles} selectedProfileId={selectedProfileId} disabled={isLoading} onSelect={selectProfile} />
       </header>
       <Sidebar currentPage={currentPage} onNavigate={onNavigate} id={menu.id} expanded={menu.expanded} panelRef={menu.panelRef} />
       <main className={`main-content${isWorkspace ? " main-content--workspace" : ""}`}>

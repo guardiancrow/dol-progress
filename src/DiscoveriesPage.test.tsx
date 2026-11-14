@@ -894,6 +894,8 @@ describe("Discovery UI", () => {
     const repositories = setup([profile(1, "A"), profile(2, "B")], [discovery(1, "発見")], new Map([[1, [progress(1, 1)]], [2, []]]));
     const user = await open(repositories);
     expect(screen.getByRole("checkbox", { name: "発見の発見状態" })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "ヘッダーを縮める" }));
+    await user.click(screen.getByRole("button", { name: "メニューを閉じる" }));
     await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "発見の発見状態" })).not.toBeChecked());
     expect(repositories.progress.listByProfile).toHaveBeenLastCalledWith(2);

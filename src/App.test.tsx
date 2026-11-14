@@ -48,7 +48,7 @@ describe("Profile UI", () => {
 
     expect(await screen.findByText("メモ")).toBeInTheDocument();
     expect(screen.getByLabelText("現在のプロフィール")).toHaveValue("1");
-    expect(screen.getByText("選択中プロフィール").parentElement).toHaveTextContent(
+    expect(screen.getByLabelText("現在のプロフィール")).toHaveDisplayValue(
       "航海者",
     );
   });
@@ -167,7 +167,7 @@ describe("Profile UI", () => {
     await screen.findByRole("list", { name: "プロフィール一覧" });
 
     await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
-    expect(screen.getByText("選択中プロフィール").parentElement).toHaveTextContent(
+    expect(screen.getByLabelText("現在のプロフィール")).toHaveDisplayValue(
       "航海者B",
     );
   });
@@ -190,7 +190,7 @@ describe("Profile UI", () => {
     await waitFor(() =>
       expect(screen.getByLabelText("現在のプロフィール")).toHaveValue("2"),
     );
-    expect(screen.getByText("選択中プロフィール").parentElement).toHaveTextContent(
+    expect(screen.getByLabelText("現在のプロフィール")).toHaveDisplayValue(
       "航海者B",
     );
   });

@@ -714,6 +714,8 @@ describe("Quest UI", () => {
     );
     await openQuests(repositories);
     expect(screen.getByRole("checkbox", { name: "テスト依頼Aの達成状態" })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "ヘッダーを縮める" }));
+    await user.click(screen.getByRole("button", { name: "メニューを閉じる" }));
 
     await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
 
