@@ -797,10 +797,30 @@ U1の独立履歴取得と概要集計は変更しない。通常発見物の現
 
 自動報告の導出は独立履歴を確定する証拠にしない。今回のUIは通常対象だけ編集可能にし、自動対象の既存履歴と特殊例外を変更しない。レリックの履歴訂正拒否、現在進捗削除時の履歴保持、通常報告時のconfirmed記録も従来どおりとする。H1/H2の一度きりの修復を通常アプリで再実行しない。
 
-### Map-C5R-S：履歴操作のUI範囲と保存
+### Map-C5R-S：履歴操作のUI範囲と保存（旧仕様）
+
+この節はUI-R2B以前の地図限定UIを記録する。現在の対象条件は次節「UI-R2B：通常発見物の履歴操作」に従う。
 
 履歴の保存・集計契約は全発見物について維持する。制限するのは通常UIの入口だけで、mapRelatedかつ非レリック・非自動報告の対象から利用する。historyを開く際には現在のactiveな地図関連をsnapshotで再確認する。sourceMapId=nullの発見物単位更新により、複数の地図が同じ発見物を参照しても履歴を二重管理しない。
 
 確認画面の確定値confirmed／not_reportedを既存correctHistoryへ渡す。初回報告前と現在報告済みの矛盾には、currentState=unreportedまたはundiscoveredを明示指定する。それ以外はcurrentState=nullで現在進捗を保持する。not_reportedへの訂正はlegacy資格も解除する従来規則を使い、影響を確認画面で示す。unknownやlegacyだけの訂正APIを削除・限定しない。
 
 概要の内訳は表示だけ撤去する。既存の一括読取SQL・集計API・算入条件・migration001〜004は変更せず、履歴情報と既存の集計結果を保持する。
+
+### UI-R2B：通常発見物の履歴操作
+
+履歴の保存・集計契約は変更せず、通常一覧の確認・訂正操作を非地図の通常発見物へ広げる。summaryと最新snapshotのactive・分類・自動報告判定を照合し、active・非レリック・非自動報告の場合だけ編集できる。プロフィールと発見物IDも確認する。地図関連の有無が一致しない場合は再取得し、地図行ではactiveな対象地図との関連確認を維持する。非地図行では関連を必須としない。
+
+sourceMapId=nullの既存correctHistoryを使用する。unknown・履歴行なしからは未選択のフォームでconfirmed／not_reportedを明示選択し、現在状態から履歴を書き戻さない。confirmed／not_reportedへの訂正でlegacy資格を解除し、unknownへの戻しだけでは既存legacy資格を保持する内部APIの規則は維持する。UI-R2Bでは通常UIからunknownへの戻しを提供しなかったが、現在は次節UI-R2Cに従う。legacy資格だけの訂正は引き続き提供しない。
+
+現在報告済みとnot_reportedの矛盾拒否、currentStateを伴う同一transactionの訂正、snapshot全体の楽観的競合検出とrollbackを再利用する。履歴だけの訂正では現在進捗・カード・メモ・クエスト達成を保持する。現在進捗削除の履歴保持、特殊自動報告とレリックの既存契約も維持する。Rust API・一括読取SQL・集計SQL・DB schema・migrationは変更しない。既存履歴の自動修復や一括変換は行わない。
+
+### UI-R2C：unknownへの明示訂正
+
+通常UIは、現在進捗が未報告または存在しない場合にnot_reported／confirmedからunknownへの訂正を提供する。現在報告済みのunknown保存はUIで拒否する。内部API自体の保存契約は拡張・制限しない。
+
+保存するoperationはcorrectHistory・status=unknown・removeLegacyCredit=false・currentState=nullとし、sourceMapId=nullを使う。履歴行をDELETEせず、既存のINSERT／UPDATEでunknownを記録する。履歴行なしと明示unknownは表示・未報告内訳で同じ状態だが、競合検出では行の有無と更新日時を区別する。進捗・カード・メモ・クエスト達成は変更しない。
+
+保存直前にget_discovery_stateで再取得し、確認開始時のsnapshotとプロフィール・発見物ID、進捗全項目、履歴全項目、マスター・分類・自動報告判定、関連クエスト全項目を比較する。不一致または対象条件の変化があれば書き込まず再取得する。一致した場合も、既存update_discovery_stateへ確認開始時のexpectedを渡し、取得後の競合はRust側の単一transactionで拒否する。
+
+unknownのlegacy_merit_creditは、removeLegacyCredit=falseの場合に保存前から存在する資格だけを保持する。not_reported／confirmedで解除された資格を復元しない。confirmedからunknownへの訂正では通常の算入資格が失われるため、既存の集計と同じ条件で影響を表示する。unknown＋旧資格の算入をconfirmedと誤認せず、経験値NULLと未取得も区別する。勲功値算入SQL・Rust保存API・schema・migrationは変更しない。

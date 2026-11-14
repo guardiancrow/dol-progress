@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { currentState, stateLabels, stateOrder, meritReference } from "../../discoveries/stateReader";
+import { currentState, stateLabels, stateOrder, meritReference, matchesSummary } from "../../discoveries/stateReader";
 import type { ReportHoldController } from "../../discoveries/useReportHold";
-import type { DiscoveryStateOperation, MapCurrentState } from "../../discoveries/stateService";
+import type { DiscoveryStateOperation, FirstReportStatus, MapCurrentState } from "../../discoveries/stateService";
 
 export function DiscoveryStateControl({ id, name, controller: c, mapId = null, disabled = false, discoveryMapMode = false }: {
   id: number; name: string; controller: ReportHoldController; mapId?: number | null; disabled?: boolean; discoveryMapMode?: boolean;
@@ -60,28 +60,38 @@ export function ReportHoldDialogs({ controller: c }: { controller: ReportHoldCon
 function HistoryForm({ controller: c }: { controller: ReportHoldController }) {
   const d = c.dialog!;
   const s = d.snapshot;
-  type Choice = "confirmed" | "not_reported" | "";
+  type Choice = FirstReportStatus | "";
   const initial = d.initialHistoryStatus ?? s.history?.status;
   const [status, setStatus] = useState<Choice>(initial === "confirmed" || initial === "not_reported" ? initial : "");
   const [current, setCurrent] = useState<"keep" | "undiscovered" | "unreported">("keep");
   const needsCurrentCorrection = status === "not_reported" && Boolean(s.progress?.reported);
+  const unknownBlocked = status === "unknown" && Boolean(s.progress?.reported);
   const currentChange = needsCurrentCorrection ? current : "keep";
   const before = s.history?.status === "confirmed" || Boolean(s.history?.legacyMeritCredit);
-  const after = status === "confirmed";
-  const exp = c.summaries.get(s.discoveryId)?.experience;
+  const after = status === "confirmed" || status === "unknown" && Boolean(s.history?.legacyMeritCredit);
+  const summary = c.summaries.get(s.discoveryId);
+  const previewReady = c.summaryReadState === "ready" && summary !== undefined && matchesSummary(summary, s);
+  const exp = summary?.experience;
   const reference = meritReference(c.summaries.values());
   const impact = before === after ? "冒険勲功値の算入資格は変わりません。" : exp == null
     ? `経験値不明の算入対象が${after ? "1件増え" : "1件減り"}ます。判明分の合計は変わりません。`
     : `冒険勲功値（判明分）は${after ? "+" : "−"}${exp}、算入対象は${after ? "+1" : "−1"}件となります。`;
-  const unchanged = status === s.history?.status && currentChange === "keep";
+  const unchanged = status === (s.history?.status ?? "unknown") && currentChange === "keep";
   const allowed = s.active && !s.automaticReporting && s.categoryName !== "レリック";
   return <>
-    {d.initialHistoryStatus ? <p>初回報告を「{status === "confirmed" ? "報告済み" : "報告前"}」へ訂正します。</p> :
-      <label>初回報告履歴<select aria-label="初回報告履歴" value={status} disabled={c.busy} onChange={e => setStatus(e.target.value as Choice)}>
+    {d.initialHistoryStatus && <p>初回報告を「{status === "unknown" ? "不明" : status === "confirmed" ? "報告済み" : "報告前"}」へ訂正します。</p>}
+    <label>初回報告履歴<select aria-label="初回報告履歴" value={status} disabled={c.busy} onChange={e => setStatus(e.target.value as Choice)}>
         <option value="" disabled>選択してください</option>
-        <option value="confirmed">初回報告済み</option><option value="not_reported">初回報告前</option>
-      </select></label>}
-    {status === "not_reported" && <p>過去の報告実績を取り消します。再発見後も初回報告済みなら、チェックは外さず現在状態だけ未報告にしてください。</p>}
+        <option value="unknown">不明</option><option value="not_reported">初回報告前</option><option value="confirmed">初回報告済み</option>
+    </select></label>
+    {status === "unknown" && <p>初回報告履歴の確認結果を撤回し、不明に戻します。現在の発見進捗・カード所有・メモ・クエスト達成は変更しません。</p>}
+    {unknownBlocked && <p role="alert">現在報告済みのまま履歴を不明には戻せません。現在報告済みの記録から初回報告済みと表示されるためです。現在状態を訂正する必要がある場合は、先に報告状態を確認してください。</p>}
+    {status === "not_reported" && <>
+      <p>{s.history?.status === "confirmed"
+        ? "過去の報告実績を取り消す訂正です。再発見後も初回報告済みなら、チェックは外さず現在状態だけ未報告にしてください。"
+        : "初回報告をまだ行っていないことを記録します。"}</p>
+      {s.history?.legacyMeritCredit && <p>この訂正で、旧データから引き継いだ冒険勲功値の算入資格を解除します。</p>}
+    </>}
     {needsCurrentCorrection && <label>現在進捗の同時訂正<select aria-label="現在進捗の同時訂正" value={current} disabled={c.busy} onChange={e => setCurrent(e.target.value as typeof current)}>
       <option value="keep">訂正方法を選択してください</option><option value="unreported">未報告へ訂正</option>
       <option value="undiscovered">未発見へ訂正（現在進捗を削除）</option>
@@ -89,11 +99,12 @@ function HistoryForm({ controller: c }: { controller: ReportHoldController }) {
     {needsCurrentCorrection && current === "keep" && <p role="alert">現在報告済みのまま初回報告前にはできません。現在状態の訂正方法を選んでください。</p>}
     {currentChange === "undiscovered" ? <p>現在進捗・カード所有・発見物メモ・維持設定を削除します。クエスト達成は保持します。</p> :
       currentChange === "unreported" ? <p>現在の報告状態も未報告へ訂正します。カード所有・メモ・クエスト達成は保持します。</p> : null}
-    {status && <p role="status">{impact}</p>}
-    {status && before !== after && exp != null && <p>冒険勲功値（判明分）：{reference.known.toLocaleString("ja-JP")} → {(reference.known + (Number(after)-Number(before)) * exp).toLocaleString("ja-JP")}</p>}
+    {!previewReady && <p role="alert">冒険勲功値への影響を確認できません。キャンセルして最新の状態を再読み込みしてください。</p>}
+    {status && !unknownBlocked && previewReady && <p role="status">{impact}</p>}
+    {status && !unknownBlocked && previewReady && before !== after && exp != null && <p>冒険勲功値（判明分）：{reference.known.toLocaleString("ja-JP")} → {(reference.known + (Number(after)-Number(before)) * exp).toLocaleString("ja-JP")}</p>}
     <div className="dialog-actions">
       <button type="button" className="button secondary" disabled={c.busy} onClick={c.close}>キャンセル</button>
-      <button type="button" className="button primary" disabled={c.busy || !allowed || !status || unchanged || needsCurrentCorrection && current === "keep"} onClick={() => {
+      <button type="button" className="button primary" disabled={c.busy || !allowed || !previewReady || !status || unchanged || unknownBlocked || needsCurrentCorrection && current === "keep"} onClick={() => {
         if (!status) return;
         const operation: DiscoveryStateOperation = {kind:"correctHistory",status,removeLegacyCredit:false,currentState:currentChange === "keep" ? null : currentChange};
         void c.save({...d,operation});

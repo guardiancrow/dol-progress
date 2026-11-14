@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DiscoveryStateService, type DiscoveryState, type DiscoveryStateOperation, type FirstReportStatus, type MapCurrentState } from "./stateService";
-import { discoveryStateReader, matchesSummary, currentState, type DiscoveryStateSummary } from "./stateReader";
+import { discoveryStateReader, matchesSummary, matchesSnapshot, currentState, type DiscoveryStateSummary } from "./stateReader";
 import { matchesOfferMethod } from "../quests/offerMethods";
 
 const defaultService = new DiscoveryStateService();
@@ -35,6 +35,7 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
   const profile = useRef(profileId);
   const locked = useRef(false);
   const focus = useRef<HTMLElement | null>(null);
+  const focusPending = useRef(false);
   const changed = useRef(onChanged);
   changed.current = onChanged;
   profile.current = profileId;
@@ -62,6 +63,7 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
 
   useEffect(() => {
     const token = ++epoch.current;
+    focusPending.current = false;
     setDialog(null); setSelection(null); setSummaries(new Map()); setSummariesProfileId(null); setError(null); setNotice(null); setLoading(true);
     locked.current = false; setBusy(false);
     if (profileId === null) { setLoading(false); return; }
@@ -70,13 +72,17 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
     return () => { ++epoch.current; };
   }, [profileId, reload]);
 
-  function close() {
-    setDialog(null); setSelection(null);
+  useEffect(() => {
+    if (!focusPending.current || dialog || selection || busy || loading) return;
+    focusPending.current = false;
     const element = focus.current;
-    queueMicrotask(() => {
-      if (element?.isConnected) element.focus();
-      else if (element?.dataset.reportFocus) document.querySelector<HTMLElement>(`[data-report-focus="${element.dataset.reportFocus}"]`)?.focus();
-    });
+    if (element?.isConnected) element.focus();
+    else if (element?.dataset.reportFocus) document.querySelector<HTMLElement>(`[data-report-focus="${element.dataset.reportFocus}"]`)?.focus();
+  }, [dialog, selection, busy, loading, summaries]);
+
+  function close() {
+    focusPending.current = true;
+    setDialog(null); setSelection(null);
   }
 
   async function save(d: HoldDialog) {
@@ -84,6 +90,15 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
     const token = epoch.current;
     locked.current = true; setBusy(true); setError(null); setNotice(null);
     try {
+      if (d.kind === "history") {
+        const latest = await dependencies.service.get(profileId, d.snapshot.discoveryId);
+        if (epoch.current !== token || profile.current !== profileId) return;
+        if (!matchesSnapshot(d.snapshot, latest) || !latest.active || latest.automaticReporting || latest.categoryName === "レリック" ||
+          d.operation.kind === "correctHistory" && d.operation.status === "unknown" &&
+            (latest.progress?.reported || d.operation.removeLegacyCredit || d.operation.currentState !== null)) {
+          throw {kind:"DiscoveryStateConflict"};
+        }
+      }
       await dependencies.service.update(d.snapshot, d.operation, d.mapId);
       if (epoch.current !== token || profile.current !== profileId) return;
       close();
@@ -103,7 +118,8 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
     if (locked.current || dialog || loading || profileId === null) return;
     const displayed = summaries.get(id);
     if (!displayed) return;
-    if (target === "history" && (!displayed.mapRelated || displayed.automaticReporting || displayed.categoryName === "レリック")) return;
+    if (target === "history" && (summaryRead?.profileId !== profileId || summaryRead.state !== "ready" ||
+      summariesProfileId !== profileId || !displayed.active || displayed.automaticReporting || displayed.categoryName === "レリック")) return;
     if (target !== "history" && target === currentState(displayed)) return;
     if (!selection) focus.current = element;
     setSelection(null);
@@ -113,17 +129,24 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
     try {
       const snapshot = await dependencies.service.get(profileId, id);
       if (epoch.current !== token || profile.current !== profileId) return;
-      if ((requireMapRelation || target === "history") && (!snapshot.active || !snapshot.relatedQuests.some(q=>q.active && matchesOfferMethod(q.offerMethod,"group:map")))) {
+      const snapshotMapRelated = snapshot.relatedQuests.some(q=>q.active && matchesOfferMethod(q.offerMethod,"group:map"));
+      if (requireMapRelation && (!snapshot.active || !snapshotMapRelated) ||
+        target === "history" && Boolean(displayed.mapRelated) !== snapshotMapRelated) {
         await reload();
         if (epoch.current === token && profile.current === profileId) { changed.current(); setError("地図との関連が変更されています。最新の一覧を確認してください。"); }
         return;
       }
-      if (!matchesSummary(displayed, snapshot)) {
+      if (snapshot.profileId !== profileId || snapshot.discoveryId !== id || !matchesSummary(displayed, snapshot) ||
+        target === "history" && (!snapshot.active || snapshot.automaticReporting || snapshot.categoryName === "レリック")) {
         await reload();
         if (epoch.current === token && profile.current === profileId) { changed.current(); setError("一覧の状態が変更されています。最新の状態を確認して操作し直してください。"); }
         return;
       }
-      if (target === "history") { setDialog({kind:"history", name, snapshot, mapId:null, initialHistoryStatus}); return; }
+      if (target === "history") {
+        const knownHistory = snapshot.history?.status === "confirmed" || snapshot.history?.status === "not_reported";
+        setDialog({kind:"history", name, snapshot, mapId:null, initialHistoryStatus:knownHistory ? initialHistoryStatus : undefined});
+        return;
+      }
       const p = snapshot.progress;
       const operation: DiscoveryStateOperation = target === "undiscovered" ? {kind:"removeCurrent"}
         : !p ? {kind:"register",state:target,selectedQuestId:mapId}
