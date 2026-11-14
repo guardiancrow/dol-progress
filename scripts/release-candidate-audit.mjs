@@ -34,7 +34,7 @@ export function versionBytes(name, original) {
   return Buffer.from(updated);
 }
 
-export function readCandidateModel(root) {
+export function readCandidateModel(root, { commit = null } = {}) {
   const legacy = readReleaseInputs(root, { archived: true });
   validateReleaseInputs(legacy);
   const files = new Map();
@@ -42,7 +42,8 @@ export function readCandidateModel(root) {
     'scripts/release-input-audit.mjs', 'scripts/release-candidate-audit.mjs', 'scripts/portable-package-safety.ps1',
     'scripts/build-portable-package.ps1', 'scripts/verify-portable-package.ps1',
     ...['manifest.json', 'inventory.json', 'review.json', 'source.json', 'preparation.json'].map(p => candidatePrefix + p)];
-  for (const name of names) files.set(name, fs.readFileSync(path.join(root, name)));
+  if (commit !== null) check(/^[a-f0-9]{40}$/.test(commit), 'candidate_commit');
+  for (const name of names) files.set(name, commit === null ? fs.readFileSync(path.join(root, name)) : gitBytes(root, commit, name));
   const baseline = new Map(versionPaths.map(name => [name, gitBytes(root, baselineCommit, name)]));
   return { files, legacy, baseline };
 }
@@ -118,4 +119,4 @@ export function validateCandidate(model) {
     public_release_approved: false, included: 201, excluded: 6, original_texts: 149, references: 358 };
 }
 
-export const auditCandidate = root => validateCandidate(readCandidateModel(root));
+export const auditCandidate = (root, options) => validateCandidate(readCandidateModel(root, options));

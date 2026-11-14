@@ -20,9 +20,9 @@ Noticesは保守的な包含候補と提供元通知も含む。通知に載る�
 
 v0.4.0は[GitHub Release](https://github.com/guardiancrow/dol-progress/releases/tag/v0.4.0)で公開済みである。既存の承認記録と当時の検証結果は、その対象範囲の履歴として保持する。
 
-v0.5.0のmetadataは`release/notices/v0.5.0/`へ分離し、manifest・review・sourceをPREPAREDとする。201通知・6除外、149原文・358参照の内容と判断を継承し、Notices本文はアプリ版表記だけを更新する。coverage内のREVIEWEDは旧版のレビュー事実であり、新しい版の承認を表さない。新しいlock hashとNode／Windows PowerShellのfingerprintはOwner確認待ちである。
+v0.5.0のmetadataは`release/notices/v0.5.0/`へ分離している。Ownerが固定した候補commitとsnapshotのhash、16入力、201通知・6除外・149原文・358参照の継承、toolchainを限定承認したため、manifest・review・sourceをREVIEWEDへ昇格した。原文・coverage・inventoryは変更していない。実際の承認内容は`approval.json`に記録し、日時の指定がないためapproved_onはnullと明示している。
 
-`preparation.json`は未承認候補の入力hash・採用候補toolchain・承認対象と対象外を示す。承認前にREVIEWEDへ昇格させず、候補の技術検証と正式Notices読取を分離する。正式Packageは候補入力を拒否する。承認を受けたsnapshotと実際のbytesを固定する処理は、Ownerレビュー後に追加する。
+`preparation.json`は候補作成時のPREPARED原本として保持し、hashを変更しない。入力承認は新しい検証コードの承認を含まない。コード用の信頼設定は未登録であり、正式Packageは引き続き拒否する。`--candidate`は固定commitの候補原本を検証し、`--reviewed-inputs`は現在の限定承認と昇格状態を検証する。正式検証はこれらとは別に、コードの明示承認と署名付きclean sourceを要求する。[承認・昇格方式](notice-approval.md)を参照する。
 
 旧版のmanifest・inventory・review・source・approval・reviewed・PREPARED snapshot・mapping・原文は変更しない。`--archive-v0.4.0`で固定した公開commitと当時の承認hashを照合できる。これは過去の入力の検証であり、v0.5.0を自動承認する処理ではない。
 

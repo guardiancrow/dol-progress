@@ -215,12 +215,32 @@ function Assert-PortableCopyrightMapping([string]$Root, $Record, $SourceHashes, 
     }
 }
 
-function Assert-PortableOwnerApproval([string]$Root, [string]$Version, $Manifest, $SourceHashes) {
+function Assert-PortableOwnerApproval([string]$Root, [string]$Version, $Manifest, $SourceHashes, [string]$ExpectedSourceHead='') {
     # Preserve the legacy v0.3.0 contract; newer inputs require explicit approval evidence.
     if ($Version -ceq '0.3.0' -and -not ($Manifest.PSObject.Properties.Name -contains 'owner_approval')) { return }
-    # No v0.5.0 trust anchor exists before the Owner reviews the prepared checkpoint.
-    # Reject even forged REVIEWED/APPROVED labels; promotion belongs to a later phase.
-    if ($Version -ceq '0.5.0') { throw 'Notices: v0.5.0 Owner approval pending.' }
+    if ($Version -ceq '0.5.0') {
+        $audit='scripts/release-input-audit.mjs'
+        $savedPreference=$ErrorActionPreference
+        try { $ErrorActionPreference='Continue'; $lines=@(& node (Join-Path $Root $audit) --version $Version --reviewed-inputs 2>$null); $code=$LASTEXITCODE }
+        finally { $ErrorActionPreference=$savedPreference }
+        if ($code -ne 0) { throw 'Notices: input approval evidence rejected.' }
+        try { $proof=($lines -join "`n") | ConvertFrom-Json } catch { throw 'Notices: input approval result invalid.' }
+        if ($proof.status -cne 'REVIEWED' -or $proof.input_approval -ne $true) { throw 'Notices: input approval result invalid.' }
+        if ($proof.verification_registered -ne $true) { throw 'Notices: verification implementation review pending.' }
+        if ($ExpectedSourceHead -cnotmatch '^[a-f0-9]{40}$') { throw 'Notices: expected signed source required.' }
+        $bound=@('release/notices/v0.5.0/approval.json','release/notices/v0.5.0/preparation.json',
+            'scripts/notice-approval-decisions.mjs','scripts/notice-approval-binding.mjs','scripts/notice-input-promotion.mjs',
+            'scripts/release-candidate-audit.mjs',$audit,'scripts/portable-package-safety.ps1','scripts/.gitattributes')
+        foreach ($relative in $bound) {
+            if (-not $SourceHashes.Contains($relative) -or (Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $Root $relative) 16777216)) -cne $SourceHashes[$relative]) { throw 'Notices: unbound approval input.' }
+        }
+        try { $ErrorActionPreference='Continue'; $lines=@(& node (Join-Path $Root $audit) --version $Version --formal --expected-source-head $ExpectedSourceHead 2>$null); $code=$LASTEXITCODE }
+        finally { $ErrorActionPreference=$savedPreference }
+        if ($code -ne 0) { throw 'Notices: formal input verification rejected.' }
+        try { $result=($lines -join "`n") | ConvertFrom-Json } catch { throw 'Notices: approval result invalid.' }
+        if ($result.formal_approval -ne $true -or $result.verification_approval -ne $true -or $result.public_release_approved -ne $false) { throw 'Notices: approval result invalid.' }
+        return
+    }
     if ($Version -cne '0.4.0') { throw 'Notices: unsupported approval version.' }
     $approval='release/notices/v0.4.0-approval.json'
     $reviewed='release/notices/v0.4.0-reviewed.json'
@@ -238,7 +258,7 @@ function Assert-PortableOwnerApproval([string]$Root, [string]$Version, $Manifest
     if ($result.status -cne 'REVIEWED' -or $result.version -cne $Version -or $result.formal_approval -ne $true -or $result.public_release_approved -ne $false) { throw 'Notices: Owner approval result invalid.' }
 }
 
-function Read-PortableNotices([string]$Root, [string]$Version, $SourceHashes) {
+function Read-PortableNotices([string]$Root, [string]$Version, $SourceHashes, [string]$ExpectedSourceHead='') {
     $prefix=Get-PortableNoticePrefix $Version
     Assert-PortableNoticeAvailability $Root $Version
     $raw=@{}
@@ -254,7 +274,7 @@ function Read-PortableNotices([string]$Root, [string]$Version, $SourceHashes) {
     $review=Get-PortableText $raw['review.json'] | ConvertFrom-Json
     $source=Get-PortableText $raw['source.json'] | ConvertFrom-Json
     $text=Get-PortableText $raw['THIRD-PARTY-NOTICES.txt']
-    Assert-PortableOwnerApproval $Root $Version $manifest $SourceHashes
+    Assert-PortableOwnerApproval $Root $Version $manifest $SourceHashes $ExpectedSourceHead
     if ($source.schema -ne 1 -or $source.purpose -cne 'PACKAGE_NOTICE_SOURCE' -or
         $source.canonical_file -cne 'THIRD-PARTY-NOTICES.txt' -or $source.version -cne $Version -or
         $source.target -cne 'x86_64-pc-windows-msvc' -or $source.source_commit -cnotmatch '^[a-f0-9]{40}$' -or
@@ -273,7 +293,8 @@ function Read-PortableNotices([string]$Root, [string]$Version, $SourceHashes) {
     if ($manifest.cargo_lock_sha256 -cne $SourceHashes['src-tauri/Cargo.lock'] -or $manifest.npm_lock_sha256 -cne $SourceHashes['package-lock.json'] -or
         $inventory.schema -ne 1 -or $inventory.target -cne 'x86_64-pc-windows-msvc' -or $inventory.version -cne $Version -or
         $review.schema -ne 1 -or $review.status -cne 'REVIEWED' -or $review.version -cne $Version -or $review.test_only -isnot [bool] -or $review.test_only -ne $false -or
-        [string]::IsNullOrWhiteSpace($review.reviewer) -or [string]::IsNullOrWhiteSpace($review.reviewed_at) -or $review.unresolved -isnot [array] -or @($review.unresolved).Count -ne 0) { throw 'Notices: incomplete review.' }
+        ($Version -cne '0.5.0' -and ([string]::IsNullOrWhiteSpace($review.reviewer) -or [string]::IsNullOrWhiteSpace($review.reviewed_at))) -or
+        $review.unresolved -isnot [array] -or @($review.unresolved).Count -ne 0) { throw 'Notices: incomplete review.' }
     $components=@($inventory.components); $coverage=@($review.coverage)
     if ($components.Count -eq 0 -or $coverage.Count -ne $components.Count) { throw 'Notices: coverage incomplete.' }
     $ids=New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)

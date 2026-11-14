@@ -5,7 +5,7 @@ $ErrorActionPreference='Stop'
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $package=Get-PortableText (Read-PortableBytes (Join-Path $root 'package.json')) | ConvertFrom-Json
 if ($package.version -ceq '0.5.0') {
-    & node (Join-Path $root 'scripts/release-input-audit.mjs') --version 0.5.0 --candidate
+    & node (Join-Path $root 'scripts/release-input-audit.mjs') --version 0.5.0 --reviewed-inputs
 } else {
     & node (Join-Path $root 'scripts/release-input-audit.mjs')
 }
@@ -22,19 +22,19 @@ if ($package.version -ceq '0.5.0') {
     $rejected=$false
     try { Read-PortableNotices $root $package.version $hashes | Out-Null }
     catch {
-        if ($_.Exception.Message -cne 'Notices: user review pending.') { throw }
+        if ($_.Exception.Message -cne 'Notices: verification implementation review pending.') { throw }
         $rejected=$true
     }
-    if (-not $rejected) { throw 'Unapproved candidate passed formal reader' }
-    # Forged labels cannot bypass the explicit absence of a v0.5.0 approval anchor.
+    if (-not $rejected) { throw 'Unreviewed implementation passed formal reader' }
+    # Caller labels cannot replace separate approval of implementation code.
     $rejected=$false
     try { Assert-PortableOwnerApproval $root '0.5.0' ([pscustomobject]@{status='REVIEWED'}) $hashes }
     catch {
-        if ($_.Exception.Message -cne 'Notices: v0.5.0 Owner approval pending.') { throw }
+        if ($_.Exception.Message -cne 'Notices: verification implementation review pending.') { throw }
         $rejected=$true
     }
     if (-not $rejected) { throw 'Fabricated approval passed formal reader' }
-    Write-Output 'PREPARED candidate technical validation PASS; formal notice reader correctly rejects pending approval.'
+    Write-Output 'REVIEWED input validation PASS; formal reader correctly rejects pending implementation review.'
     exit 0
 }
 $notices=Read-PortableNotices $root $package.version $hashes

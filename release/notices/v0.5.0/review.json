@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "version": "0.5.0",
-  "status": "PREPARED",
+  "status": "REVIEWED",
   "test_only": false,
   "inheritance": {
     "version": "0.4.0",
@@ -5543,7 +5543,14 @@
       "review_state": "REVIEWED"
     }
   ],
-  "unresolved": [
-    "Ownerによるv0.5.0候補入力・toolchain差分の確認と明示承認"
-  ]
+  "unresolved": [],
+  "owner_approval": {
+    "path": "release/notices/v0.5.0/approval.json",
+    "sha256": "c9b29710e420c340f03568857568166973d350a82276656f5fda84fca16356a9"
+  },
+  "approved_candidate": {
+    "commit": "57f0325f1daaa699569c82c221de35ddc2a79605",
+    "path": "release/notices/v0.5.0/preparation.json",
+    "sha256": "5cafbfda822c9471f9b4061135c90ec93fdf9493f9ae21f11dd3848a834bf794"
+  }
 }

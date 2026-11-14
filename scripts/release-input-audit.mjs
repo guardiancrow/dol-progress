@@ -208,11 +208,22 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
       const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
       const args = process.argv.slice(2);
       const requested = args.length === 0 ? JSON.parse(fs.readFileSync(path.join(root, 'package.json'))).version : args[1];
-      if (args.includes('--candidate') || requested === '0.5.0') {
-        const { auditCandidate } = await import('./release-candidate-audit.mjs');
-        const result = auditCandidate(root);
-        check(args.length === 3 && args[0] === '--version' && args[1] === '0.5.0' && args[2] === '--candidate', 'owner_approval_pending');
-        console.log(JSON.stringify(result));
+      const { approvedNoticeDecisions } = await import('./notice-approval-decisions.mjs');
+      if (Object.hasOwn(approvedNoticeDecisions, requested)) {
+        const explicit = args[0] === '--version' && args[1] === requested;
+        if (explicit && args.length === 3 && args[2] === '--candidate') {
+          const { auditCandidate } = await import('./release-candidate-audit.mjs');
+          console.log(JSON.stringify({ ...auditCandidate(root, { commit: approvedNoticeDecisions[requested].candidate_commit }),
+            scope: 'FIXED_CANDIDATE_ARCHIVE', candidate_commit: approvedNoticeDecisions[requested].candidate_commit }));
+        } else if (explicit && args.length === 3 && args[2] === '--reviewed-inputs') {
+          const { inspectRegisteredNoticeInputs } = await import('./notice-approval-binding.mjs');
+          console.log(JSON.stringify(inspectRegisteredNoticeInputs(root, requested)));
+        } else {
+          check(args.length === 0 || explicit && (args.length === 2 || args.length === 5
+            && args[2] === '--formal' && args[3] === '--expected-source-head'), 'audit_arguments');
+          const { verifyRegisteredNoticeApproval } = await import('./notice-approval-binding.mjs');
+          console.log(JSON.stringify(verifyRegisteredNoticeApproval(root, requested, args[4])));
+        }
       } else {
         const archived = args.length === 1 && args[0] === '--archive-v0.4.0';
         check(archived || args.length === 0 && requested === '0.4.0', 'unsupported_release_version');

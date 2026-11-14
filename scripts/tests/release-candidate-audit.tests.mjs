@@ -6,16 +6,17 @@ import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readCandidateModel, validateCandidate, candidateMetadata, candidatePrefix, versionPaths } from '../release-candidate-audit.mjs';
+import { approvedNoticeDecisions } from '../notice-approval-decisions.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const original = readCandidateModel(root);
+const original = readCandidateModel(root, { commit: approvedNoticeDecisions['0.5.0'].candidate_commit });
 const clone = () => ({ ...original, files: new Map(original.files) });
 const edit = (m, p, action) => { const v = JSON.parse(m.files.get(p)); action(v); m.files.set(p, Buffer.from(JSON.stringify(v, null, 2) + '\n')); };
 function rebind(m) { for (const [p, b] of candidateMetadata(m)) m.files.set(p, b); }
 function rejects(name, change, gate, bind = false) {
   test(name, () => { const m = clone(); change(m); if (bind) rebind(m); assert.throws(() => validateCandidate(m), e => e.gate === gate); });
 }
-test('v0.5.0 technical candidate passes without approval', () => {
+test('fixed PREPARED candidate archive remains distinct from current input approval', () => {
   const result = validateCandidate(original);
   assert.equal(result.status, 'PREPARED'); assert.equal(result.formal_approval, false);
   assert.equal(result.public_release_approved, false); assert.equal(result.original_texts, 149);
@@ -25,6 +26,11 @@ test('candidate CLI and formal CLI have different outcomes', () => {
   const candidate = run(['--version', '0.5.0', '--candidate']);
   assert.equal(candidate.status, 0, candidate.stderr);
   assert.equal(JSON.parse(candidate.stdout).formal_approval, false);
+  assert.equal(JSON.parse(candidate.stdout).scope, 'FIXED_CANDIDATE_ARCHIVE');
+  const reviewed = run(['--version', '0.5.0', '--reviewed-inputs']);
+  assert.equal(reviewed.status, 0, reviewed.stderr);
+  assert.equal(JSON.parse(reviewed.stdout).input_approval, true);
+  assert.equal(JSON.parse(reviewed.stdout).verification_registered, false);
   for (const args of [[], ['--version', '0.5.0'], ['--candidate'], ['--version', '9.9.9']]) assert.notEqual(run(args).status, 0);
 });
 for (const p of versionPaths) {
