@@ -30,4 +30,5 @@ export interface QuestRowViewModel {
   updating: boolean;
   prerequisiteStatus: PrerequisiteStatus;
   directPrerequisites: DirectPrerequisite[];
+  progressReviewCandidate?: boolean;
 }

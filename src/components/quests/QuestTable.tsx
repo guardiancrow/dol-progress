@@ -4,7 +4,9 @@ import { useWorkspaceView } from "../layout/WorkspaceView";
 import { DiscoveryStateControl } from "../discoveries/ReportHoldControls";
 import type { ReportHoldController } from "../../discoveries/useReportHold";
 import { mapStatus } from "../../quests/mapState";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useState, useRef } from "react";
+import { PrerequisiteProgressReview } from "./PrerequisiteProgressReview";
+import type { PrerequisiteProgressReviewState } from "../../quests/prerequisiteProgressReview";
 import {
   columnFilteringFeature,
   columnVisibilityFeature,
@@ -52,17 +54,58 @@ const columnHelper = createColumnHelper<
 const collator = new Intl.Collator("ja", { numeric: true });
 
 interface QuestTableProps {
+  progressReview?: PrerequisiteProgressReviewState;
+  onReloadReview?(): void;
   reportHold?: ReportHoldController;
   rows: QuestRowViewModel[];
   paginationResetKey: number;
   onToggleCompletion(questId: number, completed: boolean): Promise<void>;
 }
 
-export function QuestTable({ rows, paginationResetKey, onToggleCompletion, reportHold }: QuestTableProps) {
+export function QuestTable({ rows, paginationResetKey, onToggleCompletion, reportHold, progressReview, onReloadReview }: QuestTableProps) {
   const controlsVisible = useWorkspaceView()?.controlsVisible ?? true;
   const reportHoldRef = useRef(reportHold);
   reportHoldRef.current = reportHold;
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [reviewExpanded, setReviewExpanded] = useState(false);
+  const reviewId = useId();
+  const reviewPanelRef = useRef<HTMLElement>(null);
+  const reviewButtonRef = useRef<HTMLButtonElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const lastTableFocus = useRef<HTMLElement | null>(null);
+  const reviewReady = useRef(false);
+  reviewReady.current = progressReview?.status === "ready";
+  const reviewCandidates = progressReview?.status === "ready" ? progressReview.candidates : undefined;
+  const candidateIds = useMemo(() => new Set(reviewCandidates?.map(candidate => candidate.successor.id) ?? []), [reviewCandidates]);
+  const reviewRows = useMemo(() => progressReview ? rows.map(row => ({ ...row, progressReviewCandidate: candidateIds.has(row.id) })) : rows,
+    [rows, progressReview, candidateIds]);
+  const onlyCandidates = columnFilters.some(filter => filter.id === "progressReview" && filter.value === true);
+  function focusOutsideReview() {
+    const element = (controlsVisible ? workspaceRef.current?.querySelector<HTMLInputElement>('input[type="search"]')
+      : workspaceRef.current?.querySelector<HTMLElement>('table button:not(:disabled), table input:not(:disabled), table select:not(:disabled)'))
+      ?? workspaceRef.current?.querySelector<HTMLSelectElement>('.pagination select');
+    element?.focus({ preventScroll: true });
+  }
+  function closeReview() {
+    if (reviewPanelRef.current?.contains(document.activeElement)) {
+      if (progressReview?.status === "ready" && progressReview.candidates.length === 0 && !onlyCandidates) focusOutsideReview();
+      else reviewButtonRef.current?.focus({ preventScroll: true });
+    }
+    setReviewExpanded(false);
+  }
+  function setOnlyCandidates(value: boolean) {
+    if (!value && !reviewExpanded && progressReview?.status === "ready" && progressReview.candidates.length === 0) focusOutsideReview();
+    setFilter("progressReview", value || undefined);
+  }
+  useLayoutEffect(() => {
+    if (reviewExpanded && document.activeElement === reviewButtonRef.current) {
+      reviewPanelRef.current?.querySelector<HTMLButtonElement>('button[aria-label="確認候補の詳細を閉じる"]')?.focus({ preventScroll: true });
+    }
+  }, [reviewExpanded]);
+  useLayoutEffect(() => {
+    if (onlyCandidates && progressReview?.status === "ready" && lastTableFocus.current && !lastTableFocus.current.isConnected
+      && document.activeElement === document.body) reviewButtonRef.current?.focus({ preventScroll: true });
+  }, [progressReview, onlyCandidates]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -89,6 +132,11 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
   const columns = useMemo(
     () =>
       columnHelper.columns([
+        columnHelper.accessor(row => row.progressReviewCandidate ?? false, {
+          id: "progressReview", header: "進捗確認候補", enableSorting: false,
+          filterFn: (row, columnId, value) => value === undefined || !reviewReady.current || row.getValue<boolean>(columnId),
+          cell: () => null,
+        }),
         columnHelper.accessor("completed", {
           id: "completed",
           header: "達成",
@@ -266,9 +314,10 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
     {
       features: tableFeatureSet,
       columns,
-      data: rows,
+      data: reviewRows,
       state: { columnFilters, sorting, pagination, columnVisibility: {
         prerequisiteStatus: false,
+        progressReview: false,
         [RANK_COLUMN_ID]: false,
       } },
       onColumnFiltersChange: setColumnFilters,
@@ -341,6 +390,7 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
     table.setPageIndex(0);
   }, [discoveryCategories, selectedDiscoveryFilter, table]);
   const filteredRows = table.getPrePaginatedRowModel().rows;
+  const matchingReviewCount = filteredRows.filter(row => candidateIds.has(row.original.id)).length;
   const filteredCompletedCount = filteredRows.filter(
     (row) => row.original.completed,
   ).length;
@@ -396,7 +446,9 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
       resetKey={JSON.stringify([paginationResetKey, columnFilters, sorting, pagination])}
       hint="備考を表示"
     >
-    <div className="workspace-table">
+    <div className="workspace-table" ref={workspaceRef} onFocusCapture={event => {
+      lastTableFocus.current = event.target instanceof HTMLElement && event.target.closest("table") ? event.target : null;
+    }}>
       <WorkspaceFilters label="クエストの詳細フィルター" searchActive={String(table.getColumn("title")?.getFilterValue() ?? "").trim() !== ""}
         activeFilterCount={columnFilters.filter(filter => filter.id !== "title").length} sorted={sorting.length > 0}
         search={<label>
@@ -557,6 +609,10 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
         <span>達成済み {filteredCompletedCount.toLocaleString("ja-JP")}件</span>
       </div>
 
+      {progressReview && <PrerequisiteProgressReview id={reviewId} expanded={reviewExpanded} panelRef={reviewPanelRef}
+        review={progressReview} matchingCount={matchingReviewCount} onlyCandidates={onlyCandidates}
+        onOnlyCandidates={setOnlyCandidates} onClose={closeReview} onReload={onReloadReview} />}
+
       {filteredRows.length === 0 ? (
         <div className="state-panel empty-state">
           <h3>条件に一致するクエストがありません</h3>
@@ -645,6 +701,15 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
             <option value={100}>100件</option>
           </select>
         </label>
+        {progressReview && (progressReview.status !== "ready" || progressReview.candidates.length > 0 || reviewExpanded || onlyCandidates) &&
+          <div className="prerequisite-review-entry">
+            <button type="button" className="button secondary" ref={reviewButtonRef} aria-expanded={reviewExpanded} aria-controls={reviewId}
+              onClick={() => reviewExpanded ? closeReview() : setReviewExpanded(true)}>
+              {progressReview.status === "ready" ? `進捗の確認候補 ${progressReview.candidates.length}件` : progressReview.status === "error" ? "進捗の確認候補（未確認）" : "進捗の確認候補（確認中）"}
+            </button>
+            {onlyCandidates && <button type="button" className="button secondary" onClick={() => setOnlyCandidates(false)} aria-label="候補フィルターを解除">候補を解除</button>}
+            {onlyCandidates && progressReview.status !== "ready" && <span role="status">候補の絞り込みは再確認後に再開します。</span>}
+          </div>}
       </div>
     </div>
     </MasterInfoProvider>
