@@ -126,43 +126,6 @@ export function DiscoveryTable({
             </span>
           ),
         }),
-        columnHelper.accessor((row) => row.category?.name ?? null, {
-          id: "category",
-          header: "分類",
-          filterFn: (row, _id, value) => value === "unset" ? row.original.category === null : row.original.category?.id === value,
-          sortFn: (a, b) => {
-            const left = a.original.category;
-            const right = b.original.category;
-            if (left === null) return right === null ? 0 : 1;
-            if (right === null) return -1;
-            return left.sortOrder - right.sortOrder || collator.compare(left.name, right.name);
-          },
-          cell: ({ row }) => row.original.category?.name ?? "未設定",
-        }),
-        numericColumn("rank", "ランク"),
-        columnHelper.accessor("era", {
-          id: "era",
-          header: "時代",
-          sortUndefined: "last",
-          sortFn: nullableTextSort,
-          cell: ({ getValue }) => getValue<string | null>() ?? "—",
-        }),
-        numericColumn("points", "ポイント"),
-        numericColumn("difficulty", "難易度"),
-        numericColumn("experience", "経験"),
-        columnHelper.accessor((row) => row.relatedQuests.map((quest) => quest.title).join("、"), {
-          id: "relatedQuests",
-          header: "関連クエスト",
-          enableSorting: false,
-          cell: ({ row }) => row.original.relatedQuests.length === 0 ? "—" : (
-            <div className="quest-long-text">{row.original.relatedQuests.map((quest) => (
-              <span className="master-info-name" key={quest.id}>
-                <span className="quest-title">{quest.title}</span>
-                <MasterInfoButton rowId={`quest:${row.original.id}:${quest.id}`} />
-              </span>
-            ))}</div>
-          ),
-        }),
         columnHelper.accessor((row) => row.progress === null ? null : row.effectiveReported, {
           id: "reported",
           header: "報告状態",
@@ -202,6 +165,43 @@ export function DiscoveryTable({
               <span>{row.original.progress === null ? "—" : row.original.progress.cardOwned ? "所有" : "なし"}</span>
             </label>
           ) : <span>対象外</span>,
+        }),
+        columnHelper.accessor((row) => row.category?.name ?? null, {
+          id: "category",
+          header: "分類",
+          filterFn: (row, _id, value) => value === "unset" ? row.original.category === null : row.original.category?.id === value,
+          sortFn: (a, b) => {
+            const left = a.original.category;
+            const right = b.original.category;
+            if (left === null) return right === null ? 0 : 1;
+            if (right === null) return -1;
+            return left.sortOrder - right.sortOrder || collator.compare(left.name, right.name);
+          },
+          cell: ({ row }) => row.original.category?.name ?? "未設定",
+        }),
+        numericColumn("rank", "ランク"),
+        columnHelper.accessor("era", {
+          id: "era",
+          header: "時代",
+          sortUndefined: "last",
+          sortFn: nullableTextSort,
+          cell: ({ getValue }) => getValue<string | null>() ?? "—",
+        }),
+        numericColumn("points", "ポイント"),
+        numericColumn("difficulty", "難易度"),
+        numericColumn("experience", "経験"),
+        columnHelper.accessor((row) => row.relatedQuests.map((quest) => quest.title).join("、"), {
+          id: "relatedQuests",
+          header: "関連クエスト",
+          enableSorting: false,
+          cell: ({ row }) => row.original.relatedQuests.length === 0 ? "—" : (
+            <div className="quest-long-text">{row.original.relatedQuests.map((quest) => (
+              <span className="master-info-name" key={quest.id}>
+                <span className="quest-title">{quest.title}</span>
+                <MasterInfoButton rowId={`quest:${row.original.id}:${quest.id}`} />
+              </span>
+            ))}</div>
+          ),
         }),
       ]),
     [onSetCardOwned, onSetReported, onToggleDiscovered],
