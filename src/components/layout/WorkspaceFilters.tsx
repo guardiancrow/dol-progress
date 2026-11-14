@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { COMPACT_WORKSPACE_QUERY, useResponsiveDisclosure } from "./useResponsiveDisclosure";
+import { DisclosureIcon } from "./DisclosureIcon";
 
 interface WorkspaceFiltersProps {
   search: ReactNode;
@@ -21,9 +22,13 @@ export function WorkspaceFilters({ search, searchActive, activeFilterCount, sort
   return <div className="workspace-filters">
     <div className="workspace-search">
       {search}
-      <button type="button" className="button secondary" ref={disclosure.buttonRef}
+      <button type="button" className="button secondary filter-toggle" ref={disclosure.buttonRef}
+        aria-label={disclosure.expanded ? "詳細フィルターを閉じる" : "詳細フィルターを開く"}
+        title={disclosure.expanded ? "詳細フィルターを閉じる" : "詳細フィルターを開く"}
         aria-expanded={disclosure.expanded} aria-controls={disclosure.id} onClick={disclosure.toggle}>
-        詳細フィルター{disclosure.expanded ? "を閉じる" : "を開く"}
+        <DisclosureIcon kind="filters" />
+        <span>絞り込み</span>
+        <DisclosureIcon kind="chevron" expanded={disclosure.expanded} />
       </button>
       <span className="filter-conditions" role="group" aria-label="適用中の条件">{conditions}</span>
     </div>

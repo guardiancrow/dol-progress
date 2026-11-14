@@ -4,6 +4,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { useProfiles } from "../../profiles/ProfileContext";
 import { Sidebar, type AppPage } from "./Sidebar";
 import { AppVersionInfo } from "./AppVersionInfo";
+import { DisclosureIcon } from "./DisclosureIcon";
 import { COMPACT_WORKSPACE_QUERY, NARROW_WORKSPACE_QUERY, useResponsiveDisclosure } from "./useResponsiveDisclosure";
 
 interface AppShellProps {
@@ -39,8 +40,10 @@ export function AppShell({
     <div className={`app-shell${menu.expanded ? "" : " app-shell--menu-closed"}`}>
       <header className={`app-header${header.expanded ? "" : " app-header--compact"}`}>
         <button type="button" className="shell-toggle" ref={menu.buttonRef}
+          aria-label={menu.expanded ? "メニューを閉じる" : "メニューを開く"}
+          title={menu.expanded ? "メニューを閉じる" : "メニューを開く"}
           aria-expanded={menu.expanded} aria-controls={menu.id} onClick={menu.toggle}>
-          メニュー{menu.expanded ? "を閉じる" : "を開く"}
+          <DisclosureIcon kind="sidebar" expanded={menu.expanded} />
         </button>
         <div className="app-identity">
           <div id={header.id} ref={header.panelRef} hidden={!header.expanded}>
@@ -53,8 +56,10 @@ export function AppShell({
           <strong title={selectedProfile?.name ?? "未選択"}>{selectedProfile?.name ?? "未選択"}</strong>
         </div>
         <button type="button" className="shell-toggle" ref={header.buttonRef}
+          aria-label={header.expanded ? "ヘッダーを縮める" : "ヘッダーを展開"}
+          title={header.expanded ? "ヘッダーを縮める" : "ヘッダーを展開"}
           aria-expanded={header.expanded} aria-controls={`${header.id} ${header.id}-profile`} onClick={header.toggle}>
-          ヘッダー{header.expanded ? "を縮める" : "を展開"}
+          <DisclosureIcon kind="chevron" expanded={header.expanded} />
         </button>
       </header>
       <Sidebar currentPage={currentPage} onNavigate={onNavigate} id={menu.id} expanded={menu.expanded} panelRef={menu.panelRef} />

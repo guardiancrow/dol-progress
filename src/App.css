@@ -41,7 +41,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 }
 .app-identity { flex: 1 0 auto; min-width: 0; }
 .app-header h1, .app-kicker, .current-profile strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.shell-toggle { flex: 0 0 auto; padding: .35rem .5rem; color: #fff; background: #294d69; border: 1px solid #8faabd; border-radius: .4rem; font-size: .8rem; cursor: pointer; }
+.shell-toggle { display: inline-grid; place-items: center; flex: 0 0 auto; width: 2.5rem; height: 2.5rem; min-width: 40px; min-height: 40px; padding: 0; color: #dce7f0; background: transparent; border: 1px solid #7693aa; border-radius: .4rem; cursor: pointer; }
+.shell-toggle:hover, .shell-toggle[aria-expanded="true"] { color: #fff; background: #294d69; border-color: #b8d1e6; }
+.disclosure-icon { display: block; flex: 0 0 auto; }
 .app-header--compact { min-height: 3.5rem; padding: .45rem .75rem; }
 .app-header.app-header--compact h1 { margin: 0; font-size: 1rem; }
 .app-header h1 { margin: .15rem 0 0; font-size: 1.45rem; letter-spacing: .01em; }
@@ -147,6 +149,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .workspace-filters:has(.workspace-filter-panel:not([hidden])) { min-height: 9rem; }
 .workspace-search { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: end; gap: .5rem .75rem; }
 .workspace-search > label { flex: 1 1 12rem; min-width: 0; }
+.filter-toggle { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: .4rem; min-width: 40px; min-height: 40px; font-size: .85rem; white-space: nowrap; }
+.filter-toggle .disclosure-icon--chevron { width: 1rem; height: 1rem; }
+.filter-toggle[aria-expanded="true"] { color: #153149; background: #eef6fb; border-color: #35709a; }
 .filter-conditions { align-self: center; font-size: .78rem; color: #425566; overflow-wrap: anywhere; }
 .workspace-filter-panel { flex: 0 1 auto; min-height: 0; max-height: min(30dvh, 18rem); margin-top: .6rem; overflow: auto; overscroll-behavior: contain; }
 .workspace-filter-panel > .map-filter-help { padding: .4rem; }

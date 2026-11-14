@@ -164,6 +164,38 @@ it("operates disclosures with Enter and Space without clearing the current table
   expect(screen.getByRole("table")).toBe(table);
 });
 
+it.each([
+  ["メニューを開く", "メニューを閉じる"],
+  ["ヘッダーを展開", "ヘッダーを縮める"],
+  ["詳細フィルターを開く", "詳細フィルターを閉じる"],
+])("keeps %s SVG decoration, hover text and keyboard state in sync", async (closedName, openName) => {
+  mockWorkspaceMedia(800, 600);
+  const user = userEvent.setup();
+  write.mockClear();
+  render(<Harness />);
+  const button = screen.getByRole("button", { name: closedName });
+  const svgBefore = Array.from(button.querySelectorAll("svg")).map(svg => svg.outerHTML).join("");
+  expect(svgBefore).not.toBe("");
+  for (const svg of button.querySelectorAll("svg")) {
+    expect(svg).toHaveAttribute("aria-hidden", "true");
+    expect(svg).toHaveAttribute("focusable", "false");
+    expect(svg).toHaveAttribute("stroke", "currentColor");
+  }
+  expect(within(button).queryByRole("img")).not.toBeInTheDocument();
+  expect(button).toHaveAttribute("title", closedName);
+  if (closedName.startsWith("詳細")) expect(button).toHaveTextContent("絞り込み");
+  else expect(button).toHaveTextContent(/^$/);
+  button.focus();
+  await user.keyboard("{Enter}");
+  expect(screen.getByRole("button", { name: openName })).toBe(button);
+  expect(button).toHaveAttribute("title", openName);
+  expect(button).toHaveAttribute("aria-expanded", "true");
+  expect(Array.from(button.querySelectorAll("svg")).map(svg => svg.outerHTML).join("")).not.toBe(svgBefore);
+  await user.keyboard(" ");
+  expect(screen.getByRole("button", { name: closedName })).toHaveAttribute("aria-expanded", "false");
+  expect(write).not.toHaveBeenCalled();
+});
+
 it("keeps header/menu choices across navigation and allows profile switching and all six pages", async () => {
   mockWorkspaceMedia(800, 600);
   const user = userEvent.setup();
