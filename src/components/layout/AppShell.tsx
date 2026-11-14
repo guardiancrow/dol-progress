@@ -4,6 +4,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { useProfiles } from "../../profiles/ProfileContext";
 import { Sidebar, type AppPage } from "./Sidebar";
 import { AppVersionInfo } from "./AppVersionInfo";
+import { COMPACT_WORKSPACE_QUERY, NARROW_WORKSPACE_QUERY, useResponsiveDisclosure } from "./useResponsiveDisclosure";
 
 interface AppShellProps {
   currentPage: AppPage;
@@ -20,6 +21,8 @@ export function AppShell({
   const isWorkspace = currentPage === "quests" || currentPage === "discoveries";
   const [version, setVersion] = useState<string | null>(null);
   const versionRequest = useRef<Promise<string> | null>(null);
+  const header = useResponsiveDisclosure(COMPACT_WORKSPACE_QUERY);
+  const menu = useResponsiveDisclosure<HTMLElement>(NARROW_WORKSPACE_QUERY);
 
   useEffect(() => {
     let active = true;
@@ -33,18 +36,28 @@ export function AppShell({
   }, []);
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div>
-          <p className="app-kicker">大航海時代 Online 進捗管理</p>
-          <h1>DOL Progress Manager</h1>
+    <div className={`app-shell${menu.expanded ? "" : " app-shell--menu-closed"}`}>
+      <header className={`app-header${header.expanded ? "" : " app-header--compact"}`}>
+        <button type="button" className="shell-toggle" ref={menu.buttonRef}
+          aria-expanded={menu.expanded} aria-controls={menu.id} onClick={menu.toggle}>
+          メニュー{menu.expanded ? "を閉じる" : "を開く"}
+        </button>
+        <div className="app-identity">
+          <div id={header.id} ref={header.panelRef} hidden={!header.expanded}>
+            <p className="app-kicker">大航海時代 Online 進捗管理</p>
+          </div>
+          <h1 title="DOL Progress Manager">DOL Progress Manager</h1>
         </div>
-        <div className="current-profile" aria-live="polite">
-          <span>選択中プロフィール</span>
-          <strong>{selectedProfile?.name ?? "未選択"}</strong>
+        <div className="current-profile" aria-live="polite" role="group" aria-label="選択中プロフィール">
+          <span id={`${header.id}-profile`} hidden={!header.expanded}>選択中プロフィール</span>
+          <strong title={selectedProfile?.name ?? "未選択"}>{selectedProfile?.name ?? "未選択"}</strong>
         </div>
+        <button type="button" className="shell-toggle" ref={header.buttonRef}
+          aria-expanded={header.expanded} aria-controls={`${header.id} ${header.id}-profile`} onClick={header.toggle}>
+          ヘッダー{header.expanded ? "を縮める" : "を展開"}
+        </button>
       </header>
-      <Sidebar currentPage={currentPage} onNavigate={onNavigate} />
+      <Sidebar currentPage={currentPage} onNavigate={onNavigate} id={menu.id} expanded={menu.expanded} panelRef={menu.panelRef} />
       <main className={`main-content${isWorkspace ? " main-content--workspace" : ""}`}>
         {children}
       </main>

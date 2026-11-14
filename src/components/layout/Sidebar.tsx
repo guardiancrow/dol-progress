@@ -1,5 +1,6 @@
 import { useProfiles } from "../../profiles/ProfileContext";
 import { ProfileSelector } from "../profiles/ProfileSelector";
+import type { Ref } from "react";
 
 export type AppPage = "overview" | "quests" | "discoveries" | "profiles" | "master-data" | "data-root";
 
@@ -13,16 +14,19 @@ const navigation: Array<{ id: AppPage; label: string }> = [
 ];
 
 interface SidebarProps {
+  id: string;
+  expanded: boolean;
+  panelRef: Ref<HTMLElement>;
   currentPage: AppPage;
   onNavigate(page: AppPage): void;
 }
 
-export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
+export function Sidebar({ currentPage, onNavigate, id, expanded, panelRef }: SidebarProps) {
   const { isLoading, profiles, selectedProfileId, selectProfile } =
     useProfiles();
 
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" id={id} ref={panelRef} hidden={!expanded} aria-label="メインメニュー">
       <ProfileSelector
         profiles={profiles}
         selectedProfileId={selectedProfileId}
