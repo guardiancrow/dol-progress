@@ -118,7 +118,7 @@ export function derivePrerequisiteStatuses(
   return statuses;
 }
 
-function parseRawRelations(rawRowJson: string): RawRelations {
+export function parseRawRelations(rawRowJson: string): RawRelations {
   try {
     const raw: unknown = JSON.parse(rawRowJson);
     if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new Error("Invalid row");

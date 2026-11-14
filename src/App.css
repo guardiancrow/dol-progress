@@ -211,6 +211,19 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .pagination { display: flex; flex-wrap: wrap; align-items: end; justify-content: center; gap: .5rem; margin-top: .6rem; }
 .pagination > span { align-self: center; min-width: 8rem; text-align: center; font-weight: 700; }
 .pagination label { width: 8rem; }
+.prerequisite-review { flex: 0 1 auto; min-height: 0; max-height: min(35dvh, 20rem); margin: 0 0 .5rem; padding: .6rem .8rem; overflow: auto; overscroll-behavior: contain; border: 1px solid #adbac5; border-radius: .5rem; background: #fff; font-size: .8rem; overflow-wrap: anywhere; }
+.prerequisite-review:focus-visible { outline: 3px solid #176b99; outline-offset: 2px; }
+.prerequisite-review-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.prerequisite-review-heading h3 { margin: 0; }
+.prerequisite-review p { margin: .4rem 0; }
+.prerequisite-review-filter { display: flex; align-items: center; gap: .4rem; }
+.prerequisite-review-filter input { width: 1.1rem; height: 1.1rem; }
+.prerequisite-review-list { margin: .5rem 0; padding-left: 1.5rem; }
+.prerequisite-review-list li + li { margin-top: .6rem; }
+.prerequisite-review-reason { display: block; color: #536575; }
+.prerequisite-review-entry, .prerequisite-review-pages { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .4rem; }
+.prerequisite-review-entry .button { font-size: .8rem; }
+.prerequisite-review-entry > [role="status"] { flex-basis: 100%; font-size: .75rem; }
 .overview-summary-grid {
   display: grid;
   gap: 1rem;
