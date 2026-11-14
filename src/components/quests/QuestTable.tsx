@@ -7,6 +7,7 @@ import { mapStatus } from "../../quests/mapState";
 import { useEffect, useId, useLayoutEffect, useMemo, useState, useRef } from "react";
 import { PrerequisiteProgressReview } from "./PrerequisiteProgressReview";
 import type { PrerequisiteProgressReviewState } from "../../quests/prerequisiteProgressReview";
+import type { PrerequisiteReviewCompletion } from "../../quests/prerequisiteReviewCompletion";
 import {
   columnFilteringFeature,
   columnVisibilityFeature,
@@ -54,6 +55,7 @@ const columnHelper = createColumnHelper<
 const collator = new Intl.Collator("ja", { numeric: true });
 
 interface QuestTableProps {
+  reviewCompletion?: PrerequisiteReviewCompletion;
   progressReview?: PrerequisiteProgressReviewState;
   onReloadReview?(): void;
   reportHold?: ReportHoldController;
@@ -62,7 +64,7 @@ interface QuestTableProps {
   onToggleCompletion(questId: number, completed: boolean): Promise<void>;
 }
 
-export function QuestTable({ rows, paginationResetKey, onToggleCompletion, reportHold, progressReview, onReloadReview }: QuestTableProps) {
+export function QuestTable({ rows, paginationResetKey, onToggleCompletion, reportHold, progressReview, onReloadReview, reviewCompletion }: QuestTableProps) {
   const controlsVisible = useWorkspaceView()?.controlsVisible ?? true;
   const reportHoldRef = useRef(reportHold);
   reportHoldRef.current = reportHold;
@@ -611,7 +613,7 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
 
       {progressReview && <PrerequisiteProgressReview id={reviewId} expanded={reviewExpanded} panelRef={reviewPanelRef}
         review={progressReview} matchingCount={matchingReviewCount} onlyCandidates={onlyCandidates}
-        onOnlyCandidates={setOnlyCandidates} onClose={closeReview} onReload={onReloadReview} />}
+        onOnlyCandidates={setOnlyCandidates} onClose={closeReview} onReload={onReloadReview} completion={reviewCompletion} />}
 
       {filteredRows.length === 0 ? (
         <div className="state-panel empty-state">

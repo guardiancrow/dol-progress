@@ -1,6 +1,6 @@
 import { useReportHold } from "../discoveries/useReportHold";
 import { ReportHoldDialogs, ReportHoldFeedback } from "../components/discoveries/ReportHoldControls";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { QuestTable } from "../components/quests/QuestTable";
 import type { QuestWithDiscoveries } from "../domain/models";
@@ -8,6 +8,7 @@ import { useProfiles } from "../profiles/ProfileContext";
 import type { ProgressLinkServicePort } from "../progressLink";
 import { derivePrerequisiteStatuses, type QuestDependency } from "../quests/prerequisites";
 import { resolveDirectPrerequisites } from "../quests/directPrerequisites";
+import type { PrerequisiteReviewCompletion, PrerequisiteReviewConfirmation } from "../quests/prerequisiteReviewCompletion";
 import { buildPrerequisiteReviewIndex, derivePrerequisiteProgressReview, type PrerequisiteProgressReviewState } from "../quests/prerequisiteProgressReview";
 import type {
   QuestProgressRepositoryPort,
@@ -36,6 +37,13 @@ interface CompletionSnapshot {
   reload: number;
   repository: QuestProgressRepositoryPort;
 }
+interface ReviewConfirmation extends PrerequisiteReviewConfirmation {
+  master: MasterSnapshot;
+  completion: CompletionSnapshot;
+  revision: number;
+  readTicket: number;
+}
+type CompletionOutcome = { status: "saved"; discoveriesCreated: number } | { status: "unconfirmed" | "skipped" };
 const EMPTY_QUESTS: QuestWithDiscoveries[] = [];
 const EMPTY_DEPENDENCIES: QuestDependency[] = [];
 const EMPTY_COMPLETED = new Set<number>();
@@ -46,7 +54,7 @@ export function QuestsPage({
   questProgressRepository,
   progressLinkService,
 }: QuestsPageProps) {
-  const { selectedProfileId, isLoading: isProfileLoading } = useProfiles();
+  const { selectedProfileId, selectedProfile, isLoading: isProfileLoading } = useProfiles();
   const [masterSnapshot, setMasterSnapshot] = useState<MasterSnapshot | null>(null);
   const [completionSnapshot, setCompletionSnapshot] = useState<CompletionSnapshot | null>(null);
   const quests = masterSnapshot?.quests ?? EMPTY_QUESTS;
@@ -59,6 +67,7 @@ export function QuestsPage({
   const [progressError, setProgressError] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [updateDiagnostic, setUpdateDiagnostic] = useState<string | null>(null);
+  const [updateFromReview, setUpdateFromReview] = useState(false);
   const [updateFeedback, setUpdateFeedback] = useState<string | null>(null);
   const [masterReload, setMasterReload] = useState(0);
   const [progressReload, setProgressReload] = useState(0);
@@ -70,6 +79,21 @@ export function QuestsPage({
   const writeRevision = useRef(0);
   const [progressNeedsRefresh, setProgressNeedsRefresh] = useState(false);
   const [masterRead, setMasterRead] = useState<{ generation: number; state: "loading" | "ready" | "error" } | null>(null);
+  const [reviewConfirmation, setReviewConfirmation] = useState<ReviewConfirmation | null>(null);
+  const reviewConfirmationRef = useRef<ReviewConfirmation | null>(null);
+  const reviewSavingRef = useRef<ReviewConfirmation | null>(null);
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState<{ profileId: number; epoch: number; text: string } | null>(null);
+  const pageRef = useRef<HTMLElement>(null);
+  const reviewFailureFocus = useRef(false);
+  useLayoutEffect(() => {
+    if (reviewSaving || !reviewFailureFocus.current) return;
+    reviewFailureFocus.current = false;
+    if (progressError && reviewMessage?.profileId === selectedProfileId
+      && reviewMessage.epoch === progressGeneration.current && document.activeElement === document.body) {
+      pageRef.current?.querySelector<HTMLButtonElement>('.error-banner button')?.focus({ preventScroll: true });
+    }
+  }, [reviewSaving, progressError, reviewMessage, selectedProfileId]);
   selectedProfileRef.current = selectedProfileId;
   const pendingForProfile = selectedProfileId !== null && [...pendingUpdates].some(key => key.startsWith(`${selectedProfileId}:`));
   const loadMasterPair = useCallback(() => Promise.all([
@@ -152,6 +176,7 @@ export function QuestsPage({
     setProgressError(null);
     setUpdateError(null);
     setUpdateDiagnostic(null);
+    setUpdateFromReview(false);
     setUpdateFeedback(null);
     if (selectedProfileId === null) {
       setIsProgressLoading(false);
@@ -184,22 +209,24 @@ export function QuestsPage({
     return () => { active = false; };
   }, [progressReload, questProgressRepository, selectedProfileId]);
 
-  const toggleCompletion = useCallback(
-    async (questId: number, completed: boolean) => {
+  const updateCompletion = useCallback(
+    async (questId: number, completed: boolean, fromReview = false): Promise<CompletionOutcome> => {
       const profileId = selectedProfileRef.current;
-      if (profileId === null) return;
+      if (profileId === null) return { status: "skipped" };
       const generation = progressGeneration.current;
       const updateKey = `${profileId}:${questId}`;
-      if (pendingUpdatesRef.current.has(updateKey)) return;
+      if (pendingUpdatesRef.current.has(updateKey)) return { status: "skipped" };
 
       ++writeRevision.current;
       pendingUpdatesRef.current.add(updateKey);
       setPendingUpdates(new Set(pendingUpdatesRef.current));
       setUpdateError(null);
       setUpdateDiagnostic(null);
+      setUpdateFromReview(fromReview);
       setUpdateFeedback(null);
       const started = performance.now();
       const operation = completed ? "cancel" : "complete";
+      let discoveriesCreated = 0;
       try {
         if (completed) {
           await questProgressRepository.markIncomplete(profileId, questId);
@@ -208,9 +235,10 @@ export function QuestsPage({
             profileId,
             questId,
           );
+          discoveriesCreated = result.discoveriesCreated;
           if (
             selectedProfileRef.current === profileId && progressGeneration.current === generation &&
-            result.discoveriesCreated > 0
+            result.discoveriesCreated > 0 && !fromReview
           ) {
             setUpdateFeedback(
               `クエストを達成済みにし、関連する発見物 ${result.discoveriesCreated}件を発見済みにしました。`,
@@ -228,13 +256,14 @@ export function QuestsPage({
             return { ...current, ids: next };
           });
         }
+        return { status: "saved", discoveriesCreated };
       } catch (error: unknown) {
         const diagnostic = `${operation} / ${classifyQuestUpdateError(error)} / ${Math.round(performance.now()-started)}ms`;
         console.error("Quest progress update failed", diagnostic);
         if (selectedProfileRef.current === profileId && progressGeneration.current === generation) {
           const revision = ++writeRevision.current;
           const ticket = ++progressReadGeneration.current;
-          setUpdateError("達成状態を更新できませんでした。現在の状態を再取得します。");
+          setUpdateError(fromReview ? "達成状態の保存完了を確認できません。現在の状態を再取得します。" : "達成状態を更新できませんでした。現在の状態を再取得します。");
           setUpdateDiagnostic(diagnostic);
           const recoveryStarted=performance.now();
           try {
@@ -253,6 +282,7 @@ export function QuestsPage({
             setUpdateDiagnostic(`${diagnostic} / reload:${classifyQuestUpdateError(recoveryError)}:${Math.round(performance.now()-recoveryStarted)}ms`);
           }}
         }
+        return { status: "unconfirmed" };
       } finally {
         pendingUpdatesRef.current.delete(updateKey);
         setPendingUpdates(new Set(pendingUpdatesRef.current));
@@ -261,10 +291,13 @@ export function QuestsPage({
     },
     [progressLinkService, questProgressRepository, reportHold.reload, progressReload],
   );
+  const toggleCompletion = useCallback(async (questId: number, completed: boolean) => {
+    await updateCompletion(questId, completed);
+  }, [updateCompletion]);
 
   const statuses = useMemo(() => derivePrerequisiteStatuses(quests.map(({ quest }) => quest), dependencies, completedQuestIds),
     [quests, dependencies, completedQuestIds]);
-  const reviewIndex = useMemo(() => buildPrerequisiteReviewIndex(quests.map(({ quest }) => quest), dependencies), [quests, dependencies]);
+  const reviewIndex = useMemo(() => buildPrerequisiteReviewIndex(quests.map(({ quest }) => quest), dependencies), [quests, dependencies, masterSnapshot?.generation]);
   const candidates = useMemo(() => derivePrerequisiteProgressReview(reviewIndex, completedQuestIds, statuses), [reviewIndex, completedQuestIds, statuses]);
   const completionMatches = completionSnapshot?.profileId === selectedProfileId && completionSnapshot?.epoch === progressGeneration.current
     && completionSnapshot?.reload === progressReload && completionSnapshot?.repository === questProgressRepository;
@@ -277,6 +310,92 @@ export function QuestsPage({
     return { status: "ready", candidates };
   }, [masterError, progressError, masterRead, reportHold.summaryReadState, completionMatches, masterMatches,
     isMasterLoading, isProgressLoading, progressNeedsRefresh, isProfileLoading, pendingForProfile, reportHold.busy, candidates]);
+  const latestReview = useRef({ review: progressReview, master: masterSnapshot, completion: completionSnapshot,
+    profileName: selectedProfile?.name, blocked: false });
+  latestReview.current = { review: progressReview, master: masterSnapshot, completion: completionSnapshot,
+    profileName: selectedProfile?.name, blocked: reportHold.dialog !== null || reportHold.selection !== null };
+  function confirmationIsCurrent(session: ReviewConfirmation) {
+    const latest = latestReview.current;
+    return selectedProfileRef.current === session.profileId && progressGeneration.current === session.completion.epoch
+      && latest.review.status === "ready" && !latest.blocked
+      && latest.master === session.master && latest.completion === session.completion
+      && masterGeneration.current === session.master.generation
+      && progressReadGeneration.current === session.readTicket && writeRevision.current === session.revision
+      && ![...pendingUpdatesRef.current].some(key => key.startsWith(`${session.profileId}:`))
+      && latest.completion.ids.has(session.candidate.successor.id) && !latest.completion.ids.has(session.candidate.prerequisite.id)
+      && latest.review.candidates.some(candidate => candidate.successor.id === session.candidate.successor.id
+        && candidate.prerequisite.id === session.candidate.prerequisite.id
+        && candidate.successor.gvdbId === session.candidate.successor.gvdbId && candidate.prerequisite.gvdbId === session.candidate.prerequisite.gvdbId);
+  }
+  const confirmationCurrent = reviewConfirmation !== null && confirmationIsCurrent(reviewConfirmation);
+  useEffect(() => {
+    if (!reviewConfirmation || reviewSavingRef.current === reviewConfirmation || confirmationCurrent) return;
+    reviewConfirmationRef.current = null;
+    setReviewConfirmation(null);
+    if (selectedProfileRef.current === reviewConfirmation.profileId && progressGeneration.current === reviewConfirmation.completion.epoch) {
+      setReviewMessage({ profileId: reviewConfirmation.profileId, epoch: reviewConfirmation.completion.epoch,
+        text: "進捗または前提関係が変わったため、確認を閉じました。再確認してから操作してください。" });
+    }
+  }, [reviewConfirmation, confirmationCurrent]);
+  const reviewCompletion: PrerequisiteReviewCompletion = {
+    confirmation: reviewConfirmation && selectedProfileId === reviewConfirmation.profileId
+      && progressGeneration.current === reviewConfirmation.completion.epoch
+      && (confirmationCurrent || reviewSavingRef.current === reviewConfirmation) ? reviewConfirmation : null,
+    pending: reviewSaving,
+    message: reviewMessage?.profileId === selectedProfileId && reviewMessage.epoch === progressGeneration.current ? reviewMessage.text : null,
+    begin(candidate) {
+      const latest = latestReview.current;
+      if (reviewConfirmationRef.current || reviewSavingRef.current || !latest.master || !latest.completion || selectedProfileId === null
+        || latest.review.status !== "ready" || latest.blocked || latest.profileName === undefined) return;
+      const currentCandidate = latest.review.candidates.find(item => item.successor.id === candidate.successor.id
+        && item.prerequisite.id === candidate.prerequisite.id && item.prerequisite.gvdbId === candidate.prerequisite.gvdbId
+        && item.successor.gvdbId === candidate.successor.gvdbId);
+      if (!currentCandidate) return;
+      const session: ReviewConfirmation = { profileId: selectedProfileId, profileName: latest.profileName, candidate: currentCandidate,
+        master: latest.master, completion: latest.completion, revision: writeRevision.current, readTicket: progressReadGeneration.current };
+      if (!confirmationIsCurrent(session)) return;
+      reviewConfirmationRef.current = session;
+      reviewFailureFocus.current = false;
+      setReviewConfirmation(session);
+      setReviewMessage(null);
+    },
+    cancel() {
+      if (reviewSavingRef.current) return;
+      reviewConfirmationRef.current = null;
+      setReviewConfirmation(null);
+    },
+    async confirm() {
+      const session = reviewConfirmationRef.current;
+      if (!session || reviewSavingRef.current) return;
+      if (!confirmationIsCurrent(session)) {
+        reviewConfirmationRef.current = null;
+        setReviewConfirmation(null);
+        if (selectedProfileRef.current === session.profileId) setReviewMessage({ profileId: session.profileId, epoch: session.completion.epoch,
+          text: "現在の状態を確認できないため保存しませんでした。確認候補を再読み込みしてください。" });
+        return;
+      }
+      reviewSavingRef.current = session;
+      setReviewSaving(true);
+      try {
+        const outcome = await updateCompletion(session.candidate.prerequisite.id, false, true);
+        if (selectedProfileRef.current !== session.profileId || progressGeneration.current !== session.completion.epoch
+          || reviewConfirmationRef.current !== session) return;
+        const text = outcome.status === "saved"
+          ? `前提「${session.candidate.prerequisite.title}」を達成済みにしました。${outcome.discoveriesCreated > 0 ? `関連する発見物 ${outcome.discoveriesCreated}件も発見済みにしました。` : ""}`
+          : outcome.status === "unconfirmed" ? "保存完了を確認できませんでした。再取得した現在の状態を確認してください。"
+            : "保存を開始できませんでした。現在の状態を再確認してください。";
+        reviewFailureFocus.current = outcome.status === "unconfirmed";
+        setReviewMessage({ profileId: session.profileId, epoch: session.completion.epoch, text });
+      } finally {
+        if (reviewConfirmationRef.current === session) {
+          reviewConfirmationRef.current = null;
+          setReviewConfirmation(null);
+        }
+        reviewSavingRef.current = null;
+        setReviewSaving(false);
+      }
+    },
+  };
   const reloadReview = () => {
     setMasterReload(value => value + 1);
     setProgressReload(value => value + 1);
@@ -325,7 +444,7 @@ export function QuestsPage({
   }
 
   return (
-    <section className="workspace-page" aria-labelledby="quests-title">
+    <section className="workspace-page" aria-labelledby="quests-title" ref={pageRef}>
       <div className="page-heading">
         <div>
           <p className="page-eyebrow">進捗管理</p>
@@ -348,10 +467,16 @@ export function QuestsPage({
           onRetry={reloadReview}
         />
       )}
+      {updateFromReview && (updateError || updateDiagnostic) ? <div className="prerequisite-review-feedback">
+        {updateError && <p role="alert">{updateError}</p>}
+        {masterRead?.state === "error" && !masterError && <button type="button" className="button secondary" onClick={reloadReview}>再読み込み</button>}
+        {updateDiagnostic && <details><summary>診断情報</summary><code>{updateDiagnostic}</code></details>}
+      </div> : <>
       {updateError && (masterRead?.state === "error" && !masterError
         ? <ErrorBanner message={updateError} onRetry={reloadReview} />
         : <div className="error-banner" role="alert">{updateError}</div>)}
       {updateDiagnostic && <p>診断情報：<code>{updateDiagnostic}</code></p>}
+      </>}
       {updateFeedback && <div className="progress-feedback" role="status">{updateFeedback}</div>}
 
       {isMasterLoading || isProgressLoading || (!progressError && !completionMatches) || (!masterError && masterSnapshot?.reload !== masterReload) ? (
@@ -370,6 +495,7 @@ export function QuestsPage({
           onToggleCompletion={toggleCompletion}
           progressReview={progressReview}
           onReloadReview={reloadReview}
+          reviewCompletion={reviewCompletion}
         />
       )}
     </section>
