@@ -1,5 +1,5 @@
 interface DisclosureIconProps {
-  kind: "sidebar" | "chevron" | "filters";
+  kind: "sidebar" | "top-panel" | "chevron" | "filters";
   expanded?: boolean;
 }
 
@@ -11,6 +11,10 @@ export function DisclosureIcon({ kind, expanded = false }: DisclosureIconProps) 
       <rect x="3" y="4" width="18" height="16" rx="2" />
       <path d="M9 4v16" />
       <path d={expanded ? "m16 9-3 3 3 3" : "m13 9 3 3-3 3"} />
+    </> : kind === "top-panel" ? <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 9h18" />
+      <path d={expanded ? "m9 16 3-3 3 3" : "m9 13 3 3 3-3"} />
     </> : kind === "chevron" ? <path d={expanded ? "m6 15 6-6 6 6" : "m6 9 6 6 6-6"} /> : <>
       <path d="M3 6h3m4 0h11M3 12h11m4 0h3M3 18h5m4 0h9" />
       <circle cx="8" cy="6" r="2" />

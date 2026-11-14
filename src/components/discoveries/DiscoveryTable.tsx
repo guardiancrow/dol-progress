@@ -1,4 +1,5 @@
 import { WorkspaceFilters } from "../layout/WorkspaceFilters";
+import { useWorkspaceView } from "../layout/WorkspaceView";
 import { mapDiscoveryStatus, mapDiscoveryLabels, mapDiscoveryReviewReason } from "../../discoveries/mapReacquisition";
 import { currentUnreportedHistory } from "../../discoveries/unreportedBreakdown";
 import { FirstReportControl } from "./FirstReportControl";
@@ -62,6 +63,7 @@ export function DiscoveryTable({
   onSetReported,
   onSetCardOwned,
 }: DiscoveryTableProps) {
+  const controlsVisible = useWorkspaceView()?.controlsVisible ?? true;
   const reportHoldRef = useRef(reportHold);
   reportHoldRef.current = reportHold;
   // Navigation initializes this mount only; consuming the intent must not reset later user filters.
@@ -289,7 +291,7 @@ export function DiscoveryTable({
         </div>
       </WorkspaceFilters>
       {breakdownUnavailable ? <div className="state-panel" role="status">{historyReadState === "loading" ? "未報告の内訳を読み込んでいます…" : "未報告の内訳を確認できません。地図・報告履歴を再読み込みしてください。"}</div> : <>
-      <div className="quest-summary" aria-live="polite"><span>{rows.length.toLocaleString("ja-JP")}件中 {filteredRows.length.toLocaleString("ja-JP")}件表示</span><span>発見済み {discoveredCount.toLocaleString("ja-JP")}件</span><span>未報告 {unreportedCount.toLocaleString("ja-JP")}件</span><span>カード所有 {cardOwnedCount.toLocaleString("ja-JP")}件</span></div>
+      <div className="quest-summary" aria-live="polite" hidden={!controlsVisible}><span>{rows.length.toLocaleString("ja-JP")}件中 {filteredRows.length.toLocaleString("ja-JP")}件表示</span><span>発見済み {discoveredCount.toLocaleString("ja-JP")}件</span><span>未報告 {unreportedCount.toLocaleString("ja-JP")}件</span><span>カード所有 {cardOwnedCount.toLocaleString("ja-JP")}件</span></div>
       {filteredRows.length === 0 ? <div className="state-panel empty-state"><h3>条件に一致する発見物がありません</h3><p>検索条件または絞り込み条件を変更してください。</p></div> : (
         <div className="quest-table-scroll discovery-table-scroll"><table className="quest-table discovery-table"><thead>{table.getHeaderGroups().map((group) => <tr key={group.id}>{group.headers.map((header) => { const canSort = header.column.getCanSort(); const direction = header.column.getIsSorted(); return <th data-column={header.column.id} title={header.column.id === "firstReport" ? "過去に一度でも報告したかを示します。現在の報告状態とは別の履歴です。レリックと特殊自動報告対象の履歴は訂正できません。" : undefined} key={header.id} scope="col" aria-sort={direction === "asc" ? "ascending" : direction === "desc" ? "descending" : undefined}>{header.isPlaceholder ? null : canSort ? <button type="button" className="sort-button" aria-label={`${String(header.column.columnDef.header)}で並べ替え`} onClick={header.column.getToggleSortingHandler()}><table.FlexRender header={header} /><span aria-hidden="true">{direction === "asc" ? " ▲" : direction === "desc" ? " ▼" : " ↕"}</span></button> : <table.FlexRender header={header} />}</th>; })}</tr>)}</thead><tbody>{table.getRowModel().rows.map((row) => <tr key={row.id}>{row.getVisibleCells().map((cell) => <td data-column={cell.column.id} key={cell.id}><table.FlexRender cell={cell} /></td>)}</tr>)}</tbody></table></div>
       )}

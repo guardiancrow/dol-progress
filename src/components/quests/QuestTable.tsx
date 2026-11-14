@@ -1,4 +1,5 @@
 import { WorkspaceFilters } from "../layout/WorkspaceFilters";
+import { useWorkspaceView } from "../layout/WorkspaceView";
 import { DiscoveryStateControl } from "../discoveries/ReportHoldControls";
 import type { ReportHoldController } from "../../discoveries/useReportHold";
 import { mapStatus } from "../../quests/mapState";
@@ -57,6 +58,7 @@ interface QuestTableProps {
 }
 
 export function QuestTable({ rows, paginationResetKey, onToggleCompletion, reportHold }: QuestTableProps) {
+  const controlsVisible = useWorkspaceView()?.controlsVisible ?? true;
   const reportHoldRef = useRef(reportHold);
   reportHoldRef.current = reportHold;
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -540,7 +542,7 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
         </div>
       </WorkspaceFilters>
 
-      <div className="quest-summary" aria-live="polite">
+      <div className="quest-summary" aria-live="polite" hidden={!controlsVisible}>
         <span>{rows.length.toLocaleString("ja-JP")}件中 {filteredRows.length.toLocaleString("ja-JP")}件表示</span>
         <span>達成済み {filteredCompletedCount.toLocaleString("ja-JP")}件</span>
       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 
 import { useProfiles } from "../../profiles/ProfileContext";
@@ -6,7 +6,8 @@ import { Sidebar, type AppPage } from "./Sidebar";
 import { AppVersionInfo } from "./AppVersionInfo";
 import { DisclosureIcon } from "./DisclosureIcon";
 import { ProfileSelector } from "../profiles/ProfileSelector";
-import { COMPACT_WORKSPACE_QUERY, NARROW_WORKSPACE_QUERY, useResponsiveDisclosure } from "./useResponsiveDisclosure";
+import { NARROW_WORKSPACE_QUERY, useResponsiveDisclosure } from "./useResponsiveDisclosure";
+import { WorkspaceViewContext } from "./WorkspaceView";
 
 interface AppShellProps {
   currentPage: AppPage;
@@ -23,8 +24,27 @@ export function AppShell({
   const isWorkspace = currentPage === "quests" || currentPage === "discoveries";
   const [version, setVersion] = useState<string | null>(null);
   const versionRequest = useRef<Promise<string> | null>(null);
-  const header = useResponsiveDisclosure(COMPACT_WORKSPACE_QUERY);
   const menu = useResponsiveDisclosure<HTMLElement>(NARROW_WORKSPACE_QUERY);
+  const [controlsByPage, setControlsByPage] = useState({ quests: true, discoveries: true });
+  const controlsVisible = currentPage === "quests" || currentPage === "discoveries" ? controlsByPage[currentPage] : true;
+  const id = useId();
+  const controlsId = `${id}-${currentPage}-controls`;
+  const controlsRef = useRef<HTMLDivElement | null>(null);
+  const controlsButtonRef = useRef<HTMLButtonElement>(null);
+  const [hasControls, setHasControls] = useState(false);
+  const registerControls = useCallback((element: HTMLDivElement | null) => {
+    controlsRef.current = element;
+    setHasControls(element !== null);
+  }, []);
+  const workspaceView = useMemo(() => ({ controlsVisible, controlsId, registerControls }), [controlsVisible, controlsId, registerControls]);
+
+  function toggleControls() {
+    if (currentPage !== "quests" && currentPage !== "discoveries") return;
+    if (controlsVisible && controlsRef.current?.contains(document.activeElement)) {
+      controlsButtonRef.current?.focus({ preventScroll: true });
+    }
+    setControlsByPage(current => ({ ...current, [currentPage]: !current[currentPage] }));
+  }
 
   useEffect(() => {
     let active = true;
@@ -39,7 +59,7 @@ export function AppShell({
 
   return (
     <div className={`app-shell${menu.expanded ? "" : " app-shell--menu-closed"}`}>
-      <header className={`app-header${header.expanded ? "" : " app-header--compact"}`}>
+      <header className="app-header">
         <div className="header-controls">
           <button type="button" className="shell-toggle" ref={menu.buttonRef}
             aria-label={menu.expanded ? "メニューを閉じる" : "メニューを開く"}
@@ -48,24 +68,25 @@ export function AppShell({
             <DisclosureIcon kind="sidebar" expanded={menu.expanded} />
           </button>
           <div className="app-identity">
-            <div id={header.id} ref={header.panelRef} hidden={!header.expanded}>
-              <p className="app-kicker">大航海時代 Online 進捗管理</p>
-            </div>
             <h1 title="DOL Progress Manager">DOL Progress Manager</h1>
           </div>
-          <button type="button" className="shell-toggle" ref={header.buttonRef}
-            aria-label={header.expanded ? "ヘッダーを縮める" : "ヘッダーを展開"}
-            title={header.expanded ? "ヘッダーを縮める" : "ヘッダーを展開"}
-            aria-expanded={header.expanded} aria-controls={header.id} onClick={header.toggle}>
-            <DisclosureIcon kind="chevron" expanded={header.expanded} />
-          </button>
+          {isWorkspace && <button type="button" className="shell-toggle" ref={controlsButtonRef}
+            aria-label={controlsVisible ? "検索・フィルターを隠す" : "検索・フィルターを表示"}
+            title={controlsVisible ? "検索・フィルターを隠す" : "検索・フィルターを表示"}
+            aria-expanded={controlsVisible} aria-controls={hasControls ? controlsId : undefined}
+            data-workspace-controls-toggle={controlsId} disabled={!hasControls} onClick={toggleControls}>
+            <DisclosureIcon kind="top-panel" expanded={controlsVisible} />
+          </button>}
+          {isWorkspace && !controlsVisible && <span className="header-page-name" aria-hidden="true">{currentPage === "quests" ? "クエスト" : "発見物"}</span>}
         </div>
         <ProfileSelector profiles={profiles} selectedProfileId={selectedProfileId} disabled={isLoading} onSelect={selectProfile} />
       </header>
       <Sidebar currentPage={currentPage} onNavigate={onNavigate} id={menu.id} expanded={menu.expanded} panelRef={menu.panelRef} />
-      <main className={`main-content${isWorkspace ? " main-content--workspace" : ""}`}>
-        {children}
-      </main>
+      <WorkspaceViewContext.Provider value={workspaceView}>
+        <main className={`main-content${isWorkspace ? " main-content--workspace" : ""}${isWorkspace && !controlsVisible ? " main-content--table-priority" : ""}`}>
+          {children}
+        </main>
+      </WorkspaceViewContext.Provider>
       <footer className="status-bar">
         <span>進捗データはローカルに保存されます</span>
         {version && <AppVersionInfo version={version} />}
