@@ -1,3 +1,5 @@
+import { WorkspaceFilters } from "../layout/WorkspaceFilters";
+import { useWorkspaceView } from "../layout/WorkspaceView";
 import { DiscoveryStateControl } from "../discoveries/ReportHoldControls";
 import type { ReportHoldController } from "../../discoveries/useReportHold";
 import { mapStatus } from "../../quests/mapState";
@@ -56,6 +58,7 @@ interface QuestTableProps {
 }
 
 export function QuestTable({ rows, paginationResetKey, onToggleCompletion, reportHold }: QuestTableProps) {
+  const controlsVisible = useWorkspaceView()?.controlsVisible ?? true;
   const reportHoldRef = useRef(reportHold);
   reportHoldRef.current = reportHold;
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -383,9 +386,9 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
       hint="備考を表示"
     >
     <div className="workspace-table">
-      <details className="map-filter-help"><summary>地図の入手について</summary><p>発見済み・未報告の書庫地図は、再入手が抑止されます。表示対象は書庫地図の完全な一覧ではなく、すべてが再調査報酬になるとは限りません。都市の絞り込みにはCSVのオファー都市を使用します。</p></details>
-      <div className="quest-filters">
-        <label>
+      <WorkspaceFilters label="クエストの詳細フィルター" searchActive={String(table.getColumn("title")?.getFilterValue() ?? "").trim() !== ""}
+        activeFilterCount={columnFilters.filter(filter => filter.id !== "title").length} sorted={sorting.length > 0}
+        search={<label>
           クエスト名／地図名を検索
           <input
             type="search"
@@ -394,7 +397,9 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
               setFilter("title", event.target.value || undefined)
             }
           />
-        </label>
+        </label>}>
+        <details className="map-filter-help"><summary>地図の入手について</summary><p>発見済み・未報告の書庫地図は、再入手が抑止されます。表示対象は書庫地図の完全な一覧ではなく、すべてが再調査報酬になるとは限りません。都市の絞り込みにはCSVのオファー都市を使用します。</p></details>
+        <div className="quest-filters">
         <label>
           達成状態
           <select
@@ -534,9 +539,10 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
           </select>
         </label>
         <label>地図の入手<select value={String(table.getColumn("mapState")?.getFilterValue() ?? "all")} onChange={e=>setFilter("mapState",e.target.value === "all" ? undefined : e.target.value)}><option value="all">すべて</option><option value="candidate">入手候補</option><option value="suppressed">入手抑止</option></select></label>
-      </div>
+        </div>
+      </WorkspaceFilters>
 
-      <div className="quest-summary" aria-live="polite">
+      <div className="quest-summary" aria-live="polite" hidden={!controlsVisible}>
         <span>{rows.length.toLocaleString("ja-JP")}件中 {filteredRows.length.toLocaleString("ja-JP")}件表示</span>
         <span>達成済み {filteredCompletedCount.toLocaleString("ja-JP")}件</span>
       </div>

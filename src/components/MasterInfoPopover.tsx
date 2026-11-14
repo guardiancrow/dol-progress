@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { useWorkspaceView } from "./layout/WorkspaceView";
 
 interface MasterInfoItem {
   id: number | string;
@@ -138,6 +139,7 @@ function MasterInfoPanel({ item, anchor, dialogId, onClose }: {
   dialogId: string;
   onClose(restoreFocus: boolean): void;
 }) {
+  const workspace = useWorkspaceView();
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
@@ -195,7 +197,7 @@ function MasterInfoPanel({ item, anchor, dialogId, onClose }: {
       window.removeEventListener("scroll", reposition, true);
       observer?.disconnect();
     };
-  }, [anchor, item, onClose]);
+  }, [anchor, item, onClose, workspace?.controlsVisible]);
 
   useLayoutEffect(() => {
     closeButtonRef.current?.focus({ preventScroll: true });
@@ -207,6 +209,8 @@ function MasterInfoPanel({ item, anchor, dialogId, onClose }: {
       if (!(target instanceof Element) || panelRef.current?.contains(target)) return;
       // Let another button in this table switch the selection in its own click handler.
       if (target.closest("[data-master-info-owner]")?.getAttribute("data-master-info-owner") === dialogId) return;
+      // 一覧の表示切り替えは情報パネルを閉じず、上のlayout effectで再配置する。
+      if (workspace && target.closest("[data-workspace-controls-toggle]")?.getAttribute("data-workspace-controls-toggle") === workspace.controlsId) return;
       onClose(false);
     }
     function escape(event: KeyboardEvent) {
@@ -221,7 +225,7 @@ function MasterInfoPanel({ item, anchor, dialogId, onClose }: {
       document.removeEventListener("click", outsideClick, true);
       document.removeEventListener("keydown", escape);
     };
-  }, [dialogId, onClose]);
+  }, [dialogId, onClose, workspace]);
 
   return (
     <div

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 
-import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -22,17 +22,20 @@ import type { ProgressLinkServicePort } from "./progressLink";
 import type { ProgressStats, DiscoveryCategoryProgressStats } from "./overview/types";
 import { DiscoveryStateService, type DiscoveryState } from "./discoveries/stateService";
 import { discoveryStateReader, type DiscoveryStateSummary } from "./discoveries/stateReader";
+import { mockWorkspaceMedia } from "./components/layout/responsiveTestMedia";
 
 vi.mock("./discoveries/stateReader", async (importOriginal) => ({...await importOriginal<typeof import("./discoveries/stateReader")>(),discoveryStateReader: {list: vi.fn().mockResolvedValue([])}}));
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   vi.mocked(discoveryStateReader.list).mockReset().mockResolvedValue([]);
 });
 
 describe("Discovery UI", () => {
   it.each(["not_reported", "confirmed"] as const)("registers weather, confirms %s, removes progress and withdraws history with overview updates", async status => {
+    const resize = mockWorkspaceMedia(1920, 1080);
     const category = {id:1,name:"気象・現象",sortOrder:10};
     const storage = new Map<number,DiscoveryProgress[]>();
     const repositories = setup([profile(1)], [discovery(1,"合成の気象",{category,experience:100})],storage);
@@ -82,6 +85,16 @@ describe("Discovery UI", () => {
     await user.click(button);
     expect(await screen.findByLabelText("初回報告履歴")).toHaveValue("");
     await user.selectOptions(screen.getByLabelText("初回報告履歴"), status);
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(screen.getByRole("button", {name:"検索・フィルターを隠す"}));
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    expect(screen.getByLabelText("初回報告履歴")).toHaveValue(status);
+    fireEvent.click(screen.getByRole("button", {name:"検索・フィルターを表示"}));
+    act(() => resize(800, 600));
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    expect(screen.getByLabelText("初回報告履歴")).toHaveValue(status);
+    expect(update).not.toHaveBeenCalled();
+    act(() => resize(1920, 1080));
     await user.click(screen.getByRole("button", {name:"記録を保存"}));
     await screen.findByText("条件に一致する発見物がありません");
     await user.selectOptions(screen.getByLabelText("未報告の内訳"), status);
@@ -853,6 +866,12 @@ describe("Discovery UI", () => {
     const checkbox = screen.getByRole("checkbox", { name: "発見の発見状態" });
     await user.click(checkbox);
     expect(checkbox).toBeDisabled();
+    const table = screen.getByRole("table");
+    await user.click(screen.getByRole("button", { name: "詳細フィルターを閉じる" }));
+    await user.click(screen.getByRole("button", { name: "検索・フィルターを隠す" }));
+    await user.click(screen.getByRole("button", { name: "メニューを閉じる" }));
+    expect(screen.getByRole("table")).toBe(table);
+    expect(checkbox).toBeDisabled();
     await user.click(checkbox);
     expect(repositories.progress.markDiscovered).toHaveBeenCalledTimes(1);
     resolveWrite?.();
@@ -866,7 +885,12 @@ describe("Discovery UI", () => {
     const user = await open(repositories);
     const checkbox = screen.getByRole("checkbox", { name: "発見の発見状態" });
     await user.click(checkbox);
-    expect(await screen.findByRole("alert")).toHaveTextContent("発見物進捗を更新できませんでした");
+    const error = await screen.findByRole("alert");
+    expect(error).toHaveTextContent("発見物進捗を更新できませんでした");
+    await user.click(screen.getByRole("button", { name: "詳細フィルターを閉じる" }));
+    await user.click(screen.getByRole("button", { name: "検索・フィルターを隠す" }));
+    expect(screen.getByRole("alert")).toBe(error);
+    expect(repositories.progress.markDiscovered).toHaveBeenCalledTimes(1);
     expect(checkbox).not.toBeChecked();
   });
 
@@ -874,6 +898,8 @@ describe("Discovery UI", () => {
     const repositories = setup([profile(1, "A"), profile(2, "B")], [discovery(1, "発見")], new Map([[1, [progress(1, 1)]], [2, []]]));
     const user = await open(repositories);
     expect(screen.getByRole("checkbox", { name: "発見の発見状態" })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "検索・フィルターを隠す" }));
+    await user.click(screen.getByRole("button", { name: "メニューを閉じる" }));
     await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "発見の発見状態" })).not.toBeChecked());
     expect(repositories.progress.listByProfile).toHaveBeenLastCalledWith(2);

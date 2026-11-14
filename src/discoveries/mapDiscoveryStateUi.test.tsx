@@ -210,7 +210,10 @@ it("places the map filter last without reordering the others",async()=>{
   setup();
   await screen.findByText("共有発見物");
   const filters=document.querySelector(".discovery-filters")!;
-  expect(Array.from(filters.children).map(e=>e.firstChild?.textContent)).toEqual(["発見物名を検索","分類","状態","未報告の内訳","カード所有","地図"]);
+  expect(Array.from(filters.children).map(e=>e.firstChild?.textContent)).toEqual(["分類","状態","未報告の内訳","カード所有","地図"]);
+  const search = screen.getByRole("searchbox", { name: "発見物名を検索" });
+  expect(filters).not.toContainElement(search);
+  expect(search.compareDocumentPosition(filters) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(within(screen.getByRole("combobox",{name:"地図"})).getAllByRole("option").map(o=>o.getAttribute("value"))).toEqual(["all","related","unrelated","suppressed","candidate","review"]);
 });
 

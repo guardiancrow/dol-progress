@@ -19,6 +19,7 @@ export function ProfileSelector({
       <select
         id="selected-profile"
         value={selectedProfileId ?? ""}
+        title={profiles.find(profile => profile.id === selectedProfileId)?.name ?? "プロフィールなし"}
         disabled={disabled || profiles.length === 0}
         onChange={(event) => onSelect(Number(event.target.value))}
       >
