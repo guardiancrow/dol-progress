@@ -589,6 +589,21 @@ describe("Quest UI", () => {
     expect(screen.queryByText("クエストを達成済みにしました。")).not.toBeInTheDocument();
   });
 
+  it("reconciles already-recorded responses without announcing a new completion in the normal list", async () => {
+    const repositories = createRepositories([profile(1, "航海者")], [quest(1, "テスト依頼A")]);
+    const user = await openQuests(repositories);
+    repositories.link.completeQuestWithLinkedDiscoveries.mockImplementationOnce(async () => {
+      await repositories.progress.markCompleted(1, 1);
+      return { questChanged: false, discoveriesCreated: 0, discoveriesAlreadyPresent: 0 };
+    });
+    const before = repositories.progress.listCompletedQuestIds.mock.calls.length;
+    await user.click(screen.getByRole("checkbox", { name: "テスト依頼Aの達成状態" }));
+    await screen.findByText("このクエストは既に達成済みとして記録されています。現在の記録を再取得しました。");
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "テスト依頼Aの達成状態" })).toBeChecked());
+    expect(repositories.progress.listCompletedQuestIds.mock.calls.length).toBeGreaterThan(before);
+    expect(screen.queryByText(/クエストを達成済みにし、/)).not.toBeInTheDocument();
+  });
+
   it("shows how many related discoveries were auto-created", async () => {
     const repositories = createRepositories(
       [profile(1, "航海者")],

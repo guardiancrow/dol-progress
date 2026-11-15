@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { QuestWithDiscoveries } from "../domain/models";
-import { buildPrerequisiteDetailsData } from "./prerequisiteDetails";
+import { buildPrerequisiteDetailsData, canManuallyCompletePrerequisite } from "./prerequisiteDetails";
 import { resolveDirectPrerequisites } from "./directPrerequisites";
 import { buildPrerequisiteReviewIndex, derivePrerequisiteProgressReview } from "./prerequisiteProgressReview";
 import { derivePrerequisiteStatuses } from "./prerequisites";
@@ -18,6 +18,19 @@ function fixture() {
   return { masters, dependencies, build };
 }
 describe("canonical prerequisite detail data", () => {
+  it.each([0, -1, Number.MAX_SAFE_INTEGER + 1, NaN])("rejects invalid target IDs (%s) independently of relation diagnostics", id => {
+    const f = fixture(); f.masters[0]!.quest.id = id;
+    f.dependencies[0]!.prerequisiteQuestId = id;
+    expect(canManuallyCompletePrerequisite(f.build(), 2, id, new Set())).toBe(false);
+  });
+  it("requires an explicitly displayed direct relation and an unrecorded unique target but no successful relation diagnosis", () => {
+    const f = fixture(); f.masters[0]!.quest.offerMethod = "追究クエスト";
+    const data = f.build(false);
+    expect(canManuallyCompletePrerequisite(data, 2, 1, new Set())).toBe(true);
+    expect(canManuallyCompletePrerequisite(data, 3, 1, new Set())).toBe(false);
+    expect(canManuallyCompletePrerequisite(data, 2, 1, new Set([1]))).toBe(false);
+    expect(canManuallyCompletePrerequisite(data, 2, 99, new Set())).toBe(false);
+  });
   it("keeps direct names independent of candidate eligibility and omits raw data and notes from display identities", () => {
     const f = fixture(), data = f.build();
     expect(data.direct.get(1)).toBeUndefined(); expect(data.direct.get(3)).toEqual([{ id: 2, name: "依頼2" }]);

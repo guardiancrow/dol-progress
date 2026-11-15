@@ -106,7 +106,7 @@ describe("prerequisite record review from canonical name cells", () => {
     await waitFor(() => expect(panel()).toHaveTextContent("前提「依頼4」を達成済みにしました。"));
     expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledExactlyOnceWith(1, 4);
     expect(f.progress.markCompleted).not.toHaveBeenCalled(); expect(f.stored.get(1)).toEqual(new Set([4, 5]));
-    expect(f.progress.listCompletedQuestIds).toHaveBeenCalledTimes(2); expect(panel()).toHaveTextContent("発見物 1件も発見済み");
+    expect(f.progress.listCompletedQuestIds).toHaveBeenCalledTimes(3); expect(panel()).toHaveTextContent("発見物 1件も発見済み");
     expect(within(panel()).queryByRole("button", { name: /達成済みにする/ })).not.toBeInTheDocument();
     await user.click(within(panel()).getByRole("button", { name: "依頼4の前提を確認" })); expect(start(3)).toBeInTheDocument();
   });
@@ -144,7 +144,7 @@ describe("prerequisite record review from canonical name cells", () => {
     expect(within(panel()).getByRole("heading", { name: "依頼1の前提を確認" })).toBeInTheDocument();
     expect(panel()).toHaveTextContent("既に確認したクエスト");
   });
-  it.each(["multiple", "mismatch", "missing", "inactive", "map", "special", "self", "cycle"])("keeps known names readable and registration absent for %s", async kind => {
+  it.each(["multiple", "mismatch", "missing", "inactive", "map", "special", "self", "cycle"])("keeps known names readable and candidate registration absent for %s", async kind => {
     const f = fixture();
     if (kind === "multiple") f.dependencies.push({ questId: 5, prerequisiteQuestId: 2 });
     if (kind === "missing") f.dependencies.push({ questId: 5, prerequisiteQuestId: 99 });
@@ -187,7 +187,7 @@ describe("prerequisite record review from canonical name cells", () => {
     const saving = deferred<Awaited<ReturnType<typeof f.link.completeQuestWithLinkedDiscoveries>>>();
     f.link.completeQuestWithLinkedDiscoveries.mockImplementationOnce(() => saving.promise);
     await user.click(start()); const button = submit(); fireEvent.click(button); fireEvent.click(button);
-    expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledTimes(1));
     expect(screen.getByRole("checkbox", { name: "依頼3の達成状態" })).toBeDisabled();
     await user.keyboard("{Escape}"); expect(screen.getByRole("group", { name: "前提クエストの達成登録" })).toBeInTheDocument();
     await act(async () => { f.stored.get(1)!.add(4); saving.resolve({ questChanged: true, discoveriesCreated: 0, discoveriesAlreadyPresent: 0 }); });
@@ -201,7 +201,7 @@ describe("prerequisite record review from canonical name cells", () => {
     expect(screen.getByRole("checkbox", { name: "依頼4の達成状態" })).toHaveProperty("checked", committed);
   });
   it.each(["saved", "uncertain"])("keeps failed re-reads unconfirmed after %s save and focuses recovery", async kind => {
-    const { f, user } = await open(); f.progress.listCompletedQuestIds.mockRejectedValueOnce(Error("synthetic read failure"));
+    const { f, user } = await open(); f.progress.listCompletedQuestIds.mockResolvedValueOnce([5]).mockRejectedValueOnce(Error("synthetic read failure"));
     if (kind === "uncertain") f.link.completeQuestWithLinkedDiscoveries.mockRejectedValueOnce(Error("synthetic save failure"));
     await user.click(start()); await user.click(submit());
     await screen.findByText(kind === "saved" ? "達成の保存は完了しましたが、進捗の再取得に失敗しました。再読み込みしてください。" : "進捗の再取得に失敗しました。再読み込みしてください。");
@@ -268,6 +268,176 @@ describe("prerequisite record review from canonical name cells", () => {
     await user.click(within(panel()).getByRole("button", { name: "前提の記録確認を閉じる" }));
     expect(priority ? screen.getByLabelText("1ページの件数") : screen.getByRole("searchbox")).toHaveFocus();
     expect(screen.getByRole("button", { name: "候補フィルターを解除" })).toBeInTheDocument();
+  });
+});
+const manualStart = (id = 3) => within(panel()).getByRole("button", { name: `依頼${id}を手動で達成済みとして登録` });
+const manualSubmit = () => screen.getByRole("button", { name: "達成済みとして登録" });
+const acknowledgement = () => screen.getByRole("checkbox", { name: "ゲーム内でこのクエストを達成したことを確認しました" });
+async function openManual(f = fixture(), id = 4, target = 3) {
+  const view = await open(f, id); await view.user.click(manualStart(target)); return view;
+}
+describe("manual prerequisite completion independent of strict candidates", () => {
+  it("repairs only the explicitly confirmed intermediate record in a multi-generation discovery-free chain", async () => {
+    const f = fixture(); f.stored.set(1, new Set([1, 5]));
+    f.link.completeQuestWithLinkedDiscoveries.mockImplementation(async (profileId, questId) => {
+      f.stored.get(profileId)!.add(questId); return { questChanged: true, discoveriesCreated: 0, discoveriesAlreadyPresent: 0 };
+    });
+    const { user } = await open(f);
+    expect(within(panel()).queryByRole("button", { name: /手動で/ })).not.toBeInTheDocument();
+    await user.click(within(panel()).getByRole("button", { name: "依頼4の前提を確認" }));
+    await user.click(manualStart());
+    const group = screen.getByRole("group", { name: "前提クエストの手動達成登録" });
+    expect(group).toHaveTextContent("合成プロフィール1"); expect(group).toHaveTextContent("GVDB ID: 1003／内部ID: 3");
+    expect(group).toHaveTextContent("現在は未達成"); expect(group).toHaveTextContent("対象1クエストだけ");
+    expect(manualSubmit()).toBeDisabled(); fireEvent.click(manualSubmit()); expect(f.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+    await user.click(acknowledgement()); expect(acknowledgement()).toHaveFocus(); expect(manualSubmit()).toBeEnabled();
+    await user.click(manualSubmit());
+    await waitFor(() => expect(panel()).toHaveTextContent("前提「依頼3」を達成済みにしました。"));
+    expect(f.stored.get(1)).toEqual(new Set([1, 3, 5])); expect(f.stored.get(2)).toEqual(new Set([1, 2, 3, 4, 5, 6]));
+    expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledExactlyOnceWith(1, 3);
+    expect(f.progress.markIncomplete).not.toHaveBeenCalled(); expect(f.progress.markCompleted).not.toHaveBeenCalled();
+    expect(within(panel()).getByRole("heading", { name: "依頼4の前提を確認" })).toBeInTheDocument();
+    expect(within(panel()).getByRole("button", { name: "前提の記録確認を閉じる" })).toHaveFocus();
+    expect(within(panel()).queryByRole("button", { name: /手動で/ })).not.toBeInTheDocument();
+    await user.click(within(panel()).getByRole("button", { name: "依頼3の前提を確認" }));
+    expect(start(2)).toBeInTheDocument(); expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledTimes(1);
+  });
+  it.each(["multiple", "mismatch", "cycle", "map", "special", "self", "unknown"])("permits manual registration despite %s without changing candidate exclusions", async kind => {
+    const f = fixture(); f.stored.set(1, new Set());
+    if (kind === "multiple") f.dependencies.push({ questId: 4, prerequisiteQuestId: 1 });
+    if (kind === "cycle") f.dependencies.push({ questId: 1, prerequisiteQuestId: 4 });
+    if (kind === "self") f.dependencies.push({ questId: 3, prerequisiteQuestId: 3 });
+    if (kind === "map") f.masters[2]!.quest.offerMethod = "地理学";
+    if (kind === "special") f.masters[2]!.quest.offerMethod = "追究クエスト";
+    f.syncRaw(); if (kind === "mismatch") f.masters[3]!.quest.rawRowJson = "{}";
+    if (kind === "unknown") f.masters[3]!.quest.rawRowJson = "not json";
+    const { user } = await openManual(f); expect(screen.queryByRole("group", { name: "前提クエストの達成登録" })).not.toBeInTheDocument();
+    await user.click(acknowledgement()); await user.click(manualSubmit());
+    await waitFor(() => expect(panel()).toHaveTextContent("前提「依頼3」を達成済みにしました。"));
+    expect(f.stored.get(1)).toEqual(new Set([3])); expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledExactlyOnceWith(1, 3);
+  });
+  it.each(["inactive", "missing", "duplicate-gvdb", "duplicate-local", "invalid-gvdb"])("refuses an invalid target (%s)", async kind => {
+    const f = fixture();
+    if (kind === "inactive") f.masters[2]!.quest.isActive = false;
+    if (kind === "missing") { f.masters.splice(2, 1); f.dependencies.push({ questId: 4, prerequisiteQuestId: 1 }); }
+    if (kind === "duplicate-gvdb") f.masters[0]!.quest.gvdbId = 1003;
+    if (kind === "duplicate-local") f.masters.push({ ...f.masters[2]!, quest: { ...f.masters[2]!.quest, gvdbId: 2003 } });
+    if (kind === "invalid-gvdb") f.masters[2]!.quest.gvdbId = 0;
+    const { user } = await open(f, 4);
+    expect(within(panel()).queryByRole("button", { name: "依頼3を手動で達成済みとして登録" })).not.toBeInTheDocument();
+    await user.keyboard("{Escape}"); expect(f.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+  });
+  it("keeps same-name targets distinct by internal and GVDB IDs", async () => {
+    const f = fixture(); f.masters[1]!.quest.title = f.masters[2]!.quest.title = "同名";
+    f.dependencies.push({ questId: 4, prerequisiteQuestId: 2 }); f.syncRaw();
+    const { user } = await open(f, 4);
+    const items = within(panel()).getAllByRole("listitem");
+    await user.click(within(items.find(item => item.textContent?.includes("GVDB ID: 1003"))!).getByRole("button", { name: "同名を手動で達成済みとして登録" }));
+    expect(screen.getByRole("group", { name: "前提クエストの手動達成登録" })).toHaveTextContent("GVDB ID: 1003／内部ID: 3");
+    await user.click(acknowledgement()); await user.click(manualSubmit());
+    await waitFor(() => expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledExactlyOnceWith(1, 3));
+  });
+  it("uses candidate priority with no checkbox and never adds manual registration to the candidate list", async () => {
+    const { user } = await open(); expect(start()).toBeInTheDocument();
+    expect(within(panel()).queryByRole("button", { name: /手動で/ })).not.toBeInTheDocument();
+    await user.click(start()); expect(screen.queryByRole("checkbox", { name: /ゲーム内/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "キャンセル" })); await user.click(screen.getByRole("button", { name: "進捗の確認候補 1件" }));
+    expect(screen.queryByRole("button", { name: /手動で/ })).not.toBeInTheDocument();
+  });
+  it("resets acknowledgement on cancel/Escape, target change and profile switch and preserves keyboard focus", async () => {
+    const { user } = await openManual(); const origin = manualStart();
+    await user.click(acknowledgement()); await user.keyboard("{Escape}"); expect(origin).toHaveFocus();
+    await user.keyboard(" "); expect(acknowledgement()).not.toBeChecked(); expect(manualSubmit()).toBeDisabled();
+    await user.tab(); expect(acknowledgement()).toHaveFocus(); await user.keyboard(" "); expect(acknowledgement()).toBeChecked();
+    await user.tab(); expect(screen.getByRole("button", { name: "キャンセル" })).toHaveFocus(); await user.keyboard("{Enter}");
+    await user.click(within(panel()).getByRole("button", { name: "依頼3の前提を確認" })); await user.click(manualStart(2));
+    expect(acknowledgement()).not.toBeChecked(); await user.click(acknowledgement());
+    const stale = manualSubmit(); await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    await screen.findByRole("table"); fireEvent.click(stale); await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "1");
+    await screen.findByRole("table"); await user.click(entry(4)); await user.click(manualStart()); expect(acknowledgement()).not.toBeChecked();
+  });
+  it.each(["profile", "master"])("does not save after a delayed preflight with a changed %s generation", async kind => {
+    const { f, user } = await openManual(); await user.click(acknowledgement());
+    const read = deferred<number[]>(); f.progress.listCompletedQuestIds.mockImplementationOnce(() => read.promise);
+    const button = manualSubmit(); fireEvent.click(button); fireEvent.click(button);
+    expect(f.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled(); expect(button).toBeDisabled();
+    expect(screen.getByRole("button", { name: "前提の記録確認を閉じる" })).toBeDisabled();
+    if (kind === "profile") { for (const id of ["2", "1"]) { await user.selectOptions(screen.getByLabelText("現在のプロフィール"), id); await screen.findByRole("table"); } }
+    else act(() => hold.changed());
+    await act(async () => read.resolve([5]));
+    await waitFor(() => expect(screen.queryByRole("group", { name: "前提クエストの手動達成登録" })).not.toBeInTheDocument());
+    expect(f.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+    await user.click(entry(4)); await user.click(manualStart()); expect(acknowledgement()).not.toBeChecked();
+  });
+  it("re-reads after another writer completes the target and avoids any save API", async () => {
+    const { f, user } = await openManual(); await user.click(acknowledgement()); f.stored.get(1)!.add(3);
+    await user.click(manualSubmit()); await waitFor(() => expect(panel()).toHaveTextContent("再登録はしていません"));
+    expect(f.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled(); expect(screen.getByRole("checkbox", { name: "依頼3の達成状態" })).toBeChecked();
+  });
+  it("does not silently rebase a manual confirmation or convert it into a newly detected candidate", async () => {
+    const { f, user } = await openManual(); await user.click(acknowledgement()); f.stored.get(1)!.add(4);
+    await user.click(manualSubmit()); await waitFor(() => expect(panel()).toHaveTextContent("達成記録が変わったため保存しませんでした"));
+    expect(f.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+    await user.click(within(panel()).getByRole("button", { name: "前提を再確認" })); expect(start(3)).toBeInTheDocument();
+  });
+  it("does not save when the preflight read fails and focuses recovery", async () => {
+    const { f, user } = await openManual(); await user.click(acknowledgement()); f.progress.listCompletedQuestIds.mockRejectedValueOnce(Error("preflight"));
+    await user.click(manualSubmit()); await screen.findByText("登録前の進捗確認に失敗しました。保存していません。再読み込みしてください。");
+    expect(f.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled(); expect(screen.getByRole("button", { name: "再読み込み" })).toHaveFocus();
+  });
+  it.each([false, true])("preserves an uncertain API result after recovery (persisted=%s)", async persisted => {
+    const { f, user } = await openManual(); await user.click(acknowledgement());
+    f.link.completeQuestWithLinkedDiscoveries.mockImplementationOnce(async () => { if (persisted) f.stored.get(1)!.add(3); throw Error("uncertain"); });
+    await user.click(manualSubmit()); await waitFor(() => expect(panel()).toHaveTextContent("保存完了を確認できませんでした。"));
+    expect(panel()).not.toHaveTextContent("前提「依頼3」を達成済みにしました。");
+    expect(screen.getByRole("checkbox", { name: "依頼3の達成状態" })).toHaveProperty("checked", persisted);
+    expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledTimes(1);
+  });
+  it("distinguishes an explicit backend rejection from an unknown save result", async () => {
+    const { f, user } = await openManual(); await user.click(acknowledgement());
+    f.link.completeQuestWithLinkedDiscoveries.mockRejectedValueOnce({ kind: "InvalidSelection", detail: "synthetic inactive" });
+    await user.click(manualSubmit());
+    await waitFor(() => expect(panel()).toHaveTextContent("対象が無効なため保存できませんでした。"));
+    expect(panel()).not.toHaveTextContent("保存完了を確認できませんでした。");
+    expect(f.stored.get(1)).toEqual(new Set([5])); expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledTimes(1);
+  });
+  it("blocks repeated submissions throughout preflight, API and reread", async () => {
+    const { f, user } = await openManual(); await user.click(acknowledgement());
+    const save = deferred<Awaited<ReturnType<typeof f.link.completeQuestWithLinkedDiscoveries>>>();
+    f.link.completeQuestWithLinkedDiscoveries.mockImplementationOnce(() => save.promise);
+    const button = manualSubmit(); fireEvent.click(button); fireEvent.click(button);
+    await waitFor(() => expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledTimes(1));
+    expect(button).toBeDisabled(); expect(acknowledgement()).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "依頼3の達成状態" })).toBeDisabled();
+    await user.keyboard("{Escape}"); expect(screen.getByRole("group", { name: "前提クエストの手動達成登録" })).toBeInTheDocument();
+    const read = deferred<number[]>(); f.progress.listCompletedQuestIds.mockImplementationOnce(() => read.promise);
+    await act(async () => { f.stored.get(1)!.add(3); save.resolve({ questChanged: true, discoveriesCreated: 0, discoveriesAlreadyPresent: 0 }); });
+    fireEvent.click(button); expect(button).toBeDisabled(); expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledTimes(1);
+    await act(async () => read.resolve([3, 5])); await waitFor(() => expect(panel()).toHaveTextContent("前提「依頼3」を達成済みにしました。"));
+  });
+  it.each(["candidate", "manual"])("treats questChanged=false as already recorded, not newly saved (%s)", async kind => {
+    const f = fixture(); const { user } = kind === "manual" ? await openManual(f) : await open(f);
+    const target = kind === "manual" ? 3 : 4;
+    if (kind === "manual") await user.click(acknowledgement()); else await user.click(start());
+    f.link.completeQuestWithLinkedDiscoveries.mockImplementationOnce(async () => { f.stored.get(1)!.add(target); return { questChanged: false, discoveriesCreated: 0, discoveriesAlreadyPresent: 0 }; });
+    await user.click(kind === "manual" ? manualSubmit() : submit());
+    await waitFor(() => expect(panel()).toHaveTextContent("新規登録はしていません"));
+    expect(panel()).not.toHaveTextContent("を達成済みにしました。"); expect(f.progress.listCompletedQuestIds).toHaveBeenCalledTimes(3);
+  });
+  it.each([true, false])("distinguishes a known save response from a failed reread (questChanged=%s)", async questChanged => {
+    const { f, user } = await openManual(); await user.click(acknowledgement());
+    f.progress.listCompletedQuestIds.mockResolvedValueOnce([5]).mockRejectedValueOnce(Error("post-save"));
+    f.link.completeQuestWithLinkedDiscoveries.mockResolvedValueOnce({ questChanged, discoveriesCreated: 0, discoveriesAlreadyPresent: 0 });
+    await user.click(manualSubmit());
+    await screen.findByText(questChanged ? "達成の保存は完了しましたが、進捗の再取得に失敗しました。再読み込みしてください。"
+      : "既登録の応答を受け取りましたが、進捗の再取得に失敗しました。再読み込みしてください。");
+    expect(screen.queryByText(/前提「依頼3」を達成済みにしました/)).not.toBeInTheDocument();
+    expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledTimes(1);
+  });
+  it.each(["loading", "error"] as const)("offers no manual action for unknown progress (%s)", async state => {
+    hold.state = state; const { user } = await open(fixture(), 4);
+    expect(panel()).toHaveTextContent("達成記録は未確認"); expect(within(panel()).queryByRole("button", { name: /手動で/ })).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
   });
 });
 async function mountWithoutTable(f: ReturnType<typeof fixture>) {

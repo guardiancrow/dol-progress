@@ -1,12 +1,13 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import type { PrerequisiteDetailsView } from "../../quests/prerequisiteDetails";
+import { canManuallyCompletePrerequisite, type PrerequisiteDetailsView } from "../../quests/prerequisiteDetails";
 import type { PrerequisiteProgressCandidate, PrerequisiteProgressReviewState } from "../../quests/prerequisiteProgressReview";
 
-export function PrerequisiteDetails({ view, review, locked, onBegin, onReload }: {
+export function PrerequisiteDetails({ view, review, locked, onBegin, onBeginManual, onReload }: {
   view: PrerequisiteDetailsView;
   review: PrerequisiteProgressReviewState;
   locked: boolean;
   onBegin?(candidate: PrerequisiteProgressCandidate, origin: HTMLButtonElement): void;
+  onBeginManual?(contextQuestId: number, targetQuestId: number, origin: HTMLButtonElement): void;
   onReload?(): void;
 }) {
   const [page, setPage] = useState(0);
@@ -27,7 +28,7 @@ export function PrerequisiteDetails({ view, review, locked, onBegin, onReload }:
     </div>
     {!ready && <p role="status">{review.status === "error" ? "達成記録を確認できません。再読み込みしてください。" : "達成記録を確認しています。"}
       {review.status === "error" && onReload && <button type="button" className="button secondary" disabled={locked} onClick={onReload}>前提の記録を再読み込み</button>}</p>}
-    {ready && !view.recordedAtOpen && view.completed.has(current.id) && <p>達成記録を再確認する必要があります。登録操作を行う前に「前提を再確認」を押してください。</p>}
+    {ready && !view.recordedAtOpen && view.completed.has(current.id) && <p>候補による登録操作を行う前に「前提を再確認」を押してください。手動登録はゲーム内での達成をご自身で確認して行えます。</p>}
     {reasons === undefined ? <p>確認理由の診断結果を確認できません。</p> : reasons.length > 0 && <div><strong>要確認</strong><ul>{reasons.map(reason => <li key={reason}>{reason}</li>)}</ul></div>}
     {view.cycleMessage && <p role="status">{view.cycleMessage}</p>}
     {direct.length === 0 ? <p>表示できる直接前提はありません。</p> : <ul className="prerequisite-review-list">
@@ -35,6 +36,7 @@ export function PrerequisiteDetails({ view, review, locked, onBegin, onReload }:
         const identity = view.data.quests.get(previous.id);
         const candidate = ready && view.recordedAtOpen && reasons !== undefined
           ? review.candidates.find(item => item.successor.id === current.id && item.prerequisite.id === previous.id) : undefined;
+        const manual = ready && !candidate && canManuallyCompletePrerequisite(view.data, current.id, previous.id, view.completed);
         return <li key={previous.id}>
           <strong>{previous.name}</strong>{identity && <>（GVDB ID: {identity.gvdbId}／内部ID: {identity.id}）</>}／{record(previous.id)}
           {(view.data.recordReasons.get(previous.id) ?? []).map(reason => <span className="prerequisite-review-reason" key={reason}>要確認：{reason}</span>)}
@@ -43,6 +45,9 @@ export function PrerequisiteDetails({ view, review, locked, onBegin, onReload }:
             <button type="button" className="button secondary prerequisite-review-start" disabled={locked}
               onClick={event => onBegin(candidate, event.currentTarget)}>前提「{previous.name}」を達成済みにする…</button>
           </>}
+          {manual && onBeginManual && <button type="button" className="button secondary prerequisite-review-start" disabled={locked}
+            aria-label={`${previous.name}を手動で達成済みとして登録`}
+            onClick={event => onBeginManual(current.id, previous.id, event.currentTarget)}>達成済みとして登録…</button>}
           {(view.data.direct.get(previous.id)?.length ?? 0) > 0 && <button type="button" className="button secondary prerequisite-details-next" disabled={locked}
             onClick={() => view.onOpen(previous.id)}>{previous.name}の前提を確認</button>}
         </li>;

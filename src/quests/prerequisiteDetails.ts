@@ -9,6 +9,12 @@ export interface PrerequisiteDetailsData {
   direct: ReadonlyMap<number, readonly DirectPrerequisite[]>;
   reasons: ReadonlyMap<number, readonly string[]>;
   recordReasons: ReadonlyMap<number, readonly string[]>;
+  manualTargets: ReadonlySet<number>;
+}
+
+export function canManuallyCompletePrerequisite(data: PrerequisiteDetailsData, contextId: number, targetId: number, completed: ReadonlySet<number>): boolean {
+  return data.manualTargets.has(targetId) && !completed.has(targetId)
+    && (data.direct.get(contextId)?.some(previous => previous.id === targetId) ?? false);
 }
 
 const exclusionReasons: Record<ReviewExclusion, string> = {
@@ -29,6 +35,15 @@ export function buildPrerequisiteDetailsData(
   direct: PrerequisiteDetailsData["direct"], reviewIndex?: PrerequisiteReviewIndex,
 ): PrerequisiteDetailsData {
   const byId = new Map(masters.map(({ quest }) => [quest.id, quest]));
+  const localCounts = new Map<number, number>(), gvdbCounts = new Map<number, number>();
+  for (const { quest } of masters) {
+    localCounts.set(quest.id, (localCounts.get(quest.id) ?? 0) + 1);
+    gvdbCounts.set(quest.gvdbId, (gvdbCounts.get(quest.gvdbId) ?? 0) + 1);
+  }
+  // Identity validity is independent of relation diagnostics and offer method.
+  const manualTargets = new Set(masters.filter(({ quest }) => quest.isActive
+    && Number.isSafeInteger(quest.id) && quest.id > 0 && Number.isSafeInteger(quest.gvdbId) && quest.gvdbId > 0
+    && localCounts.get(quest.id) === 1 && gvdbCounts.get(quest.gvdbId) === 1).map(({ quest }) => quest.id));
   const incoming = new Map<number, Set<number>>();
   for (const edge of dependencies) {
     const ids = incoming.get(edge.questId) ?? new Set<number>();
@@ -43,6 +58,10 @@ export function buildPrerequisiteDetailsData(
     const ids = incoming.get(quest.id) ?? new Set<number>();
     if (ids.size > 1) values.add("複数前提のAND/OR条件は未確定です。各記録を個別に確認してください。");
     const ownReasons: string[] = [];
+    if (!Number.isSafeInteger(quest.id) || quest.id <= 0 || !Number.isSafeInteger(quest.gvdbId) || quest.gvdbId <= 0)
+      ownReasons.push("識別IDが不正なため登録できません。");
+    if (localCounts.get(quest.id) !== 1 || gvdbCounts.get(quest.gvdbId) !== 1)
+      ownReasons.push("識別IDが重複しているため、対象を一意に確認できません。");
     if (!quest.isActive) ownReasons.push("inactiveのクエストです。記録の参照だけを行います。");
     if (!matchesOfferMethod(quest.offerMethod, "group:quest")) ownReasons.push("地図・特殊クエストの条件は、通常クエストの達成記録だけでは確認できません。");
     recordReasons.set(quest.id, ownReasons);
@@ -56,7 +75,7 @@ export function buildPrerequisiteDetailsData(
   }
   return {
     quests: new Map(masters.map(({ quest: { id, gvdbId, title } }) => [id, { id, gvdbId, title }])),
-    direct, reasons, recordReasons,
+    direct, reasons, recordReasons, manualTargets,
   };
 }
 

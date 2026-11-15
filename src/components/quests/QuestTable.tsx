@@ -127,6 +127,7 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
       recordedAtOpen: progressReview?.status === "ready" && prerequisiteDetails.completed.has(detailSelection.history[detailSelection.history.length - 1]!.id),
     }], cycleMessage: null }); },
   } : undefined;
+  useLayoutEffect(() => { reviewCompletion?.setDetailContext(detailsView?.currentId ?? null); });
   const reviewPanelRef = useRef<HTMLElement>(null);
   const reviewButtonRef = useRef<HTMLButtonElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);

@@ -26,6 +26,7 @@ export function PrerequisiteProgressReview({ id, expanded, panelRef, review, mat
   const originRef = useRef<HTMLButtonElement | null>(null);
   const lastConfirmationFocus = useRef<HTMLElement | null>(null);
   const confirmation = completion?.confirmation;
+  const manual = confirmation?.kind === "manual";
   useLayoutEffect(() => {
     if (expanded && confirmation) {
       confirmationRef.current?.focus({ preventScroll: true });
@@ -38,7 +39,7 @@ export function PrerequisiteProgressReview({ id, expanded, panelRef, review, mat
       else closeRef.current?.focus();
       lastConfirmationFocus.current = null;
     }
-  }, [confirmation, expanded]);
+  }, [confirmation?.kind, confirmation?.profileId, confirmation?.target.id, expanded]);
   function cancelConfirmation() {
     if (completion?.pending) return;
     completion?.cancel();
@@ -63,20 +64,27 @@ export function PrerequisiteProgressReview({ id, expanded, panelRef, review, mat
       aria-labelledby={`${confirmationId}-title`} aria-describedby={`${confirmationId}-description`} aria-busy={completion?.pending}
       onFocusCapture={event => { lastConfirmationFocus.current = event.target; }}
       onKeyDown={event => { if (event.key === "Escape" && !event.defaultPrevented && !completion?.pending) { event.preventDefault(); event.stopPropagation(); cancelConfirmation(); } }}>
-      <h4 id={`${confirmationId}-title`}>前提クエストの達成登録</h4>
+      <h4 id={`${confirmationId}-title`}>{manual ? "前提クエストの手動達成登録" : "前提クエストの達成登録"}</h4>
       <div id={`${confirmationId}-description`}>
-        <p>プロフィール「{confirmation.profileName}」の前提「{confirmation.candidate.prerequisite.title}」（GVDB ID: {confirmation.candidate.prerequisite.gvdbId}）を達成済みにします。現在は未達成として記録されています。</p>
+        <p>プロフィール「{confirmation.profileName}」の前提「{confirmation.target.title}」（GVDB ID: {confirmation.target.gvdbId}／内部ID: {confirmation.target.id}）を達成済みにします。現在は未達成として記録されています。</p>
         <p>通常一覧と同じ達成処理を使用します。関連する未発見の発見物も、既存の連動条件に従って発見済みになる場合があります。他の前提クエストは登録しません。</p>
+        {manual && <p>前提関係から達成を推定する操作ではありません。ゲーム内での達成を確認した対象1クエストだけを登録します。</p>}
       </div>
+      {confirmation.kind === "manual" && <label className="prerequisite-review-filter">
+        <input type="checkbox" checked={confirmation.gameConfirmed} disabled={completion?.pending}
+          onChange={event => completion?.setManualConfirmed(event.target.checked)} />ゲーム内でこのクエストを達成したことを確認しました
+      </label>}
       <div className="prerequisite-review-actions">
         <button type="button" className="button secondary" disabled={completion?.pending} onClick={cancelConfirmation}>キャンセル</button>
-        <button type="button" className="button" disabled={completion?.pending} onClick={() => { void completion?.confirm(); }}>達成済みにする</button>
+        <button type="button" className="button" disabled={completion?.pending || (confirmation.kind === "manual" && !confirmation.gameConfirmed)}
+          onClick={() => { void completion?.confirm(); }}>{manual ? "達成済みとして登録" : "達成済みにする"}</button>
         {completion?.pending && <span role="status">保存結果を確認しています…</span>}
       </div>
     </div>}
     {completion?.message && <p role="status">{completion.message}</p>}
     {details ? <PrerequisiteDetails key={details.currentId} view={details} review={review} locked={!!completion?.pending || !!confirmation}
-      onReload={onReload} onBegin={completion ? (candidate, origin) => { originRef.current = origin; completion.begin(candidate); } : undefined} /> : <>
+      onReload={onReload} onBegin={completion ? (candidate, origin) => { originRef.current = origin; completion.begin(candidate); } : undefined}
+      onBeginManual={completion ? (contextId, targetId, origin) => { originRef.current = origin; completion.beginManual(contextId, targetId); } : undefined} /> : <>
     <p>保存された進捗と前提関係を照合した確認候補です。ゲーム内条件の確定判定ではありません。</p>
     <label className="prerequisite-review-filter"><input type="checkbox" checked={onlyCandidates} disabled={review.status !== "ready" && !onlyCandidates}
       onChange={event => onOnlyCandidates(event.target.checked)} />候補のある後続だけを表示</label>
