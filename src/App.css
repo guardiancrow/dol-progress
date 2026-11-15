@@ -233,6 +233,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .prerequisite-review-entry, .prerequisite-review-pages { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .4rem; }
 .prerequisite-review-entry .button { font-size: .8rem; }
 .prerequisite-review-entry > [role="status"] { flex-basis: 100%; font-size: .75rem; }
+
 .overview-summary-grid {
   display: grid;
   gap: 1rem;
@@ -366,3 +367,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .map-filter-help { flex: 0 0 auto; margin-bottom: .4rem; font-size: .8rem; }
 .map-filter-help p { max-width: 45rem; margin: .4rem 0; }
 .map-state-select:focus-visible { outline: 3px solid #176b99; outline-offset: 2px; }
+
+.prerequisite-details-entry { display: inline; min-height: 0; margin: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; line-height: inherit; text-align: left; overflow-wrap: anywhere; text-decoration: underline; text-underline-offset: .15em; cursor: pointer; }
+.prerequisite-details-entry:focus-visible { outline: 3px solid #176b99; outline-offset: 2px; }
+.prerequisite-details-entry:disabled { cursor: default; }
+.prerequisite-details-current:focus { outline: 3px solid #176b99; outline-offset: 2px; }
+.prerequisite-review--details { min-height: 6rem; }

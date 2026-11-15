@@ -364,11 +364,11 @@ describe("explicit prerequisite completion from review candidates", () => {
     await waitFor(() => expect(panel()).toHaveTextContent("保存完了を確認できませんでした。"));
     expect(panel()).not.toHaveTextContent("前提「前提1」を達成済みにしました。"); expect(entry(committed ? 0 : 1)).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "前提1の達成状態" })).toHaveProperty("checked", committed);
-    expect(f.progress.listCompletedQuestIds).toHaveBeenCalledTimes(2);
+    expect(f.progress.listCompletedQuestIds).toHaveBeenCalledTimes(3);
   });
   it("leaves a failed recovery unconfirmed and permits retry", async () => {
     const { f, user } = await open(); f.link.completeQuestWithLinkedDiscoveries.mockRejectedValueOnce(new Error("synthetic failure"));
-    f.progress.listCompletedQuestIds.mockRejectedValueOnce(new Error("synthetic recovery failure")); await user.click(submit());
+    f.progress.listCompletedQuestIds.mockResolvedValueOnce([...f.stored.get(1)!]).mockRejectedValueOnce(new Error("synthetic recovery failure")); await user.click(submit());
     await screen.findByText("進捗の再取得に失敗しました。再読み込みしてください。"); expect(numericEntry()).not.toBeInTheDocument();
     expect(screen.queryByText(/前提「前提1」を達成済みにしました/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "再読み込み" })).toHaveFocus();
@@ -378,7 +378,7 @@ describe("explicit prerequisite completion from review candidates", () => {
     const { f, user } = await open(), save = deferred<Awaited<ReturnType<Fixture["link"]["completeQuestWithLinkedDiscoveries"]>>>();
     f.link.completeQuestWithLinkedDiscoveries.mockImplementationOnce(() => save.promise);
     const button = submit(); fireEvent.click(button); fireEvent.click(button); fireEvent.click(button);
-    expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledTimes(1); expect(button).toBeDisabled();
+    await waitFor(() => expect(f.link.completeQuestWithLinkedDiscoveries).toHaveBeenCalledTimes(1)); expect(button).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "前提1の達成状態" })).toBeDisabled();
     await user.keyboard("{Escape}"); expect(confirmation()).toBeInTheDocument();
     await act(async () => { f.stored.get(1)!.add(1); save.resolve({ questChanged: true, discoveriesCreated: 0, discoveriesAlreadyPresent: 0 }); });
