@@ -1,6 +1,6 @@
 # 第三者通知の承認と昇格の設計
 
-候補入力の技術検証、Ownerの入力承認、検証コードの承認、正式配布の検証を分ける。v0.5.0の固定入力はOwnerの限定承認を受け、manifest・review・sourceはREVIEWEDへ昇格した。新しい検証コードは別のレビュー待ちであり、正式配布は拒否する。
+候補入力の技術検証、Ownerの入力承認、検証コードの承認、正式配布の検証を分ける。v0.5.0の固定入力はOwnerの限定承認を受け、manifest・review・sourceはREVIEWEDへ昇格した。PR #12の検証コードについても、固定した実装snapshotと8ファイルのhashに対するOwner承認を受けた。正式配布工程の成功や最終ZIPの受入、公開承認とは区別する。
 
 ## 承認対象と最終sourceを分ける
 
@@ -12,15 +12,15 @@ Owner承認は、候補commit、preparation.jsonの相対pathとSHA-256、対象
 
 ## metadataの自己申告を信頼しない
 
-`scripts/notice-approval-decisions.mjs`は、Ownerが承認した対象と承認記録のhashを登録する独立した設定である。approvedNoticeDecisionsには固定入力の限定承認を記録した。コード用のapprovedVerificationDecisionsは空のままである。候補やapprovalファイル、コマンド引数から承認を登録する機能はない。
+`scripts/notice-approval-decisions.mjs`は、Ownerが承認した対象と承認記録のhashを登録する独立した設定である。approvedNoticeDecisionsには固定入力の限定承認を記録した。コード用のapprovedVerificationDecisionsには、PR #12でレビューしたcommit、実装snapshotのpath・hash、承認済み8ファイルのhashを固定して登録した。候補やapprovalファイル、コマンド引数から承認を登録する機能はない。
 
-入力用の登録には候補commit、snapshotとapprovalのpath・hash、判断者、日付の指定状況、toolchain fingerprintを含める。変更後コードのhashはこの入力承認に含めず、別の明示承認後に登録する。承認ファイルの自己申告と再計算したhashだけでは、この信頼設定を代替できない。
+入力用の登録には候補commit、snapshotとapprovalのpath・hash、判断者、日付の指定状況、toolchain fingerprintを含める。変更後コードのhashは入力承認には含めず、別に受けた明示承認として登録する。承認ファイルの自己申告と再計算したhashだけでは、この信頼設定を代替できない。
 
 信頼設定は検証コードとは別ファイルに置く。検証コード自身のhashを検証コードの本文へ埋め込む循環を避けるためである。信頼設定を含む最終source全体についても、署名とOwnerによるsource確認が必要となる。
 
 新しい検証コードと信頼設定の改行は、`scripts/.gitattributes`で対象を限定してLFに固定する。この属性ファイルも変更後コードのレビューhashへ含める。候補snapshotが固定した既存の属性や入力は変更しない。
 
-`verification-preparation.json`は変更後の実装bytesをレビューするためのPREPARED記録であり、承認証拠ではない。ここにあるhashを自動的にコード承認へ登録しない。信頼設定自身のhashは自己参照を避けるため別扱いとし、最終source全体のレビューと署名で保護する。
+`verification-preparation.json`は変更後の実装bytesをレビューするためのPREPARED記録であり、承認証拠ではない。Ownerはcommit `a92a6bdc60a011d153b9b042a973895762905f8b`の実装snapshot（SHA-256 `023112f1a0bd52ace3192cc2f43a13a95270765404cf0bfaf08c6a03fd0acedc`）にある8ファイルを明示承認した。snapshot自体はPREPAREDの原本として保持し、登録するhashは承認内容から固定値として列挙する。snapshotの変更や自己申告から承認を自動登録しない。信頼設定自身のhashは自己参照を避けるため別扱いとし、最終source全体のレビューと署名で保護する。
 
 ## 昇格で許す変更を限定する
 
@@ -41,14 +41,14 @@ Owner承認は、候補commit、preparation.jsonの相対pathとSHA-256、対象
 
 `inspectNoticeApprovalBinding`は、別に信頼した決定との結び付きをメモリー上で検査する。入力が一致してもformal_approval=falseを返す。この関数への任意のpin指定は、実際の承認を登録する操作ではない。
 
-`inspectRegisteredNoticeInputs`は、固定された候補原本と現在の承認記録・派生metadataを照合する。input_approval=trueとコードの未承認状態を区別し、正式配布を承認する結果は返さない。
+`inspectRegisteredNoticeInputs`は、固定された候補原本と現在の承認記録・派生metadataを照合する。コード承認の登録有無はverification_registeredで示すが、コードとsourceの検証は実行しない。この入力検査だけではverification_approvalとformal_approvalはfalseであり、正式配布を承認する結果は返さない。
 
-`verifyRegisteredNoticeApproval`は、入力とコードの両方の登録済み決定を要求し、最終sourceの署名・clean・HEAD・祖先関係と実ファイルを確認する。呼び出し側から信頼設定を渡す引数はない。コードの承認が未登録なので、現在の正式Notices readerからの呼び出しは拒否する。
+`verifyRegisteredNoticeApproval`は、入力とコードの両方の登録済み決定を要求し、最終sourceの署名・clean・HEAD・祖先関係と実ファイルを確認する。呼び出し側から信頼設定を渡す引数はない。コード承認の登録だけでは成功せず、ExpectedSourceHeadと実HEAD、署名、clean状態、実bytesの一致が必要である。未コミットの登録を含む作業ツリーは拒否する。
 
 `promoteNoticeInputs`は、入力承認を検証して3件のmetadataだけを更新する。原本と現在値が一致することを全件確認してから書き込み、途中失敗では元のbytesへ戻す。既に正しく昇格済みなら書き込まない。snapshot自体や旧版の承認記録は変更しない。コードや合成fixtureの正常系を、Ownerの実際の承認証拠へ転用しない。
 
 ## 承認後の工程
 
-入力承認後も、実際の昇格接続コード、承認記録と固定した信頼設定をレビューし、コードの明示承認と署名付きclean sourceを確定する。その同じSHAから正式Compile、Package、独立Verifierを新しいrunで実行する。
+入力とコードの承認後も、承認登録の差分をレビューし、信頼設定を含む署名付きclean sourceを確定する。その同じSHAから正式Compile、Package、独立Verifierを新しいrunで実行する。
 
 Noticesの入力承認は、契約上の新しい許諾、正式3工程の成功、バイナリの公開承認を意味しない。最終ZIPの受入と公開判断は別に行う。

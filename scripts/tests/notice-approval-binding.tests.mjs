@@ -77,15 +77,33 @@ for (const version of ['9.8.7', '10.0.0']) test(`TEST_ONLY binding normal case f
   const { model, pin } = fixture(version), r = inspectNoticeApprovalBinding(model, pin);
   assert.equal(r.binding_validated, true); assert.equal(r.formal_approval, false); assert.equal(r.public_release_approved, false);
 });
-test('real input approval does not register implementation approval', () => {
+test('real input and separate code approval bind only the reviewed implementation snapshot', () => {
   assert.equal(approvedNoticeDecisions['0.5.0'].candidate_commit, '57f0325f1daaa699569c82c221de35ddc2a79605');
-  assert.deepEqual(Object.keys(approvedVerificationDecisions), []); assert.equal(Object.isFrozen(approvedNoticeDecisions), true);
+  assert.deepEqual(Object.keys(approvedVerificationDecisions), ['0.5.0']);
+  const decision = approvedVerificationDecisions['0.5.0'];
+  const root = fileURLToPath(new URL('../../', import.meta.url));
+  const bytes = fs.readFileSync(path.join(root, decision.implementation_snapshot_path));
+  assert.equal(hash(bytes), '023112f1a0bd52ace3192cc2f43a13a95270765404cf0bfaf08c6a03fd0acedc');
+  assert.equal(decision.implementation_snapshot_sha256, hash(bytes));
+  const snapshot = JSON.parse(bytes);
+  assert.equal(snapshot.state, 'PREPARED'); assert.equal(snapshot.approved, false);
+  assert.equal(decision.candidate_commit, snapshot.candidate_commit);
+  assert.equal(decision.snapshot_sha256, snapshot.snapshot_sha256);
+  assert.deepEqual(decision.reviewed_tooling_sha256, snapshot.file_sha256);
+  assert.equal(Object.keys(decision.reviewed_tooling_sha256).length, 8);
+  for (const [name, sha] of Object.entries(decision.reviewed_tooling_sha256)) assert.equal(hash(fs.readFileSync(path.join(root, name))), sha);
+  assert.equal(decision.reviewed_commit, 'a92a6bdc60a011d153b9b042a973895762905f8b');
+  assert.equal(decision.reviewed_pr, 12); assert.equal(decision.approved_by, 'Owner');
+  assert.equal(decision.approved_on, null); assert.equal(decision.approved_date_status, 'NOT_SPECIFIED_IN_OWNER_INSTRUCTION');
+  assert.equal(decision.public_release_approved, false);
+  assert.equal(Object.isFrozen(decision), true); assert.equal(Object.isFrozen(decision.reviewed_tooling_sha256), true);
+  assert.equal(Object.isFrozen(approvedNoticeDecisions), true);
   assert.equal(Object.isFrozen(approvedVerificationDecisions), true);
 });
 test('self-declared approval or caller-supplied pin cannot enable a real version', () => {
   const f = fixture('0.5.0');
   const root = fileURLToPath(new URL('../../', import.meta.url));
-  assert.throws(() => verifyRegisteredNoticeApproval(root, '0.5.0', 'b'.repeat(40), f.pin), e => ['inputs_not_promoted', 'implementation_review_pending'].includes(e.gate));
+  assert.throws(() => verifyRegisteredNoticeApproval(root, '0.5.0', 'b'.repeat(40), f.pin), e => e.gate === 'source_identity');
   assert.throws(() => verifyRegisteredNoticeApproval('TEST_ONLY', '9.8.7', 'b'.repeat(40)), e => e.gate === 'owner_approval_not_registered');
 });
 rejects('changed snapshot bytes rejected', f => { f.model.snapshotBytes = Buffer.concat([f.model.snapshotBytes, Buffer.from(' ')]); }, 'snapshot_hash');

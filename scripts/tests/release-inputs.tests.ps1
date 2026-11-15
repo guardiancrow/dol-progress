@@ -1,5 +1,6 @@
 #Requires -Version 5.1
-# Inspect real REVIEWED metadata locally; this is not a signed-source Release run.
+# Read-only input validation; a signed fixture is not a formal Release run.
+param([string]$ExpectedSourceHead='')
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '../portable-package-safety.ps1')
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -19,22 +20,28 @@ Assert-PortableVersions $package.version $tauri.version ([IO.File]::ReadAllText(
 $files=@(Get-PortableGit $root @('ls-files','--cached','--others','--exclude-standard'))
 $hashes=Get-ReleaseInputHashes $root $files
 if ($package.version -ceq '0.5.0') {
+    if ($ExpectedSourceHead -cmatch '^[a-f0-9]{40}$') {
+        $notices=Read-PortableNotices $root $package.version $hashes $ExpectedSourceHead
+        if ((Get-ReleaseSHA256 $notices) -cne $hashes['THIRD-PARTY-NOTICES.txt']) { throw 'Formal notice reader returned different bytes' }
+        Write-Output 'Registered input and code approval PASS on signed clean source; Release stages NOT executed.'
+        exit 0
+    }
     $rejected=$false
     try { Read-PortableNotices $root $package.version $hashes | Out-Null }
     catch {
-        if ($_.Exception.Message -cne 'Notices: verification implementation review pending.') { throw }
+        if ($_.Exception.Message -cne 'Notices: expected signed source required.') { throw }
         $rejected=$true
     }
-    if (-not $rejected) { throw 'Unreviewed implementation passed formal reader' }
-    # Caller labels cannot replace separate approval of implementation code.
+    if (-not $rejected) { throw 'Missing expected source passed formal reader' }
+    # Caller labels cannot replace a signed clean source and an explicit expected HEAD.
     $rejected=$false
     try { Assert-PortableOwnerApproval $root '0.5.0' ([pscustomobject]@{status='REVIEWED'}) $hashes }
     catch {
-        if ($_.Exception.Message -cne 'Notices: verification implementation review pending.') { throw }
+        if ($_.Exception.Message -cne 'Notices: expected signed source required.') { throw }
         $rejected=$true
     }
     if (-not $rejected) { throw 'Fabricated approval passed formal reader' }
-    Write-Output 'REVIEWED input validation PASS; formal reader correctly rejects pending implementation review.'
+    Write-Output 'REVIEWED inputs and code registration PASS; formal reader rejects a missing expected signed source.'
     exit 0
 }
 $notices=Read-PortableNotices $root $package.version $hashes
