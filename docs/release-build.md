@@ -184,15 +184,15 @@ npm run typecheck
 
 [v0.4.0](https://github.com/guardiancrow/dol-progress/releases/tag/v0.4.0)は2026年11月8日に公開済みで、Releaseページに正式Compile・Package・独立VerifierとOwnerの最終ZIP確認の完了が記録されている。対象tagのcommitは`e14ba29c877805043c5f40ec103a3f733d5598e9`である。以下の古い確認状況は、その記録時点の履歴として区別する。
 
-v0.5.0はUI-R5Cまでを対象とし、進行ナビゲーションは次版以降とする。5ファイル・6値を0.5.0へ揃え、metadataを`release/notices/v0.5.0/`へ分離している。Ownerは候補commit `57f0325f1daaa699569c82c221de35ddc2a79605`とsnapshotのSHA-256 `5cafbfda822c9471f9b4061135c90ec93fdf9493f9ae21f11dd3848a834bf794`、16入力とtoolchainを限定承認した。manifest・review・sourceはREVIEWEDだが、新しい検証コードのレビューと正式配布工程は未完了である。
+v0.5.0はUI-R5Cまでを対象とし、進行ナビゲーションは次版以降とする。5ファイル・6値を0.5.0へ揃え、metadataを`release/notices/v0.5.0/`へ分離している。Ownerは候補commit `57f0325f1daaa699569c82c221de35ddc2a79605`とsnapshotのSHA-256 `5cafbfda822c9471f9b4061135c90ec93fdf9493f9ae21f11dd3848a834bf794`、16入力とtoolchainを限定承認した。manifest・review・sourceはREVIEWEDである。PR #12の検証コードについても実装snapshotと8ファイルのhashへのOwner承認を受け、固定値を信頼設定へ登録した。正式配布工程は未実施である。
 
-`node scripts/release-input-audit.mjs --version 0.5.0 --candidate`は固定commitのPREPARED原本を検証する。現在の入力承認と昇格状態は`--reviewed-inputs`で確認する。この検査はinput_approval=trueでもformal_approval=falseを返す。正式検査は`--formal --expected-source-head <SHA>`を要求し、検証コードの承認登録、署名、clean source、候補の祖先関係、実bytesも照合する。現在はコード未承認のため拒否する。
+`node scripts/release-input-audit.mjs --version 0.5.0 --candidate`は固定commitのPREPARED原本を検証する。現在の入力承認と昇格状態は`--reviewed-inputs`で確認する。この検査はinput_approval=trueでもformal_approval=falseを返す。正式検査は`--formal --expected-source-head <SHA>`を要求し、検証コードの承認登録、署名、clean source、候補の祖先関係、実bytesも照合する。承認登録後も、未コミットの登録を含む作業ツリーや署名・HEAD・bytesの不一致は拒否する。
 
 採用されたtoolchainはWindows PowerShell 5.1.26100.9818、Node v26.13.1、npm 11.20.0、Rust/Cargo 1.99.1、Tauri CLI 2.11.4である。Windows標準のWindowsPowerShell/v1.0/powershell.exeを明示する方式を推奨する。PowerShell 7の実行結果をこのfingerprintへ読み替えない。正式Compile時の実測と採用値の一致は別途確認する。
 
 lockfileと版情報、候補hashに含まれる検証コード、承認参照文書に限定してLFを指定する。旧版で承認したCRLF lock表現は、固定した公開commitのLF blobから当時の表現だけを復元し、元の承認hashで検査する。これは`--archive-v0.4.0`による履歴検証であり、現行の配布bytesや未承認候補を認める処理ではない。歴史的な参照文書も承認commitのblobを読む。現行入力は実bytesを厳密に照合し、改行差を自動的に許容しない。
 
-この準備段階では正式3工程と最終EXE・ZIPを確定しない。入力承認と昇格記録は作成済みだが、接続・昇格コードのレビュー、コード用の承認登録、署名付きclean sourceの確定が残る。その後、同じSHAから新しいrunで実施する。v0.4.0の承認ファイルや過去のrunは改変・流用しない。
+この準備段階では正式3工程と最終EXE・ZIPを確定しない。入力承認、昇格記録、検証コード承認の登録は作成済みである。登録差分のレビューと署名付きclean sourceの確定が残る。その後、同じSHAから新しいrunで実施する。v0.4.0の承認ファイルや過去のrunは改変・流用しない。
 
 ### 過去の確認状況
 

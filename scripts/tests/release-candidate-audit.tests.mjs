@@ -30,7 +30,8 @@ test('candidate CLI and formal CLI have different outcomes', () => {
   const reviewed = run(['--version', '0.5.0', '--reviewed-inputs']);
   assert.equal(reviewed.status, 0, reviewed.stderr);
   assert.equal(JSON.parse(reviewed.stdout).input_approval, true);
-  assert.equal(JSON.parse(reviewed.stdout).verification_registered, false);
+  assert.equal(JSON.parse(reviewed.stdout).verification_registered, true);
+  assert.equal(JSON.parse(reviewed.stdout).formal_approval, false);
   for (const args of [[], ['--version', '0.5.0'], ['--candidate'], ['--version', '9.9.9']]) assert.notEqual(run(args).status, 0);
 });
 for (const p of versionPaths) {

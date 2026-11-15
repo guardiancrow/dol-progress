@@ -22,13 +22,13 @@ v0.4.0は[GitHub Release](https://github.com/guardiancrow/dol-progress/releases/
 
 v0.5.0のmetadataは`release/notices/v0.5.0/`へ分離している。Ownerが固定した候補commitとsnapshotのhash、16入力、201通知・6除外・149原文・358参照の継承、toolchainを限定承認したため、manifest・review・sourceをREVIEWEDへ昇格した。原文・coverage・inventoryは変更していない。実際の承認内容は`approval.json`に記録し、日時の指定がないためapproved_onはnullと明示している。
 
-`preparation.json`は候補作成時のPREPARED原本として保持し、hashを変更しない。入力承認は新しい検証コードの承認を含まない。コード用の信頼設定は未登録であり、正式Packageは引き続き拒否する。`--candidate`は固定commitの候補原本を検証し、`--reviewed-inputs`は現在の限定承認と昇格状態を検証する。正式検証はこれらとは別に、コードの明示承認と署名付きclean sourceを要求する。[承認・昇格方式](notice-approval.md)を参照する。
+`preparation.json`は候補作成時のPREPARED原本として保持し、hashを変更しない。入力承認は新しい検証コードの承認を含まない。PR #12の検証コードは、実装snapshot（SHA-256 `023112f1a0bd52ace3192cc2f43a13a95270765404cf0bfaf08c6a03fd0acedc`）の8ファイルへの別のOwner承認を受け、コード用の信頼設定へ固定hashを登録した。承認登録の差分レビューと署名付きclean sourceの確定は別に必要であり、正式3工程は未実施である。`--candidate`は固定commitの候補原本を検証し、`--reviewed-inputs`は現在の限定承認と昇格状態を検証する。正式検証はこれらとは別に、登録されたコード承認と署名付きclean source、ExpectedSourceHead、承認済み実装bytesの一致を要求する。[承認・昇格方式](notice-approval.md)を参照する。
 
 旧版のmanifest・inventory・review・source・approval・reviewed・PREPARED snapshot・mapping・原文は変更しない。`--archive-v0.4.0`で固定した公開commitと当時の承認hashを照合できる。これは過去の入力の検証であり、v0.5.0を自動承認する処理ではない。
 
 v0.3.0の通知対象201件・除外6件、原文148種類・357参照は正式レビュー済みで、当時のmanifest／review／sourceはREVIEWEDだった。依存版はnpm／Cargoのlockfileで固定する。原文、著作権表示、出典、除外根拠、lockとtoolchainを対応付けた既存結果を保持し、文書整理のために再監査・再承認しない。v0.4.0の準備・承認履歴は次項で区別する。
 
-正式レビューは通知に関する確認範囲の判断であり、全原文の逐語確認、包括的な法的保証、Microsoft契約の受入、一般公開の承認を意味しない。既存HEADの正式Compile・Package・独立Verifierは成功済みだが、新HEADの検証結果へ流用しない。
+正式レビューは通知に関する確認範囲の判断であり、全原文の逐語確認、包括的な法的保証、Microsoft契約の受入、一般公開の承認を意味しない。v0.4.0の正式Compile・Package・独立Verifierは成功済みだが、v0.5.0の検証結果へ流用しない。
 
 source.jsonのformal_package_gate=NOT_COMPLETEDなどは登録時のmetadataである。後続Packageの成功はrun/resultで記録し、その表示を更新するためにREVIEWED metadataや通知の由来commit・レビュー基点を改変しない。新しい依存・toolchain・配布構成へ旧レビューを無条件で一般化しない。
 
