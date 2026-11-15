@@ -6,6 +6,7 @@ import type { ReportHoldController } from "../../discoveries/useReportHold";
 import { mapStatus } from "../../quests/mapState";
 import { useEffect, useId, useLayoutEffect, useMemo, useState, useRef } from "react";
 import { PrerequisiteProgressReview } from "./PrerequisiteProgressReview";
+import type { PrerequisiteDetailsData, PrerequisiteDetailsView } from "../../quests/prerequisiteDetails";
 import type { PrerequisiteProgressReviewState } from "../../quests/prerequisiteProgressReview";
 import type { PrerequisiteReviewCompletion } from "../../quests/prerequisiteReviewCompletion";
 import {
@@ -55,6 +56,12 @@ const columnHelper = createColumnHelper<
 const collator = new Intl.Collator("ja", { numeric: true });
 
 interface QuestTableProps {
+  prerequisiteDetails?: {
+    data: PrerequisiteDetailsData;
+    masterGeneration: number;
+    masterReady: boolean;
+    completed: ReadonlySet<number>;
+  };
   reviewCompletion?: PrerequisiteReviewCompletion;
   progressReview?: PrerequisiteProgressReviewState;
   onReloadReview?(): void;
@@ -64,13 +71,62 @@ interface QuestTableProps {
   onToggleCompletion(questId: number, completed: boolean): Promise<void>;
 }
 
-export function QuestTable({ rows, paginationResetKey, onToggleCompletion, reportHold, progressReview, onReloadReview, reviewCompletion }: QuestTableProps) {
+export function QuestTable({ rows, paginationResetKey, onToggleCompletion, reportHold, progressReview, onReloadReview, reviewCompletion, prerequisiteDetails }: QuestTableProps) {
   const controlsVisible = useWorkspaceView()?.controlsVisible ?? true;
   const reportHoldRef = useRef(reportHold);
   reportHoldRef.current = reportHold;
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [reviewExpanded, setReviewExpanded] = useState(false);
   const reviewId = useId();
+  const [detailSelection, setDetailSelection] = useState<{
+    data: PrerequisiteDetailsData; generation: number; profileId: number;
+    history: Array<{ id: number; recordedAtOpen: boolean }>; cycleMessage: string | null;
+  } | null>(null);
+  const detailOrigin = useRef<HTMLButtonElement | null>(null);
+  const detailHadFocus = useRef(false);
+  const detailsOpen = detailSelection !== null && prerequisiteDetails?.masterReady === true
+    && detailSelection.data === prerequisiteDetails.data && detailSelection.generation === prerequisiteDetails.masterGeneration
+    && detailSelection.profileId === paginationResetKey;
+  const detailLocked = !!reviewCompletion?.pending || !!reviewCompletion?.confirmation;
+  const detailEntry = useRef({ open: (_id: number, _origin: HTMLButtonElement) => undefined, locked: false, available: false, selectedId: null as number | null });
+  detailEntry.current = { locked: detailLocked, available: prerequisiteDetails?.masterReady === true,
+    selectedId: detailsOpen ? detailSelection.history[0]!.id : null,
+    open: (id, origin) => {
+      if (!prerequisiteDetails?.masterReady || detailLocked || !prerequisiteDetails.data.direct.get(id)?.length) return;
+      detailOrigin.current = origin;
+      setReviewExpanded(false);
+      setDetailSelection({ data: prerequisiteDetails.data, generation: prerequisiteDetails.masterGeneration, profileId: paginationResetKey,
+        history: [{ id, recordedAtOpen: progressReview?.status === "ready" && prerequisiteDetails.completed.has(id) }], cycleMessage: null });
+    } };
+  useEffect(() => { if (detailSelection && !detailsOpen) setDetailSelection(null); }, [detailSelection, detailsOpen]);
+  useEffect(() => {
+    if (!detailsOpen) return;
+    const current = detailSelection.history[detailSelection.history.length - 1]!;
+    if (current.recordedAtOpen && (progressReview?.status !== "ready" || !prerequisiteDetails.completed.has(current.id))) {
+      setDetailSelection({ ...detailSelection, history: [...detailSelection.history.slice(0, -1), { ...current, recordedAtOpen: false }] });
+    }
+  }, [detailsOpen, detailSelection, prerequisiteDetails, progressReview]);
+  useLayoutEffect(() => {
+    if (detailSelection && !detailsOpen && detailHadFocus.current && document.activeElement === document.body) focusOutsideReview();
+  }, [detailSelection, detailsOpen]);
+  const detailsView: PrerequisiteDetailsView | undefined = detailsOpen ? {
+    data: prerequisiteDetails.data, currentId: detailSelection.history[detailSelection.history.length - 1]!.id,
+    recordedAtOpen: detailSelection.history[detailSelection.history.length - 1]!.recordedAtOpen,
+    completed: prerequisiteDetails.completed, canGoBack: detailSelection.history.length > 1, cycleMessage: detailSelection.cycleMessage,
+    onOpen(id) {
+      if (detailLocked || !prerequisiteDetails.data.direct.get(id)?.length) return;
+      if (detailSelection.history.some(item => item.id === id)) {
+        setDetailSelection({ ...detailSelection, cycleMessage: "既に確認したクエストです。循環の可能性があるため、これ以上表示を進めません。" }); return;
+      }
+      setDetailSelection({ ...detailSelection, history: [...detailSelection.history, { id,
+        recordedAtOpen: progressReview?.status === "ready" && prerequisiteDetails.completed.has(id) }], cycleMessage: null });
+    },
+    onBack() { if (!detailLocked && detailSelection.history.length > 1) setDetailSelection({ ...detailSelection, history: detailSelection.history.slice(0, -1), cycleMessage: null }); },
+    onRecheck() { if (!detailLocked) setDetailSelection({ ...detailSelection, history: [...detailSelection.history.slice(0, -1), {
+      id: detailSelection.history[detailSelection.history.length - 1]!.id,
+      recordedAtOpen: progressReview?.status === "ready" && prerequisiteDetails.completed.has(detailSelection.history[detailSelection.history.length - 1]!.id),
+    }], cycleMessage: null }); },
+  } : undefined;
   const reviewPanelRef = useRef<HTMLElement>(null);
   const reviewButtonRef = useRef<HTMLButtonElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -89,6 +145,11 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
     element?.focus({ preventScroll: true });
   }
   function closeReview() {
+    if (reviewCompletion?.pending) return;
+    if (detailsOpen) {
+      if (detailOrigin.current?.isConnected) detailOrigin.current.focus(); else focusOutsideReview();
+      setDetailSelection(null); return;
+    }
     if (reviewPanelRef.current?.contains(document.activeElement)) {
       if (progressReview?.status === "ready" && progressReview.candidates.length === 0 && !onlyCandidates) focusOutsideReview();
       else reviewButtonRef.current?.focus({ preventScroll: true });
@@ -302,14 +363,18 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
             header: "前提クエスト",
             enableSorting: false,
             cell: ({ row }) => row.original.directPrerequisites.length === 0 ? null : (
-              <span className="quest-prerequisites">
-                {row.original.directPrerequisites.map((item) => item.name).join("、")}
-              </span>
+              prerequisiteDetails ? <button type="button" className="quest-prerequisites prerequisite-details-entry"
+                aria-label={row.original.directPrerequisites.map(item => item.name).join("、") + "（" + row.original.title + "の前提クエストを確認）"}
+                aria-expanded={detailEntry.current.selectedId === row.original.id} aria-controls={reviewId}
+                disabled={detailEntry.current.locked || !detailEntry.current.available}
+                onClick={event => detailEntry.current.open(row.original.id, event.currentTarget)}>
+                {row.original.directPrerequisites.map(item => item.name).join("、")}
+              </button> : <span className="quest-prerequisites">{row.original.directPrerequisites.map(item => item.name).join("、")}</span>
             ),
           },
         ),
       ]),
-    [onToggleCompletion, selectedSkill],
+    [onToggleCompletion, selectedSkill, reviewId, prerequisiteDetails !== undefined],
   );
 
   const table = useTable(
@@ -449,6 +514,7 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
       hint="備考を表示"
     >
     <div className="workspace-table" ref={workspaceRef} onFocusCapture={event => {
+      detailHadFocus.current = detailsOpen && !!reviewPanelRef.current?.contains(event.target);
       lastTableFocus.current = event.target instanceof HTMLElement && event.target.closest("table") ? event.target : null;
     }}>
       <WorkspaceFilters label="クエストの詳細フィルター" searchActive={String(table.getColumn("title")?.getFilterValue() ?? "").trim() !== ""}
@@ -611,9 +677,10 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
         <span>達成済み {filteredCompletedCount.toLocaleString("ja-JP")}件</span>
       </div>
 
-      {progressReview && <PrerequisiteProgressReview id={reviewId} expanded={reviewExpanded} panelRef={reviewPanelRef}
+      {progressReview && <PrerequisiteProgressReview id={reviewId} expanded={reviewExpanded || detailsOpen} panelRef={reviewPanelRef} details={detailsView}
         review={progressReview} matchingCount={matchingReviewCount} onlyCandidates={onlyCandidates}
         onOnlyCandidates={setOnlyCandidates} onClose={closeReview} onReload={onReloadReview} completion={reviewCompletion} />}
+
 
       {filteredRows.length === 0 ? (
         <div className="state-panel empty-state">
@@ -706,7 +773,8 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
         {progressReview && (progressReview.status !== "ready" || progressReview.candidates.length > 0 || reviewExpanded || onlyCandidates) &&
           <div className="prerequisite-review-entry">
             <button type="button" className="button secondary" ref={reviewButtonRef} aria-expanded={reviewExpanded} aria-controls={reviewId}
-              onClick={() => reviewExpanded ? closeReview() : setReviewExpanded(true)}>
+              disabled={detailLocked}
+              onClick={() => { if (reviewExpanded) closeReview(); else { setDetailSelection(null); setReviewExpanded(true); } }}>
               {progressReview.status === "ready" ? `進捗の確認候補 ${progressReview.candidates.length}件` : progressReview.status === "error" ? "進捗の確認候補（未確認）" : "進捗の確認候補（確認中）"}
             </button>
             {onlyCandidates && <button type="button" className="button secondary" onClick={() => setOnlyCandidates(false)} aria-label="候補フィルターを解除">候補を解除</button>}

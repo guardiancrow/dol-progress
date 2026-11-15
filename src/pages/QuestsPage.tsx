@@ -8,6 +8,7 @@ import { useProfiles } from "../profiles/ProfileContext";
 import type { ProgressLinkServicePort } from "../progressLink";
 import { derivePrerequisiteStatuses, type QuestDependency } from "../quests/prerequisites";
 import { resolveDirectPrerequisites } from "../quests/directPrerequisites";
+import { buildPrerequisiteDetailsData } from "../quests/prerequisiteDetails";
 import type { PrerequisiteReviewCompletion, PrerequisiteReviewConfirmation } from "../quests/prerequisiteReviewCompletion";
 import { buildPrerequisiteReviewIndex, derivePrerequisiteProgressReview, type PrerequisiteProgressReviewState } from "../quests/prerequisiteProgressReview";
 import type {
@@ -43,7 +44,7 @@ interface ReviewConfirmation extends PrerequisiteReviewConfirmation {
   revision: number;
   readTicket: number;
 }
-type CompletionOutcome = { status: "saved"; discoveriesCreated: number } | { status: "unconfirmed" | "skipped" };
+type CompletionOutcome = { status: "saved"; discoveriesCreated: number } | { status: "unconfirmed" | "skipped" | "refresh-failed" };
 const EMPTY_QUESTS: QuestWithDiscoveries[] = [];
 const EMPTY_DEPENDENCIES: QuestDependency[] = [];
 const EMPTY_COMPLETED = new Set<number>();
@@ -127,10 +128,10 @@ export function QuestsPage({
     });
   });
   useEffect(() => {
-    if (!progressNeedsRefresh || pendingForProfile || reportHold.busy) return;
+    if (!progressNeedsRefresh || pendingForProfile || reportHold.busy || reviewSaving) return;
     setProgressNeedsRefresh(false);
     setProgressReload(value => value + 1);
-  }, [progressNeedsRefresh, pendingForProfile, reportHold.busy]);
+  }, [progressNeedsRefresh, pendingForProfile, reportHold.busy, reviewSaving]);
 
   useEffect(() => {
     if (updateFeedback === null) return;
@@ -211,6 +212,7 @@ export function QuestsPage({
 
   const updateCompletion = useCallback(
     async (questId: number, completed: boolean, fromReview = false): Promise<CompletionOutcome> => {
+      if (reviewSavingRef.current && !fromReview) return { status: "skipped" };
       const profileId = selectedProfileRef.current;
       if (profileId === null) return { status: "skipped" };
       const generation = progressGeneration.current;
@@ -296,7 +298,7 @@ export function QuestsPage({
   }, [updateCompletion]);
 
   const statuses = useMemo(() => derivePrerequisiteStatuses(quests.map(({ quest }) => quest), dependencies, completedQuestIds),
-    [quests, dependencies, completedQuestIds]);
+    [quests, dependencies, completedQuestIds, masterSnapshot?.generation]);
   const reviewIndex = useMemo(() => buildPrerequisiteReviewIndex(quests.map(({ quest }) => quest), dependencies), [quests, dependencies, masterSnapshot?.generation]);
   const candidates = useMemo(() => derivePrerequisiteProgressReview(reviewIndex, completedQuestIds, statuses), [reviewIndex, completedQuestIds, statuses]);
   const completionMatches = completionSnapshot?.profileId === selectedProfileId && completionSnapshot?.epoch === progressGeneration.current
@@ -306,10 +308,10 @@ export function QuestsPage({
   const progressReview = useMemo<PrerequisiteProgressReviewState>(() => {
     if (masterError || progressError || masterRead?.state === "error" || reportHold.summaryReadState === "error") return { status: "error" };
     if (!completionMatches || !masterMatches || isMasterLoading || isProgressLoading || progressNeedsRefresh || isProfileLoading) return { status: "loading" };
-    if (pendingForProfile || reportHold.busy || reportHold.summaryReadState !== "ready") return { status: "updating" };
+    if (pendingForProfile || reviewSaving || reportHold.busy || reportHold.summaryReadState !== "ready") return { status: "updating" };
     return { status: "ready", candidates };
   }, [masterError, progressError, masterRead, reportHold.summaryReadState, completionMatches, masterMatches,
-    isMasterLoading, isProgressLoading, progressNeedsRefresh, isProfileLoading, pendingForProfile, reportHold.busy, candidates]);
+    isMasterLoading, isProgressLoading, progressNeedsRefresh, isProfileLoading, pendingForProfile, reviewSaving, reportHold.busy, candidates]);
   const latestReview = useRef({ review: progressReview, master: masterSnapshot, completion: completionSnapshot,
     profileName: selectedProfile?.name, blocked: false });
   latestReview.current = { review: progressReview, master: masterSnapshot, completion: completionSnapshot,
@@ -377,14 +379,38 @@ export function QuestsPage({
       reviewSavingRef.current = session;
       setReviewSaving(true);
       try {
-        const outcome = await updateCompletion(session.candidate.prerequisite.id, false, true);
+        let outcome = await updateCompletion(session.candidate.prerequisite.id, false, true);
+        if (outcome.status === "saved") {
+          if (selectedProfileRef.current !== session.profileId || progressGeneration.current !== session.completion.epoch) return;
+          if (masterGeneration.current !== session.master.generation) { setProgressNeedsRefresh(true); return; }
+          const revision = writeRevision.current, ticket = ++progressReadGeneration.current;
+          try {
+            const ids = await questProgressRepository.listCompletedQuestIds(session.profileId);
+            if (selectedProfileRef.current !== session.profileId || progressGeneration.current !== session.completion.epoch) return;
+            if (masterGeneration.current !== session.master.generation) { setProgressNeedsRefresh(true); return; }
+            if (writeRevision.current === revision && progressReadGeneration.current === ticket
+              && ![...pendingUpdatesRef.current].some(key => key.startsWith(`${session.profileId}:`))) {
+              setCompletionSnapshot({ ids: new Set(ids), profileId: session.profileId, epoch: session.completion.epoch,
+                reload: progressReload, repository: questProgressRepository });
+            } else {
+              setProgressNeedsRefresh(true); outcome = { status: "refresh-failed" };
+            }
+          } catch {
+            if (selectedProfileRef.current === session.profileId && progressGeneration.current === session.completion.epoch
+              && masterGeneration.current === session.master.generation && progressReadGeneration.current === ticket) {
+              setProgressError("達成の保存は完了しましたが、進捗の再取得に失敗しました。再読み込みしてください。");
+            }
+            outcome = { status: "refresh-failed" };
+          }
+        }
         if (selectedProfileRef.current !== session.profileId || progressGeneration.current !== session.completion.epoch
-          || reviewConfirmationRef.current !== session) return;
+          || masterGeneration.current !== session.master.generation || reviewConfirmationRef.current !== session) return;
         const text = outcome.status === "saved"
           ? `前提「${session.candidate.prerequisite.title}」を達成済みにしました。${outcome.discoveriesCreated > 0 ? `関連する発見物 ${outcome.discoveriesCreated}件も発見済みにしました。` : ""}`
           : outcome.status === "unconfirmed" ? "保存完了を確認できませんでした。再取得した現在の状態を確認してください。"
+            : outcome.status === "refresh-failed" ? "達成の保存は完了しましたが、進捗の再取得結果を確認できません。再読み込みしてください。"
             : "保存を開始できませんでした。現在の状態を再確認してください。";
-        reviewFailureFocus.current = outcome.status === "unconfirmed";
+        reviewFailureFocus.current = outcome.status === "unconfirmed" || outcome.status === "refresh-failed";
         setReviewMessage({ profileId: session.profileId, epoch: session.completion.epoch, text });
       } finally {
         if (reviewConfirmationRef.current === session) {
@@ -403,8 +429,10 @@ export function QuestsPage({
   };
   const directPrerequisites = useMemo(
     () => resolveDirectPrerequisites(quests, dependencies),
-    [quests, dependencies],
+    [quests, dependencies, masterSnapshot?.generation],
   );
+  const detailData = useMemo(() => buildPrerequisiteDetailsData(quests, dependencies, directPrerequisites, reviewIndex),
+    [quests, dependencies, directPrerequisites, reviewIndex, masterSnapshot?.generation]);
   const rows = useMemo<QuestRowViewModel[]>(() => {
     return quests.map(({ quest, discoveries, offerCities, requiredSkillsNormalized }) => ({
         id: quest.id,
@@ -427,9 +455,9 @@ export function QuestsPage({
         directPrerequisites: directPrerequisites.get(quest.id) ?? [],
         updating:
           selectedProfileId !== null &&
-          (pendingUpdates.has(`${selectedProfileId}:${quest.id}`) || reportHold.busy || (reportHold.dialog !== null || reportHold.selection !== null)),
+          (pendingUpdates.has(`${selectedProfileId}:${quest.id}`) || reviewSaving || reportHold.busy || (reportHold.dialog !== null || reportHold.selection !== null)),
       }));
-  }, [completedQuestIds, statuses, directPrerequisites, pendingUpdates, quests, selectedProfileId, reportHold.busy, reportHold.dialog, reportHold.selection, reportHold.summaries]);
+  }, [completedQuestIds, statuses, directPrerequisites, pendingUpdates, quests, selectedProfileId, reviewSaving, reportHold.busy, reportHold.dialog, reportHold.selection, reportHold.summaries]);
 
   if (isProfileLoading) {
     return <div className="state-panel" role="status">プロフィールを読み込んでいます…</div>;
@@ -496,6 +524,7 @@ export function QuestsPage({
           progressReview={progressReview}
           onReloadReview={reloadReview}
           reviewCompletion={reviewCompletion}
+          prerequisiteDetails={{ data: detailData, masterGeneration: masterRead?.generation ?? 0, masterReady: masterMatches, completed: completedQuestIds }}
         />
       )}
     </section>

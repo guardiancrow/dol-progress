@@ -1,8 +1,11 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { PrerequisiteProgressReviewState } from "../../quests/prerequisiteProgressReview";
 import type { PrerequisiteReviewCompletion } from "../../quests/prerequisiteReviewCompletion";
+import type { PrerequisiteDetailsView } from "../../quests/prerequisiteDetails";
+import { PrerequisiteDetails } from "./PrerequisiteDetails";
 
 interface Props {
+  details?: PrerequisiteDetailsView;
   id: string;
   expanded: boolean;
   panelRef: RefObject<HTMLElement | null>;
@@ -15,7 +18,7 @@ interface Props {
   completion?: PrerequisiteReviewCompletion;
 }
 
-export function PrerequisiteProgressReview({ id, expanded, panelRef, review, matchingCount, onlyCandidates, onOnlyCandidates, onClose, onReload, completion }: Props) {
+export function PrerequisiteProgressReview({ id, expanded, panelRef, review, matchingCount, onlyCandidates, onOnlyCandidates, onClose, onReload, completion, details }: Props) {
   const [page, setPage] = useState(0);
   const confirmationId = useId();
   const confirmationRef = useRef<HTMLDivElement>(null);
@@ -47,9 +50,14 @@ export function PrerequisiteProgressReview({ id, expanded, panelRef, review, mat
   useEffect(() => {
     if (review.status === "ready") setPage(current => Math.min(current, Math.max(0, pageCount - 1)));
   }, [review.status, pageCount]);
-  return <section id={id} ref={panelRef} hidden={!expanded} tabIndex={0} className="prerequisite-review" aria-label="前提クエストの進捗確認候補">{expanded && <>
-    <div className="prerequisite-review-heading"><h3>前提クエストの進捗確認候補</h3>
-      <button type="button" className="button secondary" ref={closeRef} onClick={() => { completion?.cancel(); onClose(); }} aria-label="確認候補の詳細を閉じる">閉じる</button>
+  return <section id={id} ref={panelRef} hidden={!expanded} tabIndex={0} className={`prerequisite-review${details ? " prerequisite-review--details" : ""}`} aria-label={details ? "前提クエストの記録確認" : "前提クエストの進捗確認候補"}
+    onKeyDown={event => {
+      if (!details || event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault(); event.stopPropagation();
+      if (!completion?.pending) { if (confirmation) cancelConfirmation(); else onClose(); }
+    }}>{expanded && <>
+    <div className="prerequisite-review-heading"><h3>{details ? "前提クエストの記録確認" : "前提クエストの進捗確認候補"}</h3>
+      <button type="button" className="button secondary" ref={closeRef} disabled={completion?.pending} onClick={() => { completion?.cancel(); onClose(); }} aria-label={details ? "前提の記録確認を閉じる" : "確認候補の詳細を閉じる"}>閉じる</button>
     </div>
     {confirmation && <div className="prerequisite-review-confirmation" ref={confirmationRef} role="group" tabIndex={-1}
       aria-labelledby={`${confirmationId}-title`} aria-describedby={`${confirmationId}-description`} aria-busy={completion?.pending}
@@ -67,6 +75,8 @@ export function PrerequisiteProgressReview({ id, expanded, panelRef, review, mat
       </div>
     </div>}
     {completion?.message && <p role="status">{completion.message}</p>}
+    {details ? <PrerequisiteDetails key={details.currentId} view={details} review={review} locked={!!completion?.pending || !!confirmation}
+      onReload={onReload} onBegin={completion ? (candidate, origin) => { originRef.current = origin; completion.begin(candidate); } : undefined} /> : <>
     <p>保存された進捗と前提関係を照合した確認候補です。ゲーム内条件の確定判定ではありません。</p>
     <label className="prerequisite-review-filter"><input type="checkbox" checked={onlyCandidates} disabled={review.status !== "ready" && !onlyCandidates}
       onChange={event => onOnlyCandidates(event.target.checked)} />候補のある後続だけを表示</label>
@@ -88,6 +98,7 @@ export function PrerequisiteProgressReview({ id, expanded, panelRef, review, mat
         <span>{page + 1} / {pageCount}ページ</span>
         <button type="button" className="button secondary" disabled={page + 1 >= pageCount} onClick={() => setPage(current => current + 1)}>候補の次ページ</button>
       </div>}
+    </>}
     </>}
   </>}</section>;
 }
