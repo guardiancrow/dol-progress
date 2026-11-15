@@ -30,7 +30,8 @@ test('registered approval requires exact implementation bytes and a signed clean
     run('git', ['clone', '--quiet', '--shared', '--no-checkout', source, root], source);
     git('config', 'core.autocrlf', 'false');
     git('config', 'core.hooksPath', path.join(scratch, 'no-hooks'));
-    git('checkout', '--quiet', '--detach', 'origin/main');
+    const sourceHead = run('git', ['rev-parse', 'HEAD'], source).toString().trim();
+    git('checkout', '--quiet', '--detach', sourceHead);
     // Overlay only tracked changes and this test, never ignored logs or user data.
     const changed = run('git', ['diff', '--name-only', 'HEAD'], source).toString().trim().split(/\r?\n/).filter(Boolean);
     for (const name of new Set([...changed, 'scripts/tests/registered-notice-approval.tests.mjs'])) {
