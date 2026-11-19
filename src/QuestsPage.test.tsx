@@ -921,6 +921,81 @@ describe("Quest UI", () => {
     expect(screen.getByText("後続B")).toBeInTheDocument();
   });
 
+  it("filters successor existence explicitly and combines it with profile-specific prerequisite and completion filters", async () => {
+    const titles = ["起点の依頼", "中間の依頼", "合成後継だけにある固有名", "以前の依頼"];
+    const repositories = createRepositories(
+      [profile(1, "航海者A"), profile(2, "航海者B")],
+      titles.map((title, index) => quest(index + 1, title, { offerMethod: "冒険クエスト", isActive: index !== 3 })),
+      new Map([[1, [1]], [2, []]]), [edge(2, 1), edge(3, 2)],
+    );
+    const user = await openQuests(repositories);
+    const filter = screen.getByLabelText("後継クエスト");
+    expect(filter).toHaveValue("all");
+    expect(within(filter).getAllByRole("option", { hidden: true }).map(option => option.textContent)).toEqual([
+      "すべて", "後継あり", "後継なし", "要確認",
+    ]);
+    expect(questTitles()).toEqual(titles);
+
+    await user.selectOptions(filter, "present");
+    expect(questTitles()).toEqual(titles.slice(0, 2));
+    expect(screen.getAllByRole("columnheader")).toHaveLength(9);
+    const table = screen.getByRole("table");
+    for (const row of table.querySelectorAll("tbody tr")) expect(within(row as HTMLElement).getAllByRole("cell")).toHaveLength(9);
+    expect(table.closest(".workspace-table")!.innerHTML).not.toContain(titles[2]);
+    expect(table.closest(".workspace-table")!.innerHTML).not.toContain("1003");
+    expect(screen.getByText("4件中 2件表示")).toBeInTheDocument();
+
+    const prerequisite = screen.getByLabelText("前提クエスト");
+    const completion = screen.getByLabelText("達成状態");
+    const search = screen.getByRole("searchbox");
+    await user.selectOptions(prerequisite, "satisfied");
+    await user.selectOptions(completion, "incomplete");
+    await user.type(search, "中間");
+    expect(questTitles()).toEqual([titles[1]]);
+    await user.clear(search);
+    await user.selectOptions(completion, "all");
+    await user.selectOptions(prerequisite, "all");
+    await user.selectOptions(filter, "absent");
+    expect(questTitles()).toEqual([titles[2]]);
+    await user.selectOptions(filter, "unknown");
+    expect(questTitles()).toEqual([titles[3]]);
+    await user.selectOptions(filter, "all");
+    expect(questTitles()).toEqual(titles);
+    expect(repositories.quests.listWithDiscoveries).toHaveBeenCalledTimes(1);
+    expect(repositories.quests.listDependencies).toHaveBeenCalledTimes(1);
+
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    await screen.findByRole("table");
+    const nextFilter = screen.getByLabelText("後継クエスト");
+    expect(nextFilter).toHaveValue("all");
+    await user.selectOptions(nextFilter, "present");
+    expect(questTitles()).toEqual(titles.slice(0, 2));
+    await user.selectOptions(screen.getByLabelText("前提クエスト"), "satisfied");
+    expect(questTitles()).toEqual([titles[0]]);
+    expect(repositories.progress.listCompletedQuestIds).toHaveBeenLastCalledWith(2);
+    expect(repositories.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+    expect(repositories.progress.markCompleted).not.toHaveBeenCalled();
+    expect(repositories.progress.markIncomplete).not.toHaveBeenCalled();
+  });
+
+  it("filters the entire master before sorting and pagination and resets after explicit selection", async () => {
+    const quests = Array.from({ length: 52 }, (_, index) => quest(index + 1, `Quest ${index + 1}`, {
+      offerMethod: "冒険クエスト", difficulty: 52 - index,
+    }));
+    const repositories = createRepositories([profile(1, "航海者")], quests, new Map(), [edge(1, 52), edge(2, 51)]);
+    const user = await openQuests(repositories);
+    await user.click(screen.getByRole("button", { name: "次ページ" }));
+    expect(screen.getByText("2 / 2ページ")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("後継クエスト"), "present");
+    expect(screen.getByText("1 / 1ページ")).toBeInTheDocument();
+    expect(questTitles()).toEqual(["Quest 51", "Quest 52"]);
+    const sort = screen.getByRole("button", { name: "難易度で並べ替え" });
+    await user.click(sort);
+    expect(questTitles()).toEqual(["Quest 51", "Quest 52"]);
+    await user.click(sort);
+    expect(questTitles()).toEqual(["Quest 52", "Quest 51"]);
+  });
+
   it("sorts the selected skill numerically in both directions and restores source order", async () => {
     const repositories = createRepositories([profile(1, "航海者")], [
       rankedQuest(1, "考古学R10", "考古学", 10),

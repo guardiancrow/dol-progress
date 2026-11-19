@@ -1,6 +1,7 @@
 import type { QuestDiscoverySummary, QuestRequiredSkill, QuestWithDiscoveries } from "../domain/models";
 import type { QuestDependency, PrerequisiteStatus } from "./prerequisites";
 import type { DirectPrerequisite } from "./directPrerequisites";
+import type { SuccessorStatus } from "./successorStatuses";
 
 export interface QuestRepositoryPort {
   listWithDiscoveries(): Promise<QuestWithDiscoveries[]>;
@@ -29,6 +30,7 @@ export interface QuestRowViewModel {
   completed: boolean;
   updating: boolean;
   prerequisiteStatus: PrerequisiteStatus;
+  successorStatus?: SuccessorStatus;
   directPrerequisites: DirectPrerequisite[];
   progressReviewCandidate?: boolean;
 }
