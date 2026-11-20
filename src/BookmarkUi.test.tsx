@@ -8,14 +8,15 @@ import schema from "../src-tauri/migrations/005_search_bookmarks.sql?raw";
 import App from "./App";
 import { mockWorkspaceMedia } from "./components/layout/responsiveTestMedia";
 import type { DatabaseClient } from "./db/client";
-import type { DiscoveryWithRelations, QuestWithDiscoveries } from "./domain/models";
+import type { DiscoveryProgress, DiscoveryWithRelations, QuestWithDiscoveries } from "./domain/models";
+import { discoveryStateReader } from "./discoveries/stateReader";
 import { SearchBookmarkRepository } from "./repositories/searchBookmarkRepository";
 import type { QuestSearchCondition, DiscoverySearchCondition } from "./searchConditions/definition";
 import type { QuestDependency } from "./quests/prerequisites";
 
 vi.mock("./discoveries/stateReader", async (original) => ({
   ...await original<typeof import("./discoveries/stateReader")>(),
-  discoveryStateReader: { list: async () => [] },
+  discoveryStateReader: { list: vi.fn(async () => []) },
 }));
 
 interface MemorySqlite {
@@ -96,6 +97,7 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
   let repository: SearchBookmarkRepository;
 
   beforeEach(() => {
+    vi.mocked(discoveryStateReader.list).mockClear();
     database = new sqlite!.DatabaseSync(":memory:");
     database.exec(schema);
     const bind = (values: unknown[]) => Object.fromEntries(values.map((value, index) => [String(index + 1), value]));
@@ -175,6 +177,7 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     expect(await screen.findByRole("searchbox", { name: "発見物名を検索" })).toHaveValue("合成遺跡");
     expect(screen.getByRole("table")).not.toHaveTextContent("別の史跡");
     expect(bookmarkButton()).toHaveFocus();
+    expect(discoveryStateReader.list).toHaveBeenCalledTimes(1);
     await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
     await open(user);
     await allPages(user);
@@ -182,6 +185,64 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     expect(await screen.findByRole("table")).toHaveTextContent("対象A");
     expect(screen.getByRole("table")).not.toHaveTextContent("対象B");
     expect(screen.getByLabelText("現在のプロフィール")).toHaveValue("2");
+    expect(discoveryStateReader.list).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["saved", "uncertain"] as const)("refreshes linked discoveries after a %s quest write outlives its page", async outcome => {
+    const { props } = fixtures(repository);
+    let finishOldRead!: (rows: DiscoveryProgress[]) => void;
+    let finishWrite!: () => void;
+    let saved: DiscoveryProgress[] = [];
+    const listByProfile = vi.fn(async () => saved)
+      .mockImplementationOnce(() => new Promise(resolve => { finishOldRead = resolve; }));
+    const completeQuestWithLinkedDiscoveries = vi.fn(async (profileId: number, _questId: number) => {
+      await new Promise<void>(resolve => { finishWrite = resolve; });
+      saved = [{ profileId, discoveryId: 1, reported: false, cardOwned: true, memo: null, updatedAt: "saved" }];
+      if (outcome === "uncertain") throw new Error("synthetic uncertain response");
+      return { questChanged: true, discoveriesCreated: 1, discoveriesAlreadyPresent: 0 };
+    });
+    const { user, navigate } = await show({ ...props, discoveryProgressRepository: { ...props.discoveryProgressRepository, listByProfile },
+      progressLinkService: { completeQuestWithLinkedDiscoveries, discoverWithLinkedQuest: vi.fn() } }, "発見物");
+    await waitFor(() => expect(listByProfile).toHaveBeenCalledExactlyOnceWith(1));
+    await navigate("クエスト");
+    await user.click(await screen.findByRole("checkbox", { name: "対象Bの達成状態" }));
+    expect(completeQuestWithLinkedDiscoveries).toHaveBeenCalledExactlyOnceWith(1, 2);
+    await navigate("発見物");
+    expect(screen.getByText("発見物を読み込んでいます…")).toBeInTheDocument();
+    expect(listByProfile).toHaveBeenCalledTimes(1);
+    await act(async () => finishWrite());
+    expect(await screen.findByRole("checkbox", { name: "合成遺跡の発見状態" })).toBeChecked();
+    await act(async () => finishOldRead([]));
+    expect(screen.getByRole("checkbox", { name: "合成遺跡の発見状態" })).toBeChecked();
+    expect(listByProfile.mock.calls).toHaveLength(2);
+    expect(props.discoveryRepository.listWithRelations).toHaveBeenCalledTimes(1);
+  });
+
+  it("reloads linked quest progress after discovery and retains the quest master", async () => {
+    const { props } = fixtures(repository);
+    const items = [discovery(1, "合成遺跡")];
+    items[0]!.relatedQuests = [{ id: 2, title: "対象B", notes: null, offerCity: null }];
+    props.discoveryRepository.listWithRelations.mockResolvedValue(items);
+    let completed: number[] = [];
+    let saved: DiscoveryProgress[] = [];
+    const listCompletedQuestIds = vi.fn(async () => completed);
+    const discoverWithLinkedQuest = vi.fn(async (profileId: number, discoveryId: number, _questId: number | null) => {
+      completed = [2];
+      saved = [{ profileId, discoveryId, reported: false, cardOwned: true, memo: null, updatedAt: "saved" }];
+      return { discoveryCreated: true, questCompleted: true, questAlreadyCompleted: false, selectedQuestId: 2 };
+    });
+    const { user, navigate } = await show({ ...props, questProgressRepository: { ...props.questProgressRepository, listCompletedQuestIds },
+      discoveryProgressRepository: { ...props.discoveryProgressRepository, listByProfile: async () => saved },
+      progressLinkService: { completeQuestWithLinkedDiscoveries: vi.fn(), discoverWithLinkedQuest } });
+    expect(await screen.findByRole("checkbox", { name: "対象Bの達成状態" })).not.toBeChecked();
+    await navigate("発見物");
+    await user.click(await screen.findByRole("checkbox", { name: "合成遺跡の発見状態" }));
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "合成遺跡の発見状態" })).toBeChecked());
+    expect(discoverWithLinkedQuest).toHaveBeenCalledExactlyOnceWith(1, 1, null);
+    await navigate("クエスト");
+    expect(await screen.findByRole("checkbox", { name: "対象Bの達成状態" })).toBeChecked();
+    expect(listCompletedQuestIds).toHaveBeenCalledTimes(2);
+    expect(props.questRepository.listWithDiscoveries).toHaveBeenCalledTimes(1);
   });
 
   it("preserves the current page and conditions when a staged bookmark is unavailable or unknown", async () => {

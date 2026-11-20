@@ -35,24 +35,24 @@ afterEach(() => {
 });
 
 describe("Discovery search condition application", () => {
-  it("restores a later page after remount when the retained filter must wait for history", async () => {
+  it("restores a later page after remount using the cached reporting history", async () => {
     const items = Array.from({ length: 51 }, (_, index) => discovery(index + 1, `合成発見${index + 1}`));
     const histories = items.map(({ discovery }) => historySummary(discovery.id, "not_reported"));
     const repositories = setup([profile(1)], items, new Map([[1, items.map(({ discovery }) => progress(1, discovery.id))]]));
-    let finishHistory!: (rows: DiscoveryStateSummary[]) => void;
-    vi.mocked(discoveryStateReader.list).mockResolvedValueOnce(histories)
-      .mockImplementationOnce(() => new Promise(resolve => { finishHistory = resolve; }));
+    vi.mocked(discoveryStateReader.list).mockResolvedValueOnce(histories);
     const user = await open(repositories);
     await user.selectOptions(screen.getByLabelText("未報告の内訳"), "not_reported");
     await user.click(await screen.findByRole("button", { name: "次ページ" }));
     expect(screen.getByText("2 / 2ページ")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "プロフィール" }));
     await user.click(screen.getByRole("button", { name: "発見物" }));
-    expect(await screen.findByText("未報告の内訳を読み込んでいます…")).toBeInTheDocument();
-    await act(async () => finishHistory(histories));
+    await screen.findByRole("table");
     expect(screen.getByLabelText("未報告の内訳")).toHaveValue("not_reported");
     expect(screen.getByText("2 / 2ページ")).toBeInTheDocument();
     expect(bodyRows()[0]).toHaveTextContent("合成発見51");
+    expect(discoveryStateReader.list).toHaveBeenCalledTimes(1);
+    expect(repositories.master.listWithRelations).toHaveBeenCalledTimes(1);
+    expect(repositories.progress.listByProfile).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the discovery tab filters while switching profiles and ignores a delayed old read", async () => {
@@ -486,9 +486,9 @@ describe("Discovery UI", () => {
     await user.click(screen.getByRole("button", { name: label }));
     expect(await screen.findByText("条件に一致する発見物がありません")).toBeInTheDocument();
     expect(screen.getByText("0 / 0ページ")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "概要" }));
-    repositories.master.items.splice(0);
-    await user.click(await screen.findByRole("button", { name: label }));
+    cleanup();
+    const empty = await openDrilldown(setup([profile(1)], []), categoryStats([]));
+    await empty.click(await screen.findByRole("button", { name: label }));
     expect(await screen.findByText("発見物のマスターデータがありません")).toBeInTheDocument();
   });
   it("shows legacy stored unreported progress as automatic, filters by effective state and isolates profiles", async () => {

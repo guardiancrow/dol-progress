@@ -46,6 +46,7 @@ import { searchConditionIssueMessage } from "./searchConditions/SearchConditionF
 import { SearchBookmarkRepository, type SearchBookmark } from "./repositories/searchBookmarkRepository";
 import { useBookmarkLibrary, type BookmarkRepository } from "./searchConditions/useBookmarkLibrary";
 import { WorkspaceTabs, type WorkspaceTabId } from "./workspaceTabs/state";
+import { WorkspaceReads } from "./workspaceReads/WorkspaceReads";
 
 interface AppProps {
   profileRepository?: ProfileRepositoryPort;
@@ -115,6 +116,7 @@ function AppContent({
     return { tabs, initialIds: { quests: tabs.open("quests", "クエスト"), discoveries: tabs.open("discoveries", "発見物") } };
   });
   const [tabIds, setTabIds] = useState(initialIds);
+  const [workspaceReads] = useState(() => new WorkspaceReads());
   const [discoveryNavigation, setDiscoveryNavigation] = useState<{ tabId: WorkspaceTabId; filter: DiscoveryInitialFilter }>();
   const [searchApplication, setSearchApplication] = useState<{
     source?: AppProps["searchConditionRequest"];
@@ -143,11 +145,14 @@ function AppContent({
   }, [visibleTabId]);
   const trackMasterImport = useCallback(() => {
     setMasterImport(current => ({ ...current, pending: current.pending + 1 }));
-    return (committed: boolean) => setMasterImport(current => ({
-      pending: current.pending - 1,
-      revision: current.revision + (committed ? 1 : 0),
-    }));
-  }, []);
+    return (committed: boolean) => {
+      if (committed) workspaceReads.invalidateMaster();
+      setMasterImport(current => ({
+        pending: current.pending - 1,
+        revision: current.revision + (committed ? 1 : 0),
+      }));
+    };
+  }, [workspaceReads]);
 
   useLayoutEffect(() => {
     if (seenRequest.current === searchConditionRequest) return;
@@ -181,10 +186,11 @@ function AppContent({
   }, [searchApplication, searchConditionRequest, selectedProfileId, isProfileLoading]);
 
   useLayoutEffect(() => {
+    if (selectedProfileId !== null) workspaceReads.invalidateProfile(selectedProfileId);
     tabs.resetPagination();
     noticeVersion.current++;
     setSearchNotice(undefined);
-  }, [selectedProfileId, tabs]);
+  }, [selectedProfileId, tabs, workspaceReads]);
 
   const settleSearchCondition = useCallback((request: SearchConditionRequest, result: ConditionResult<SearchTableState>) => {
     if (request !== currentRequest || request === settledRequest.current || tabs.get(request.tabId)?.page !== request.definition.page) return;
@@ -256,6 +262,7 @@ function AppContent({
     const shared = {
       onOpenMasterData: () => navigate("master-data"),
       progressLinkService,
+      workspaceReads,
       workspaceTab: { tabs, id: tabId },
       staged: !visible,
       searchConditionRequest: currentRequest?.tabId === tabId ? currentRequest : undefined,

@@ -25,8 +25,11 @@ import { SearchConditionFeedback } from "../searchConditions/SearchConditionFeed
 import { discoverySearchOptions, resolveDiscoverySearch } from "../searchConditions/tableState";
 import { useSearchTableState } from "../searchConditions/useSearchTableState";
 import { createSearchTableView } from "../workspaceTabs/state";
+import type { ProgressReadKind, WorkspaceReads } from "../workspaceReads/WorkspaceReads";
+import { useWorkspaceReadScope } from "../workspaceReads/useWorkspaceReadScope";
 
 interface DiscoveriesPageProps extends SearchConditionApplicationProps {
+  workspaceReads?: WorkspaceReads;
   onOpenMasterData(): void;
   discoveryRepository: DiscoveryRepositoryPort;
   discoveryProgressRepository: DiscoveryProgressRepositoryPort;
@@ -44,6 +47,7 @@ export function DiscoveriesPage({
   onNavigationConsumed,
   searchConditionRequest,
   workspaceTab,
+  workspaceReads,
   staged,
   onBookmarkCapture,
   onSearchConditionSettled,
@@ -51,6 +55,8 @@ export function DiscoveriesPage({
   masterImporting = false,
 }: DiscoveriesPageProps) {
   const { selectedProfileId, isLoading: isProfileLoading } = useProfiles();
+  const readScope = useWorkspaceReadScope(workspaceReads, selectedProfileId);
+  const { reads, owner } = readScope;
   const [discoveries, setDiscoveries] = useState<DiscoveryWithRelations[]>([]);
   const [progressById, setProgressById] = useState<Map<number, DiscoveryProgress>>(new Map());
   const [pendingUpdates, setPendingUpdates] = useState<Set<string>>(new Set());
@@ -75,27 +81,42 @@ export function DiscoveriesPage({
   const selectedProfileRef = useRef(selectedProfileId);
   const masterGeneration = useRef(0);
   const pendingUpdatesRef = useRef<Set<string>>(new Set());
+  const loadMaster = useCallback((fresh = false) => reads.read("discoveryMaster", discoveryRepository, null,
+    () => discoveryRepository.listWithRelations(), { fresh, masterRevision }), [discoveryRepository, reads, masterRevision]);
+  const loadProgress = useCallback((id: number, fresh = false, active?: () => boolean) =>
+    reads.read("discoveryProgress", discoveryProgressRepository, id,
+      async () => new Map((await discoveryProgressRepository.listByProfile(id)).map(item => [item.discoveryId, item])),
+      { fresh, active }), [discoveryProgressRepository, reads]);
 
-  const reportHold = useReportHold(selectedProfileId, () => {
+  useEffect(() => reads.subscribe(change => {
+    if (change.owner === owner || change.profileId !== selectedProfileRef.current || !change.kinds.includes("discoveryProgress")) return;
+    ++progressGeneration.current;
+    setProgressReload(value => value + 1);
+  }), [reads, owner]);
+
+  const reportHold = useReportHold(selectedProfileId, reason => {
     const id=selectedProfileId;
     const generation=progressGeneration.current;
-    if(id === null) return;
-    const masterTicket = ++masterGeneration.current;
+    if (id === null || !owner.active) return;
+    const master = reason === "progress" ? undefined : loadMaster(true);
+    const masterTicket = master ? ++masterGeneration.current : undefined;
     const source = { repository: discoveryRepository, reload: masterReload, revision: masterRevision };
-    setMasterRead({ ...source, state: "loading" });
-    void Promise.all([discoveryProgressRepository.listByProfile(id),discoveryRepository.listWithRelations()]).then(([saved,master])=>{
-      if (masterGeneration.current === masterTicket) {
-        setDiscoveries(master);
+    const isCurrent = () => owner.active && selectedProfileRef.current === id && progressGeneration.current === generation;
+    const progress = loadProgress(id, reason !== "progress", isCurrent);
+    if (master) setMasterRead({ ...source, state: "loading" });
+    void Promise.all([progress.promise, master?.promise]).then(([saved,loaded])=>{
+      if (owner.active && loaded && master?.isCurrent() && masterGeneration.current === masterTicket) {
+        setDiscoveries(loaded);
         setMasterRead({ ...source, state: "ready" });
       }
-      if (selectedProfileRef.current === id && progressGeneration.current === generation) {
-        setProgressById(new Map(saved.map(p => [p.discoveryId, p])));
+      if (isCurrent() && progress.isCurrent()) {
+        setProgressById(saved);
       }
     }).catch(() => {
-      if (masterGeneration.current === masterTicket) setMasterRead({ ...source, state: "error" });
-      if (selectedProfileRef.current === id && progressGeneration.current === generation) setUpdateError("進捗の再取得に失敗しました。再読み込みしてください。");
+      if (owner.active && master?.isCurrent() && masterGeneration.current === masterTicket) setMasterRead({ ...source, state: "error" });
+      if (isCurrent()) setUpdateError("進捗の再取得に失敗しました。再読み込みしてください。");
     });
-  }, undefined, masterRevision);
+  }, undefined, masterRevision, readScope);
   const reloadReportStates = useRef(reportHold.reload);
   reloadReportStates.current = reportHold.reload;
   selectedProfileRef.current = selectedProfileId;
@@ -110,12 +131,12 @@ export function DiscoveriesPage({
     let active = true;
     const ticket = ++masterGeneration.current;
     const source = { repository: discoveryRepository, reload: masterReload, revision: masterRevision };
-    const isCurrent = () => active && masterGeneration.current === ticket;
+    const read = loadMaster();
+    const isCurrent = () => active && owner.active && read.isCurrent() && masterGeneration.current === ticket;
     setMasterRead({ ...source, state: "loading" });
     setIsMasterLoading(true);
     setMasterError(null);
-    void discoveryRepository
-      .listWithRelations()
+    void read.promise
       .then((loaded) => {
         if (isCurrent()) {
           setDiscoveries(loaded);
@@ -135,7 +156,7 @@ export function DiscoveriesPage({
     return () => {
       active = false;
     };
-  }, [discoveryRepository, masterReload, masterRevision]);
+  }, [discoveryRepository, loadMaster, masterReload, masterRevision, owner]);
 
   useEffect(() => {
     let active = true;
@@ -151,18 +172,18 @@ export function DiscoveriesPage({
     }
     setIsProgressLoading(true);
     const source = { repository: discoveryProgressRepository, reload: progressReload, profileId: selectedProfileId };
-    const isCurrent = () => active && progressGeneration.current === generation && selectedProfileRef.current === selectedProfileId;
-    void discoveryProgressRepository
-      .listByProfile(selectedProfileId)
+    const isCurrent = () => active && owner.active && progressGeneration.current === generation && selectedProfileRef.current === selectedProfileId;
+    const read = loadProgress(selectedProfileId, false, isCurrent);
+    void read.promise
       .then((progress) => {
-        if (isCurrent()) {
-          setProgressById(new Map(progress.map((item) => [item.discoveryId, item])));
+        if (isCurrent() && read.isCurrent()) {
+          setProgressById(progress);
           setProgressRead({ ...source, state: "ready" });
         }
       })
       .catch((error: unknown) => {
         console.error("Discovery progress load failed", error);
-        if (isCurrent()) {
+        if (isCurrent() && read.isCurrent()) {
           setProgressError("発見物進捗を読み込めませんでした。");
           setProgressRead({ ...source, state: "error" });
         }
@@ -171,79 +192,88 @@ export function DiscoveriesPage({
         if (isCurrent()) setIsProgressLoading(false);
       });
     return () => { active = false; };
-  }, [discoveryProgressRepository, progressReload, selectedProfileId]);
+  }, [discoveryProgressRepository, loadProgress, progressReload, selectedProfileId, owner]);
 
   const runUpdate = useCallback(
     async <T,>(
       discoveryId: number,
       operation: (profileId: number) => Promise<T>,
-      update: (current: DiscoveryProgress | null, profileId: number, result: T) => DiscoveryProgress | null,
+      update: ((current: DiscoveryProgress | null) => DiscoveryProgress | null) | undefined,
       onSuccess?: (result: T) => void,
+      linksQuest = false,
     ) => {
       const profileId = selectedProfileRef.current;
-      if (profileId === null) return;
+      if (profileId === null || !owner.active) return;
       const generation = progressGeneration.current;
+      const isCurrent = () => owner.active && selectedProfileRef.current === profileId && progressGeneration.current === generation;
       const key = `${profileId}:${discoveryId}`;
       if (pendingUpdatesRef.current.has(key)) return;
       pendingUpdatesRef.current.add(key);
       setPendingUpdates(new Set(pendingUpdatesRef.current));
       setUpdateError(null);
       setUpdateFeedback(null);
+      const affected: ProgressReadKind[] = ["discoveryProgress", "report"];
+      if (linksQuest) affected.push("questProgress");
       try {
-        const result = await operation(profileId);
-        if (selectedProfileRef.current === profileId && progressGeneration.current === generation) {
-          setProgressById((current) => {
-            const next = new Map(current);
-            const changed = update(current.get(discoveryId) ?? null, profileId, result);
-            if (changed) next.set(discoveryId, changed);
-            else next.delete(discoveryId);
-            return next;
-          });
+        const result = await reads.write(owner, profileId, affected, () => operation(profileId));
+        if (isCurrent()) {
+          if (update) {
+            setProgressById((current) => {
+              const next = new Map(current);
+              const changed = update(current.get(discoveryId) ?? null);
+              if (changed) next.set(discoveryId, changed);
+              else next.delete(discoveryId);
+              return next;
+            });
+          } else {
+            const read = loadProgress(profileId, false, isCurrent);
+            const saved = await read.promise;
+            if (!isCurrent()) return;
+            if (read.isCurrent()) setProgressById(saved);
+            else setProgressReload(value => value + 1);
+          }
           onSuccess?.(result);
-          void reloadReportStates.current().catch(()=>{if(selectedProfileRef.current === profileId && progressGeneration.current === generation) setUpdateError("報告履歴の再取得に失敗しました。");});
+          void reloadReportStates.current(false).catch(()=>{if(isCurrent()) setUpdateError("報告履歴の再取得に失敗しました。");});
         }
       } catch (error: unknown) {
         console.error("Discovery progress update failed", error);
-        if (selectedProfileRef.current === profileId && progressGeneration.current === generation) {
+        if (isCurrent()) {
           setUpdateError("発見物進捗を更新できませんでした。現在の状態を再取得します。");
+          const read = loadProgress(profileId, false, isCurrent);
           try {
-            const saved=await discoveryProgressRepository.listByProfile(profileId);
-            await reloadReportStates.current();
-            if (selectedProfileRef.current === profileId && progressGeneration.current === generation) setProgressById(new Map(saved.map(p=>[p.discoveryId,p])));
-          } catch { if (selectedProfileRef.current === profileId && progressGeneration.current === generation) setProgressError("進捗の再取得に失敗しました。再読み込みしてください。"); }
+            const saved = await read.promise;
+            if (isCurrent()) await reloadReportStates.current(false);
+            if (isCurrent()) {
+              if (read.isCurrent()) setProgressById(saved);
+              else setProgressReload(value => value + 1);
+            }
+          } catch { if (isCurrent() && read.isCurrent()) setProgressError("進捗の再取得に失敗しました。再読み込みしてください。"); }
         }
       } finally {
         pendingUpdatesRef.current.delete(key);
-        setPendingUpdates(new Set(pendingUpdatesRef.current));
+        if (owner.active) setPendingUpdates(new Set(pendingUpdatesRef.current));
       }
     },
-    [discoveryProgressRepository],
+    [loadProgress, reads, owner],
   );
 
   const markDiscovered = useCallback(
     async (discoveryId: number, selectedQuestId: number | null) => {
       await runUpdate(
         discoveryId,
-        async (profileId) => {
-          const result = await progressLinkService.discoverWithLinkedQuest(
-            profileId,
-            discoveryId,
-            selectedQuestId,
-          );
-          const saved = await discoveryProgressRepository.listByProfile(profileId);
-          return { result, saved: saved.find((item) => item.discoveryId === discoveryId) ?? null };
-        },
-        (_progress, _profileId, { saved }) => saved,
-        ({ result }: { result: DiscoveryCompletionResult }) => {
+        (profileId) => progressLinkService.discoverWithLinkedQuest(profileId, discoveryId, selectedQuestId),
+        undefined,
+        (result: DiscoveryCompletionResult) => {
           if (result.questCompleted) {
             setUpdateFeedback(
               "発見物を発見済みにし、関連クエストを達成済みにしました。",
             );
           }
         },
+        true,
       );
     },
-    [discoveryProgressRepository, progressLinkService, runUpdate],
+    [progressLinkService, runUpdate],
   );
 
   const toggleDiscovered = useCallback(
@@ -383,8 +413,14 @@ export function DiscoveriesPage({
       <div className="page-heading"><div><p className="page-eyebrow">進捗管理</p><h2 id="discoveries-title">発見物</h2><p>発見・報告・カード所有の状態を個別に管理します。</p></div></div>
       <ReportHoldFeedback controller={reportHold} />
       <ReportHoldDialogs controller={reportHold} />
-      {masterError && <ErrorBanner message={masterError} onRetry={() => setMasterReload((value) => value + 1)} />}
-      {progressError && searchProgressRead !== "loading" && <ErrorBanner message={progressError} onRetry={() => setProgressReload((value) => value + 1)} />}
+      {masterError && <ErrorBanner message={masterError} onRetry={() => {
+        reads.invalidateRead("discoveryMaster", discoveryRepository, null);
+        setMasterReload(value => value + 1);
+      }} />}
+      {progressError && searchProgressRead !== "loading" && <ErrorBanner message={progressError} onRetry={() => {
+        reads.invalidateRead("discoveryProgress", discoveryProgressRepository, selectedProfileId);
+        setProgressReload(value => value + 1);
+      }} />}
       {updateError && <div className="error-banner" role="alert">{updateError}</div>}
       {updateFeedback && <div className="progress-feedback" role="status">{updateFeedback}</div>}
       <SearchConditionFeedback application={searchCondition} />

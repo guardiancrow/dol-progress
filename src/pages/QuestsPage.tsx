@@ -22,8 +22,11 @@ import { blocked, type SearchConditionDefinition } from "../searchConditions/def
 import { SearchConditionFeedback } from "../searchConditions/SearchConditionFeedback";
 import { questSearchOptions, resolveQuestSearch } from "../searchConditions/tableState";
 import { useSearchTableState } from "../searchConditions/useSearchTableState";
+import type { WorkspaceReads } from "../workspaceReads/WorkspaceReads";
+import { useWorkspaceReadScope } from "../workspaceReads/useWorkspaceReadScope";
 
 interface QuestsPageProps extends SearchConditionApplicationProps {
+  workspaceReads?: WorkspaceReads;
   onOpenMasterData(): void;
   questRepository: QuestRepositoryPort;
   questProgressRepository: QuestProgressRepositoryPort;
@@ -64,6 +67,7 @@ export function QuestsPage({
   progressLinkService,
   searchConditionRequest,
   workspaceTab,
+  workspaceReads,
   staged,
   onBookmarkCapture,
   onSearchConditionSettled,
@@ -71,6 +75,8 @@ export function QuestsPage({
   masterImporting = false,
 }: QuestsPageProps) {
   const { selectedProfileId, selectedProfile, isLoading: isProfileLoading } = useProfiles();
+  const readScope = useWorkspaceReadScope(workspaceReads, selectedProfileId);
+  const { reads, owner } = readScope;
   const [masterSnapshot, setMasterSnapshot] = useState<MasterSnapshot | null>(null);
   const [completionSnapshot, setCompletionSnapshot] = useState<CompletionSnapshot | null>(null);
   const quests = masterSnapshot?.quests ?? EMPTY_QUESTS;
@@ -115,37 +121,49 @@ export function QuestsPage({
   }, [reviewSaving, progressError, reviewMessage, selectedProfileId]);
   selectedProfileRef.current = selectedProfileId;
   const pendingForProfile = selectedProfileId !== null && [...pendingUpdates].some(key => key.startsWith(`${selectedProfileId}:`));
-  const loadMasterPair = useCallback(() => Promise.all([
+  const loadMasterPair = useCallback((fresh = false) => reads.read("questMaster", questRepository, null, () => Promise.all([
     questRepository.listWithDiscoveries(), questRepository.listDependencies(),
-  ]), [questRepository]);
+  ]), { fresh, masterRevision }), [questRepository, reads, masterRevision]);
+  const loadCompletion = useCallback((id: number, fresh = false, active?: () => boolean) =>
+    reads.read("questProgress", questProgressRepository, id,
+      async () => new Set(await questProgressRepository.listCompletedQuestIds(id)), { fresh, active }), [questProgressRepository, reads]);
 
-  const reportHold = useReportHold(selectedProfileId, () => {
+  useEffect(() => reads.subscribe(change => {
+    if (change.owner === owner || change.profileId !== selectedProfileRef.current || !change.kinds.includes("questProgress")) return;
+    ++writeRevision.current;
+    ++progressReadGeneration.current;
+    setProgressReload(value => value + 1);
+  }), [reads, owner]);
+
+  const reportHold = useReportHold(selectedProfileId, reason => {
     const id = selectedProfileId;
     const generation = progressGeneration.current;
-    if (id === null) return;
-    const masterTicket = ++masterGeneration.current;
-    const masterSource = { generation: masterTicket, reload: masterReload, revision: masterRevision, repository: questRepository };
+    if (id === null || !owner.active) return;
+    const master = reason === "progress" ? undefined : loadMasterPair(true);
+    const masterSource = master && { generation: ++masterGeneration.current, reload: masterReload, revision: masterRevision, repository: questRepository };
     const progressTicket = ++progressReadGeneration.current;
     const revision = writeRevision.current;
-    setMasterRead({ ...masterSource, state: "loading" });
-    void Promise.all([questProgressRepository.listCompletedQuestIds(id), loadMasterPair()]).then(([ids, [loaded, loadedDependencies]]) => {
-      if (masterGeneration.current === masterTicket) {
+    const isCurrent = () => owner.active && selectedProfileRef.current === id && progressGeneration.current === generation && progressReadGeneration.current === progressTicket;
+    const progress = loadCompletion(id, reason !== "progress", isCurrent);
+    if (masterSource) setMasterRead({ ...masterSource, state: "loading" });
+    void Promise.all([progress.promise, master?.promise]).then(([ids, loadedPair]) => {
+      if (owner.active && masterSource && loadedPair && master?.isCurrent() && masterGeneration.current === masterSource.generation) {
+        const [loaded, loadedDependencies] = loadedPair;
         setMasterSnapshot({ ...masterSource, quests: loaded, dependencies: loadedDependencies });
         setMasterRead({ ...masterSource, state: "ready" });
       }
-      if (selectedProfileRef.current !== id || progressGeneration.current !== generation) return;
-      if (progressReadGeneration.current !== progressTicket) return;
-      if (writeRevision.current === revision
+      if (!isCurrent()) return;
+      if (progress.isCurrent() && writeRevision.current === revision
         && ![...pendingUpdatesRef.current].some(key => key.startsWith(`${id}:`))) {
-        setCompletionSnapshot({ ids: new Set(ids), profileId: id, epoch: generation, reload: progressReload, repository: questProgressRepository });
+        setCompletionSnapshot({ ids, profileId: id, epoch: generation, reload: progressReload, repository: questProgressRepository });
       } else {
         setProgressNeedsRefresh(true);
       }
     }).catch(() => {
-      if (masterGeneration.current === masterTicket) setMasterRead({ ...masterSource, state: "error" });
-      if (selectedProfileRef.current === id && progressGeneration.current === generation && progressReadGeneration.current === progressTicket) setUpdateError("進捗の再取得に失敗しました。再読み込みしてください。");
+      if (owner.active && masterSource && master?.isCurrent() && masterGeneration.current === masterSource.generation) setMasterRead({ ...masterSource, state: "error" });
+      if (isCurrent()) setUpdateError("進捗の再取得に失敗しました。再読み込みしてください。");
     });
-  }, undefined, masterRevision);
+  }, undefined, masterRevision, readScope);
   useEffect(() => {
     if (!progressNeedsRefresh || pendingForProfile || reportHold.busy || reviewSaving) return;
     setProgressNeedsRefresh(false);
@@ -165,16 +183,17 @@ export function QuestsPage({
     setMasterRead({ ...source, state: "loading" });
     setIsMasterLoading(true);
     setMasterError(null);
-    void loadMasterPair()
+    const read = loadMasterPair();
+    void read.promise
       .then(([loaded, loadedDependencies]) => {
-        if (active && masterGeneration.current === generation) {
+        if (active && read.isCurrent() && masterGeneration.current === generation) {
           setMasterSnapshot({ ...source, quests: loaded, dependencies: loadedDependencies });
           setMasterRead({ ...source, state: "ready" });
         }
       })
       .catch((error: unknown) => {
         console.error("Quest master load failed", error);
-        if (active && masterGeneration.current === generation) {
+        if (active && read.isCurrent() && masterGeneration.current === generation) {
           setMasterError("クエストを読み込めませんでした。");
           setMasterRead({ ...source, state: "error" });
         }
@@ -205,20 +224,21 @@ export function QuestsPage({
     }
 
     setIsProgressLoading(true);
-    void questProgressRepository
-      .listCompletedQuestIds(selectedProfileId)
+    const isCurrent = () => active && owner.active && progressGeneration.current === generation && selectedProfileRef.current === selectedProfileId && progressReadGeneration.current === ticket;
+    const read = loadCompletion(selectedProfileId, false, isCurrent);
+    void read.promise
       .then((ids) => {
-        if (active && progressGeneration.current === generation && selectedProfileRef.current === selectedProfileId && progressReadGeneration.current === ticket) {
-          if (writeRevision.current !== revision || [...pendingUpdatesRef.current].some(key => key.startsWith(`${selectedProfileId}:`))) {
+        if (isCurrent()) {
+          if (!read.isCurrent() || writeRevision.current !== revision || [...pendingUpdatesRef.current].some(key => key.startsWith(`${selectedProfileId}:`))) {
             setProgressNeedsRefresh(true);
           } else {
-            setCompletionSnapshot({ ids: new Set(ids), profileId: selectedProfileId, epoch: generation, reload: progressReload, repository: questProgressRepository });
+            setCompletionSnapshot({ ids, profileId: selectedProfileId, epoch: generation, reload: progressReload, repository: questProgressRepository });
           }
         }
       })
       .catch((error: unknown) => {
         console.error("Quest progress load failed", error);
-        if (active && progressGeneration.current === generation && progressReadGeneration.current === ticket) {
+        if (isCurrent() && read.isCurrent()) {
           setProgressError("クエスト進捗を読み込めませんでした。");
         }
       })
@@ -228,14 +248,15 @@ export function QuestsPage({
         }
       });
     return () => { active = false; };
-  }, [progressReload, questProgressRepository, selectedProfileId]);
+  }, [loadCompletion, progressReload, questProgressRepository, selectedProfileId, owner]);
 
   const updateCompletion = useCallback(
     async (questId: number, completed: boolean, fromReview = false): Promise<CompletionOutcome> => {
       if (reviewSavingRef.current && !fromReview) return { status: "skipped" };
       const profileId = selectedProfileRef.current;
-      if (profileId === null) return { status: "skipped" };
+      if (profileId === null || !owner.active) return { status: "skipped" };
       const generation = progressGeneration.current;
+      const isCurrent = () => owner.active && selectedProfileRef.current === profileId && progressGeneration.current === generation;
       const updateKey = `${profileId}:${questId}`;
       if (pendingUpdatesRef.current.has(updateKey)) return { status: "skipped" };
 
@@ -252,16 +273,14 @@ export function QuestsPage({
       let questChanged = true;
       try {
         if (completed) {
-          await questProgressRepository.markIncomplete(profileId, questId);
+          await reads.write(owner, profileId, ["questProgress"], () => questProgressRepository.markIncomplete(profileId, questId));
         } else {
-          const result = await progressLinkService.completeQuestWithLinkedDiscoveries(
-            profileId,
-            questId,
-          );
+          const result = await reads.write(owner, profileId, ["questProgress", "discoveryProgress", "report"],
+            () => progressLinkService.completeQuestWithLinkedDiscoveries(profileId, questId));
           discoveriesCreated = result.discoveriesCreated;
           questChanged = result.questChanged;
           if (
-            selectedProfileRef.current === profileId && progressGeneration.current === generation &&
+            isCurrent() &&
             result.questChanged && result.discoveriesCreated > 0 && !fromReview
           ) {
             setUpdateFeedback(
@@ -269,9 +288,9 @@ export function QuestsPage({
             );
           }
         }
-        if (selectedProfileRef.current === profileId && progressGeneration.current === generation) {
+        if (isCurrent()) {
           ++writeRevision.current;
-          void reportHold.reload().catch(()=>{if(selectedProfileRef.current === profileId && progressGeneration.current === generation) setUpdateError("地図状態の再取得に失敗しました。");});
+          if (!completed) void reportHold.reload(false).catch(()=>{if(isCurrent()) setUpdateError("地図状態の再取得に失敗しました。");});
           setCompletionSnapshot((current) => {
             if (!current || current.profileId !== profileId || current.epoch !== generation) return current;
             const next = new Set(current.ids);
@@ -281,16 +300,17 @@ export function QuestsPage({
           });
           if (!completed && !questChanged && !fromReview) {
             const ticket = ++progressReadGeneration.current, revision = writeRevision.current;
+            const read = loadCompletion(profileId, false, isCurrent);
             try {
-              const ids = await questProgressRepository.listCompletedQuestIds(profileId);
-              if (selectedProfileRef.current === profileId && progressGeneration.current === generation) {
-                if (progressReadGeneration.current === ticket && writeRevision.current === revision) {
-                  setCompletionSnapshot({ ids: new Set(ids), profileId, epoch: generation, reload: progressReload, repository: questProgressRepository });
+              const ids = await read.promise;
+              if (isCurrent()) {
+                if (read.isCurrent() && progressReadGeneration.current === ticket && writeRevision.current === revision) {
+                  setCompletionSnapshot({ ids, profileId, epoch: generation, reload: progressReload, repository: questProgressRepository });
                   setUpdateFeedback("このクエストは既に達成済みとして記録されています。現在の記録を再取得しました。");
                 } else setProgressNeedsRefresh(true);
               }
             } catch {
-              if (selectedProfileRef.current === profileId && progressGeneration.current === generation && progressReadGeneration.current === ticket) {
+              if (isCurrent() && read.isCurrent() && progressReadGeneration.current === ticket) {
                 setProgressError("既登録の応答を受け取りましたが、進捗の再取得に失敗しました。再読み込みしてください。");
               }
             }
@@ -302,25 +322,26 @@ export function QuestsPage({
         const rejected = typeof error === "object" && error !== null && "kind" in error && error.kind === "InvalidSelection";
         const diagnostic = `${operation} / ${classifyQuestUpdateError(error)} / ${Math.round(performance.now()-started)}ms`;
         console.error("Quest progress update failed", diagnostic);
-        if (selectedProfileRef.current === profileId && progressGeneration.current === generation) {
+        if (isCurrent()) {
           const revision = ++writeRevision.current;
           const ticket = ++progressReadGeneration.current;
           setUpdateError(fromReview ? rejected ? "対象が無効なため保存できませんでした。現在の状態を再取得します。"
             : "達成状態の保存完了を確認できません。現在の状態を再取得します。" : "達成状態を更新できませんでした。現在の状態を再取得します。");
           setUpdateDiagnostic(diagnostic);
           const recoveryStarted=performance.now();
+          const read = loadCompletion(profileId, false, isCurrent);
           try {
-            const ids=await questProgressRepository.listCompletedQuestIds(profileId);
-            await reportHold.reload();
-            if (selectedProfileRef.current === profileId && progressGeneration.current === generation) {
-              if (writeRevision.current === revision && progressReadGeneration.current === ticket) {
-                setCompletionSnapshot({ ids: new Set(ids), profileId, epoch: generation, reload: progressReload, repository: questProgressRepository });
+            const ids = await read.promise;
+            if (isCurrent()) await reportHold.reload(completed);
+            if (isCurrent()) {
+              if (read.isCurrent() && writeRevision.current === revision && progressReadGeneration.current === ticket) {
+                setCompletionSnapshot({ ids, profileId, epoch: generation, reload: progressReload, repository: questProgressRepository });
               } else {
                 setProgressNeedsRefresh(true);
               }
             }
-            if(selectedProfileRef.current === profileId && progressGeneration.current === generation) setUpdateDiagnostic(`${diagnostic} / reload:ok:${Math.round(performance.now()-recoveryStarted)}ms`);
-          } catch (recoveryError: unknown) {if(selectedProfileRef.current === profileId && progressGeneration.current === generation) {
+            if(isCurrent()) setUpdateDiagnostic(`${diagnostic} / reload:ok:${Math.round(performance.now()-recoveryStarted)}ms`);
+          } catch (recoveryError: unknown) {if(isCurrent() && read.isCurrent()) {
             setProgressError("進捗の再取得に失敗しました。再読み込みしてください。");
             setUpdateDiagnostic(`${diagnostic} / reload:${classifyQuestUpdateError(recoveryError)}:${Math.round(performance.now()-recoveryStarted)}ms`);
           }}
@@ -328,11 +349,13 @@ export function QuestsPage({
         return { status: rejected ? "rejected" : "unconfirmed" };
       } finally {
         pendingUpdatesRef.current.delete(updateKey);
-        setPendingUpdates(new Set(pendingUpdatesRef.current));
-        if (selectedProfileRef.current === profileId && progressGeneration.current !== generation) setProgressNeedsRefresh(true);
+        if (owner.active) {
+          setPendingUpdates(new Set(pendingUpdatesRef.current));
+          if (selectedProfileRef.current === profileId && progressGeneration.current !== generation) setProgressNeedsRefresh(true);
+        }
       }
     },
-    [progressLinkService, questProgressRepository, reportHold.reload, progressReload],
+    [progressLinkService, questProgressRepository, reportHold.reload, progressReload, reads, owner, loadCompletion],
   );
   const toggleCompletion = useCallback(async (questId: number, completed: boolean) => {
     await updateCompletion(questId, completed);
@@ -390,7 +413,7 @@ export function QuestsPage({
   }
   function scopeIsCurrent(session: ReviewConfirmation, ticket: number, revision: number) {
     const latest = latestReview.current;
-    return selectedProfileRef.current === session.profileId && progressGeneration.current === session.completion.epoch
+    return owner.active && selectedProfileRef.current === session.profileId && progressGeneration.current === session.completion.epoch
       && latest.master === session.master && masterGeneration.current === session.master.generation
       && progressReadGeneration.current === ticket && writeRevision.current === revision
       && ![...pendingUpdatesRef.current].some(key => key.startsWith(`${session.profileId}:`));
@@ -473,7 +496,7 @@ export function QuestsPage({
       reviewSavingRef.current = session;
       setReviewSaving(true);
       const message = (text: string) => {
-        if (selectedProfileRef.current === session.profileId && progressGeneration.current === session.completion.epoch
+        if (owner.active && selectedProfileRef.current === session.profileId && progressGeneration.current === session.completion.epoch
           && masterGeneration.current === session.master.generation) {
           setReviewMessage({ profileId: session.profileId, epoch: session.completion.epoch, text });
         }
@@ -481,18 +504,20 @@ export function QuestsPage({
       try {
         // 共通ロック取得後に最新記録を読む。他操作での達成を反転・再登録しない。
         const preflightTicket = ++progressReadGeneration.current;
+        const preflightCurrent = () => scopeIsCurrent(session, preflightTicket, session.revision);
+        const preflight = loadCompletion(session.profileId, true, preflightCurrent);
         let fresh: Set<number>;
         try {
-          fresh = new Set(await questProgressRepository.listCompletedQuestIds(session.profileId));
+          fresh = await preflight.promise;
         } catch {
-          if (scopeIsCurrent(session, preflightTicket, session.revision)) {
+          if (preflight.isCurrent() && preflightCurrent()) {
             setProgressError("登録前の進捗確認に失敗しました。保存していません。再読み込みしてください。");
             reviewFailureFocus.current = true;
             message("現在の達成記録を確認できないため、保存しませんでした。");
           }
           return;
         }
-        if (!scopeIsCurrent(session, preflightTicket, session.revision) || !permissionIsCurrent(session)) return;
+        if (!preflight.isCurrent() || !preflightCurrent() || !permissionIsCurrent(session)) return;
         if (fresh.has(session.target.id) || fresh.size !== session.completion.ids.size
           || [...fresh].some(id => !session.completion.ids.has(id))) {
           setCompletionSnapshot({ ...session.completion, ids: fresh });
@@ -502,24 +527,26 @@ export function QuestsPage({
         }
         const outcome = await updateCompletion(session.target.id, false, true);
         if (outcome.status === "saved") {
-          if (selectedProfileRef.current !== session.profileId || progressGeneration.current !== session.completion.epoch) return;
+          const isCurrent = () => owner.active && selectedProfileRef.current === session.profileId && progressGeneration.current === session.completion.epoch;
+          if (!isCurrent()) return;
           if (masterGeneration.current !== session.master.generation) { setProgressNeedsRefresh(true); return; }
           const revision = writeRevision.current, ticket = ++progressReadGeneration.current;
+          const read = loadCompletion(session.profileId, false, isCurrent);
           let refreshed = false;
           try {
-            const ids = await questProgressRepository.listCompletedQuestIds(session.profileId);
-            if (selectedProfileRef.current !== session.profileId || progressGeneration.current !== session.completion.epoch) return;
+            const ids = await read.promise;
+            if (!isCurrent()) return;
             if (masterGeneration.current !== session.master.generation) { setProgressNeedsRefresh(true); return; }
-            if (writeRevision.current === revision && progressReadGeneration.current === ticket
+            if (read.isCurrent() && writeRevision.current === revision && progressReadGeneration.current === ticket
               && ![...pendingUpdatesRef.current].some(key => key.startsWith(`${session.profileId}:`))) {
-              setCompletionSnapshot({ ids: new Set(ids), profileId: session.profileId, epoch: session.completion.epoch,
+              setCompletionSnapshot({ ids, profileId: session.profileId, epoch: session.completion.epoch,
                 reload: progressReload, repository: questProgressRepository });
-              refreshed = ids.includes(session.target.id);
+              refreshed = ids.has(session.target.id);
             } else {
               setProgressNeedsRefresh(true);
             }
           } catch {
-            if (selectedProfileRef.current === session.profileId && progressGeneration.current === session.completion.epoch
+            if (isCurrent() && read.isCurrent()
               && masterGeneration.current === session.master.generation && progressReadGeneration.current === ticket) {
               setProgressError(outcome.questChanged
                 ? "達成の保存は完了しましたが、進捗の再取得に失敗しました。再読み込みしてください。"
@@ -533,7 +560,7 @@ export function QuestsPage({
               : `前提「${session.target.title}」を達成済みにしました。${outcome.discoveriesCreated > 0 ? `関連する発見物 ${outcome.discoveriesCreated}件も発見済みにしました。` : ""}`);
           return;
         }
-        if (selectedProfileRef.current !== session.profileId || progressGeneration.current !== session.completion.epoch
+        if (!owner.active || selectedProfileRef.current !== session.profileId || progressGeneration.current !== session.completion.epoch
           || masterGeneration.current !== session.master.generation || reviewConfirmationRef.current !== session) return;
         reviewFailureFocus.current = outcome.status === "unconfirmed" || outcome.status === "rejected";
         message(outcome.status === "unconfirmed" ? "保存完了を確認できませんでした。再取得した現在の状態を確認してください。"
@@ -542,14 +569,16 @@ export function QuestsPage({
       } finally {
         if (reviewConfirmationRef.current === session) {
           reviewConfirmationRef.current = null;
-          setReviewConfirmation(null);
+          if (owner.active) setReviewConfirmation(null);
         }
         reviewSavingRef.current = null;
-        setReviewSaving(false);
+        if (owner.active) setReviewSaving(false);
       }
     },
   };
   const reloadReview = () => {
+    reads.invalidateRead("questMaster", questRepository, null);
+    reads.invalidateRead("questProgress", questProgressRepository, selectedProfileId);
     setMasterReload(value => value + 1);
     setProgressReload(value => value + 1);
     void reportHold.reload().catch(() => undefined);
