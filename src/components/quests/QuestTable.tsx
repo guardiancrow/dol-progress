@@ -67,15 +67,17 @@ interface QuestTableProps {
   onReloadReview?(): void;
   reportHold?: ReportHoldController;
   rows: QuestRowViewModel[];
+  successorFilterReady?: boolean;
   paginationResetKey: number;
   onToggleCompletion(questId: number, completed: boolean): Promise<void>;
 }
 
-export function QuestTable({ rows, paginationResetKey, onToggleCompletion, reportHold, progressReview, onReloadReview, reviewCompletion, prerequisiteDetails }: QuestTableProps) {
+export function QuestTable({ rows, successorFilterReady = false, paginationResetKey, onToggleCompletion, reportHold, progressReview, onReloadReview, reviewCompletion, prerequisiteDetails }: QuestTableProps) {
   const controlsVisible = useWorkspaceView()?.controlsVisible ?? true;
   const reportHoldRef = useRef(reportHold);
   reportHoldRef.current = reportHold;
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const successorFilterSuspended = !successorFilterReady && columnFilters.some(filter => filter.id === "successorStatus");
   const [reviewExpanded, setReviewExpanded] = useState(false);
   const reviewId = useId();
   const [detailSelection, setDetailSelection] = useState<{
@@ -255,6 +257,12 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
           },
           cell: () => null,
         }),
+        columnHelper.accessor("successorStatus", {
+          id: "successorStatus",
+          enableSorting: false,
+          filterFn: (row, columnId, value) => row.getValue(columnId) === value,
+          cell: () => null,
+        }),
         columnHelper.accessor("title", {
           id: "title",
           header: "クエスト名／地図名",
@@ -385,6 +393,7 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
       data: reviewRows,
       state: { columnFilters, sorting, pagination, columnVisibility: {
         prerequisiteStatus: false,
+        successorStatus: false,
         progressReview: false,
         [RANK_COLUMN_ID]: false,
       } },
@@ -473,13 +482,14 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
   }, [paginationResetKey]);
 
   useEffect(() => {
+    if (successorFilterSuspended) return;
     const lastValidPage = pageCount === 0 ? 0 : pageCount - 1;
     setPagination((current) =>
       current.pageIndex > lastValidPage
         ? { ...current, pageIndex: lastValidPage }
         : current,
     );
-  }, [pageCount]);
+  }, [pageCount, successorFilterSuspended]);
 
   function setFilter(columnId: string, value: unknown) {
     table.getColumn(columnId)?.setFilterValue(value);
@@ -575,6 +585,18 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
             <option value="none">前提なし</option>
           </select>
         </div>
+        <label>
+          後継クエスト
+          <select
+            value={String(table.getColumn("successorStatus")?.getFilterValue() ?? "all")}
+            onChange={(event) => setFilter("successorStatus", event.target.value === "all" ? undefined : event.target.value)}
+          >
+            <option value="all">すべて</option>
+            <option value="present" disabled={!successorFilterReady}>後継あり</option>
+            <option value="absent" disabled={!successorFilterReady}>後継なし</option>
+            <option value="unknown" disabled={!successorFilterReady}>要確認</option>
+          </select>
+        </label>
         <label>
           オファー方法
           <select
@@ -673,7 +695,7 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
         </div>
       </WorkspaceFilters>
 
-      <div className="quest-summary" aria-live="polite" hidden={!controlsVisible}>
+      <div className="quest-summary" aria-live="polite" hidden={!controlsVisible || successorFilterSuspended}>
         <span>{rows.length.toLocaleString("ja-JP")}件中 {filteredRows.length.toLocaleString("ja-JP")}件表示</span>
         <span>達成済み {filteredCompletedCount.toLocaleString("ja-JP")}件</span>
       </div>
@@ -683,13 +705,14 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
         onOnlyCandidates={setOnlyCandidates} onClose={closeReview} onReload={onReloadReview} completion={reviewCompletion} />}
 
 
-      {filteredRows.length === 0 ? (
+      {successorFilterSuspended && <div className="state-panel" role="status">後継クエストの絞り込みは、クエストの再取得後に再開します。</div>}
+      {!successorFilterSuspended && filteredRows.length === 0 ? (
         <div className="state-panel empty-state">
           <h3>条件に一致するクエストがありません</h3>
           <p>検索条件または絞り込み条件を変更してください。</p>
         </div>
       ) : (
-        <div className="quest-table-scroll">
+        <div className="quest-table-scroll" hidden={successorFilterSuspended}>
           <table className="quest-table quest-master-table">
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -745,18 +768,18 @@ export function QuestTable({ rows, paginationResetKey, onToggleCompletion, repor
         <button
           type="button"
           className="button secondary"
-          disabled={!table.getCanPreviousPage()}
+          disabled={successorFilterSuspended || !table.getCanPreviousPage()}
           onClick={() => table.previousPage()}
         >
           前ページ
         </button>
-        <span>
+        <span hidden={successorFilterSuspended}>
           {pageCount === 0 ? 0 : table.state.pagination.pageIndex + 1} / {pageCount}ページ
         </span>
         <button
           type="button"
           className="button secondary"
-          disabled={!table.getCanNextPage()}
+          disabled={successorFilterSuspended || !table.getCanNextPage()}
           onClick={() => table.nextPage()}
         >
           次ページ

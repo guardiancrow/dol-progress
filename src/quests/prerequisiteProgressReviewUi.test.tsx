@@ -65,6 +65,66 @@ async function ready(f: Fixture, onCommit?: () => void) {
   return view;
 }
 
+describe("successor filter snapshot safety", () => {
+  it("keeps the filter reachable and applied in the narrow workspace", async () => {
+    const f = fixtures(), { user, resize } = await ready(f);
+    act(() => resize(800, 600));
+    expect(screen.queryByRole("combobox", { name: "後継クエスト" })).not.toBeInTheDocument();
+    screen.getByRole("button", { name: "詳細フィルターを開く" }).focus();
+    await user.keyboard("{Enter}");
+    screen.getByRole("combobox", { name: "前提クエスト" }).focus();
+    await user.tab();
+    const filter = screen.getByRole("combobox", { name: "後継クエスト" });
+    expect(filter).toHaveFocus();
+    await user.selectOptions(filter, "present");
+    const table = screen.getByRole("table");
+    await user.click(screen.getByRole("button", { name: "詳細フィルターを閉じる" }));
+    expect(screen.getByRole("table")).toBe(table);
+    expect(within(table).getAllByRole("columnheader")).toHaveLength(9);
+    expect(screen.getByRole("group", { name: "適用中の条件" })).toHaveTextContent("絞り込み1件");
+    await user.click(screen.getByRole("button", { name: "詳細フィルターを開く" }));
+    await user.selectOptions(filter, "all");
+    expect(within(table).getByRole("checkbox", { name: "後続1の達成状態" })).toBeInTheDocument();
+  });
+
+  it("suspends an applied filter on reload or failure and uses only the latest successful master", async () => {
+    const f = fixtures(), { user } = await ready(f);
+    const filter = screen.getByLabelText("後継クエスト");
+    await user.selectOptions(filter, "present");
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("前提1")).toBeInTheDocument();
+    const oldDependencies = [...f.dependencies];
+    const stale = deferred<typeof f.dependencies>();
+    f.quests.listDependencies.mockImplementationOnce(() => stale.promise);
+    act(() => hold.changed());
+
+    const suspended = "後継クエストの絞り込みは、クエストの再取得後に再開します。";
+    expect(screen.getByText(suspended)).toBeVisible();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(within(table).queryByText("前提1")).not.toBeInTheDocument();
+    expect(screen.queryByText("条件に一致するクエストがありません")).not.toBeInTheDocument();
+
+    f.quests.listDependencies.mockRejectedValueOnce(new Error("synthetic dependency failure"));
+    act(() => hold.changed());
+    expect(await screen.findByText("進捗の再取得に失敗しました。再読み込みしてください。")).toBeVisible();
+    expect(screen.getByText(suspended)).toBeVisible();
+    expect(filter).toHaveValue("present");
+
+    f.dependencies[0] = { questId: 1, prerequisiteQuestId: 2 };
+    f.masters[0]!.quest.rawRowJson = JSON.stringify({ 前提クエスト: "1002:新前提", 後続クエスト: "" });
+    f.masters[1]!.quest.rawRowJson = JSON.stringify({ 前提クエスト: "", 後続クエスト: "1001:新後継" });
+    act(() => hold.changed());
+    await waitFor(() => expect(screen.getByRole("table")).toBe(table));
+    expect(within(table).getByText("後続1")).toBeInTheDocument();
+    expect(filter).toHaveValue("present");
+    expect(screen.queryByText(suspended)).not.toBeInTheDocument();
+
+    await act(async () => stale.resolve(oldDependencies));
+    expect(within(table).getByText("後続1")).toBeInTheDocument();
+    expect(within(table).queryByRole("checkbox", { name: "前提1の達成状態" })).not.toBeInTheDocument();
+  });
+});
+
 describe("prerequisite progress review UI and snapshot safety", () => {
   it("shows identities and reasons read-only, without additional reads or writes on disclosure and filtering", async () => {
     const f = fixtures(2), { user } = await ready(f);

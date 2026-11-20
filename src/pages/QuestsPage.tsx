@@ -7,6 +7,7 @@ import type { QuestWithDiscoveries } from "../domain/models";
 import { useProfiles } from "../profiles/ProfileContext";
 import type { ProgressLinkServicePort } from "../progressLink";
 import { derivePrerequisiteStatuses, type QuestDependency } from "../quests/prerequisites";
+import { deriveSuccessorStatuses } from "../quests/successorStatuses";
 import { resolveDirectPrerequisites } from "../quests/directPrerequisites";
 import { buildPrerequisiteDetailsData, canManuallyCompletePrerequisite } from "../quests/prerequisiteDetails";
 import type { PrerequisiteReviewCompletion, PrerequisiteReviewConfirmation } from "../quests/prerequisiteReviewCompletion";
@@ -328,6 +329,9 @@ export function QuestsPage({
     && completionSnapshot?.reload === progressReload && completionSnapshot?.repository === questProgressRepository;
   const masterMatches = masterSnapshot?.repository === questRepository && masterSnapshot?.reload === masterReload
     && masterRead?.generation === masterSnapshot?.generation && masterRead?.state === "ready";
+  const successorStatuses = useMemo(() => masterSnapshot
+    ? deriveSuccessorStatuses(masterSnapshot.quests.map(({ quest }) => quest), masterSnapshot.dependencies)
+    : undefined, [masterSnapshot]);
   const progressReview = useMemo<PrerequisiteProgressReviewState>(() => {
     if (masterError || progressError || masterRead?.state === "error" || reportHold.summaryReadState === "error") return { status: "error" };
     if (!completionMatches || !masterMatches || isMasterLoading || isProgressLoading || progressNeedsRefresh || isProfileLoading) return { status: "loading" };
@@ -550,12 +554,13 @@ export function QuestsPage({
         mapActive: quest.isActive,
         completed: completedQuestIds.has(quest.id),
         prerequisiteStatus: statuses.get(quest.id) ?? "UNKNOWN",
+        successorStatus: masterMatches ? successorStatuses?.get(quest.id) : undefined,
         directPrerequisites: directPrerequisites.get(quest.id) ?? [],
         updating:
           selectedProfileId !== null &&
           (pendingUpdates.has(`${selectedProfileId}:${quest.id}`) || reviewSaving || reportHold.busy || (reportHold.dialog !== null || reportHold.selection !== null)),
       }));
-  }, [completedQuestIds, statuses, directPrerequisites, pendingUpdates, quests, selectedProfileId, reviewSaving, reportHold.busy, reportHold.dialog, reportHold.selection, reportHold.summaries]);
+  }, [completedQuestIds, statuses, successorStatuses, masterMatches, directPrerequisites, pendingUpdates, quests, selectedProfileId, reviewSaving, reportHold.busy, reportHold.dialog, reportHold.selection, reportHold.summaries]);
 
   if (isProfileLoading) {
     return <div className="state-panel" role="status">プロフィールを読み込んでいます…</div>;
@@ -617,6 +622,7 @@ export function QuestsPage({
         <QuestTable
           reportHold={reportHold}
           rows={rows}
+          successorFilterReady={masterMatches}
           paginationResetKey={selectedProfileId}
           onToggleCompletion={toggleCompletion}
           progressReview={progressReview}
