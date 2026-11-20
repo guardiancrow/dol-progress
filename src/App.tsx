@@ -376,10 +376,12 @@ function AppContent({
           <div className="bookmarked-workspace">
             <WorkspaceTabBar tabs={openTabs} activeId={visibleTabId} closedName={tabs.closedName} focusRequest={focusRequest}
               onSelect={selectTab} onCreate={createTab} onRename={(id, name) => tabs.rename(id, name)} onClose={closeTab} onRestore={restoreTab} />
-            <BookmarkPanel page={page} tabId={visibleTabId} captured={captured?.tabId === visibleTabId ? captured.condition : undefined} library={bookmarkLibrary} apply={openBookmark} />
-            {searchNotice && <div className="bookmark-application-status" role="status">{searchNotice}</div>}
-            {stagedTabId !== undefined && <div className="bookmark-application-status" role="status">適用先の一覧を読み込んでいます…</div>}
-            {openTabs.map(tab => tab.id).concat(stagedTabId === undefined ? [] : [stagedTabId]).map(searchPage)}
+            <div className="workspace-sheet">
+              <BookmarkPanel page={page} tabId={visibleTabId} captured={captured?.tabId === visibleTabId ? captured.condition : undefined} library={bookmarkLibrary} apply={openBookmark} />
+              {searchNotice && <div className="bookmark-application-status" role="status">{searchNotice}</div>}
+              {stagedTabId !== undefined && <div className="bookmark-application-status" role="status">適用先の一覧を読み込んでいます…</div>}
+              {openTabs.map(tab => tab.id).concat(stagedTabId === undefined ? [] : [stagedTabId]).map(searchPage)}
+            </div>
           </div>
         ) : page === "master-data" ? (
           <MasterDataPage

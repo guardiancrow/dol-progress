@@ -5,6 +5,15 @@ export const workspaceTabId = (id: WorkspaceTabId) => `workspace-tab-${id}`;
 export const workspacePanelId = (id: WorkspaceTabId) => `workspace-panel-${id}`;
 export type WorkspaceFocus = { tabId: WorkspaceTabId } | { undo: true };
 
+function revealTab(list: HTMLDivElement | null, tab: HTMLElement | null) {
+  if (!list?.clientWidth || !tab) return;
+  const left = list.getBoundingClientRect().left + list.clientLeft;
+  const right = left + list.clientWidth;
+  const bounds = tab.getBoundingClientRect();
+  if (bounds.left < left) list.scrollLeft += bounds.left - left;
+  else if (bounds.right > right) list.scrollLeft += bounds.right - right;
+}
+
 interface WorkspaceTabBarProps {
   tabs: readonly WorkspaceTabInfo[];
   activeId: WorkspaceTabId;
@@ -21,6 +30,7 @@ export function WorkspaceTabBar({ tabs, activeId, closedName, focusRequest, onCr
   const [rovingId, setRovingId] = useState(activeId);
   const [creating, setCreating] = useState(false);
   const [editor, setEditor] = useState<{ id: WorkspaceTabId; name: string; empty: boolean }>();
+  const tabList = useRef<HTMLDivElement>(null);
   const plus = useRef<HTMLButtonElement>(null);
   const firstChoice = useRef<HTMLButtonElement>(null);
   const editInput = useRef<HTMLInputElement>(null);
@@ -28,12 +38,13 @@ export function WorkspaceTabBar({ tabs, activeId, closedName, focusRequest, onCr
   const createId = useId();
   const nameErrorId = useId();
   const editingId = editor?.id;
+  const lastRevealedSelection = useRef<WorkspaceTabId | undefined>(undefined);
 
   function focusTab(id: WorkspaceTabId) {
     setRovingId(id);
     const element = document.getElementById(workspaceTabId(id));
-    element?.focus({ preventScroll: true });
-    element?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    if (element && document.activeElement === element) revealTab(tabList.current, element.parentElement);
+    else element?.focus({ preventScroll: true });
   }
 
   useLayoutEffect(() => {
@@ -41,8 +52,24 @@ export function WorkspaceTabBar({ tabs, activeId, closedName, focusRequest, onCr
     setCreating(false);
     setEditor(undefined);
     composing.current = false;
-    document.getElementById(workspaceTabId(activeId))?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [activeId]);
+
+  useLayoutEffect(() => {
+    const list = tabList.current;
+    if (!list) return;
+    const selected = document.getElementById(workspaceTabId(activeId))?.parentElement ?? null;
+    const revealVisibleTab = () => {
+      const focused = document.activeElement?.closest<HTMLElement>(".workspace-tab");
+      revealTab(list, focused && list.contains(focused) ? focused : selected);
+    };
+    if (lastRevealedSelection.current === activeId) revealVisibleTab();
+    else revealTab(list, selected);
+    lastRevealedSelection.current = activeId;
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(revealVisibleTab);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [activeId, tabs]);
 
   useLayoutEffect(() => {
     if (focusRequest && "tabId" in focusRequest) focusTab(focusRequest.tabId);
@@ -113,9 +140,10 @@ export function WorkspaceTabBar({ tabs, activeId, closedName, focusRequest, onCr
 
   return <div className="workspace-tabs">
     <div className="workspace-tabs-line">
-      <div className="workspace-tab-list" role="tablist" aria-label="一覧タブ"
+      <div className="workspace-tab-list" ref={tabList} role="tablist" aria-label="一覧タブ"
         onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setRovingId(activeId); }}>
-        {tabs.map((tab, index) => <div className="workspace-tab" role="presentation" key={tab.id} data-selected={tab.id === activeId}>
+        {tabs.map((tab, index) => <div className="workspace-tab" role="presentation" key={tab.id} data-selected={tab.id === activeId}
+          onFocus={event => revealTab(tabList.current, event.currentTarget)}>
           <button className="workspace-tab-label" type="button" role="tab" id={workspaceTabId(tab.id)}
             aria-selected={tab.id === activeId} aria-controls={workspacePanelId(tab.id)} title={`${tab.name}（${workspacePageNames[tab.page]}）`}
             tabIndex={tab.id === rovingId ? 0 : -1} onFocus={() => setRovingId(tab.id)}
