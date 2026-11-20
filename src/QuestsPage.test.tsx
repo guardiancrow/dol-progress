@@ -37,6 +37,54 @@ afterEach(() => {
 });
 
 describe("Quest search condition application", () => {
+  it("restores the quest tab after unmount and applies a replacement without changing page size", async () => {
+    const repositories = createRepositories([profile(1, "航海者"), profile(2, "同乗者")],
+      Array.from({ length: 103 }, (_, index) => quest(index + 1, `合成依頼${index + 1}`, { difficulty: index + 1, offerCities: ["ロンドン"] })),
+      new Map([[1, [1]], [2, [103]]]));
+    const { user, submit } = await renderQuestConditions(repositories);
+    const navigate = (name: string) => user.click(screen.getByRole("button", { name }));
+    await navigate("クエスト");
+    const originalTable = await screen.findByRole("table");
+    await user.type(screen.getByRole("searchbox"), "合成");
+    await user.selectOptions(screen.getByLabelText("オファー都市"), "city:ロンドン");
+    await user.click(screen.getByRole("button", { name: "クエスト名／地図名で並べ替え" }));
+    const titleSort = screen.getByRole("columnheader", { name: /クエスト名／地図名/ }).getAttribute("aria-sort");
+    await user.selectOptions(screen.getByLabelText("1ページの件数"), "100");
+    await user.click(screen.getByRole("button", { name: "次ページ" }));
+    const previouslyVisible = questTitles();
+    await navigate("プロフィール");
+    expect(originalTable).not.toBeInTheDocument();
+    await navigate("クエスト");
+    expect(await screen.findByRole("table")).not.toBe(originalTable);
+    expect(screen.getByRole("searchbox")).toHaveValue("合成");
+    expect(screen.getByLabelText("オファー都市")).toHaveValue("city:ロンドン");
+    expect(screen.getByRole("columnheader", { name: /クエスト名／地図名/ })).toHaveAttribute("aria-sort", titleSort);
+    expect(screen.getByLabelText("1ページの件数")).toHaveValue("100");
+    expect(screen.getByText("2 / 2ページ")).toBeInTheDocument();
+    expect(questTitles()).toEqual(previouslyVisible);
+
+    submit({ search: "依頼", filters: { completed: false }, sorting: [{ key: "difficulty", direction: "desc" }] });
+    expect(screen.getByRole("searchbox")).toHaveValue("依頼");
+    expect(screen.getByLabelText("達成状態")).toHaveValue("incomplete");
+    expect(screen.getByLabelText("オファー都市")).toHaveValue("");
+    expect(screen.getByRole("columnheader", { name: /難易度/ })).toHaveAttribute("aria-sort", "descending");
+    expect(screen.getByText("1 / 2ページ")).toBeInTheDocument();
+    expect(screen.getByLabelText("1ページの件数")).toHaveValue("100");
+    expect(questTitles()[0]).toBe("合成依頼103");
+
+    await user.click(screen.getByRole("button", { name: "次ページ" }));
+    await navigate("プロフィール");
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    await navigate("クエスト");
+    await screen.findByRole("table");
+    expect(screen.getByRole("searchbox")).toHaveValue("依頼");
+    expect(screen.getByLabelText("達成状態")).toHaveValue("incomplete");
+    expect(screen.getByText("1 / 2ページ")).toBeInTheDocument();
+    expect(screen.getByLabelText("1ページの件数")).toHaveValue("100");
+    expect(questTitles()[0]).toBe("合成依頼102");
+    expect(repositories.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+  });
+
   it("retains the current filters, sorting and page on rejection, then replaces all of them on success", async () => {
     const repositories = createRepositories([profile(1, "航海者")], Array.from({ length: 55 }, (_, index) =>
       quest(index + 1, `合成依頼${index + 1}`, { offerCities: ["ロンドン"] })));

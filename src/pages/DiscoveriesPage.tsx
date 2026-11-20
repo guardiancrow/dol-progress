@@ -1,6 +1,7 @@
 import { useReportHold } from "../discoveries/useReportHold";
 import { ReportHoldDialogs, ReportHoldFeedback } from "../components/discoveries/ReportHoldControls";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { ColumnFiltersState } from "@tanstack/react-table";
 
 import { DiscoveryTable } from "../components/discoveries/DiscoveryTable";
 import { RelatedQuestDialog } from "../components/discoveries/RelatedQuestDialog";
@@ -22,6 +23,8 @@ import { useSearchConditionApplication, whenSearchDataReady, type ReadState, typ
 import { blocked, type SearchConditionDefinition } from "../searchConditions/definition";
 import { SearchConditionFeedback } from "../searchConditions/SearchConditionFeedback";
 import { discoverySearchOptions, resolveDiscoverySearch } from "../searchConditions/tableState";
+import { useSearchTableState } from "../searchConditions/useSearchTableState";
+import { createSearchTableView } from "../workspaceTabs/state";
 
 interface DiscoveriesPageProps extends SearchConditionApplicationProps {
   onOpenMasterData(): void;
@@ -40,6 +43,8 @@ export function DiscoveriesPage({
   initialFilter,
   onNavigationConsumed,
   searchConditionRequest,
+  workspaceTab,
+  staged,
   onBookmarkCapture,
   onSearchConditionSettled,
   masterRevision = 0,
@@ -133,6 +138,7 @@ export function DiscoveriesPage({
   }, [discoveryRepository, masterReload, masterRevision]);
 
   useEffect(() => {
+    let active = true;
     const generation = ++progressGeneration.current;
     setProgressById(new Map());
     setProgressError(null);
@@ -145,7 +151,7 @@ export function DiscoveriesPage({
     }
     setIsProgressLoading(true);
     const source = { repository: discoveryProgressRepository, reload: progressReload, profileId: selectedProfileId };
-    const isCurrent = () => progressGeneration.current === generation && selectedProfileRef.current === selectedProfileId;
+    const isCurrent = () => active && progressGeneration.current === generation && selectedProfileRef.current === selectedProfileId;
     void discoveryProgressRepository
       .listByProfile(selectedProfileId)
       .then((progress) => {
@@ -164,6 +170,7 @@ export function DiscoveriesPage({
       .finally(() => {
         if (isCurrent()) setIsProgressLoading(false);
       });
+    return () => { active = false; };
   }, [discoveryProgressRepository, progressReload, selectedProfileId]);
 
   const runUpdate = useCallback(
@@ -346,8 +353,26 @@ export function DiscoveriesPage({
       ["mapReacquisition", needsMapState ? reportHold.summaryReadState : "ready"],
     ], () => rows.length ? resolveDiscoverySearch(condition, searchOptions) : blocked("unavailable", "master"));
   }, [rows.length, searchMasterRead, searchProgressRead, reportHold.summaryReadState, searchOptions]);
-  const searchCondition = useSearchConditionApplication(selectedProfileId, { searchConditionRequest, onSearchConditionSettled }, resolveSearch);
+  const tableState = useSearchTableState(workspaceTab);
+  const { updateView } = tableState;
+  const searchCondition = useSearchConditionApplication(selectedProfileId,
+    { workspaceTab, staged, searchConditionRequest, onSearchConditionSettled }, resolveSearch, tableState);
+  const consumedNavigation = useRef<DiscoveryInitialFilter>(undefined);
+  useLayoutEffect(() => {
+    if (staged || !initialFilter || consumedNavigation.current === initialFilter || !rows.length
+      || searchMasterRead !== "ready" || searchProgressRead !== "ready" || progressError) return;
+    consumedNavigation.current = initialFilter;
+    const filters: ColumnFiltersState = [];
+    if (initialFilter.kind === "category" && rows.some(row => row.category?.id === initialFilter.categoryId)) {
+      filters.push({ id: "category", value: initialFilter.categoryId });
+    }
+    if (initialFilter.kind === "unreported") filters.push({ id: "status", value: "unreported" });
+    if (initialFilter.kind === "card-not-owned") filters.push({ id: "cardOwned", value: false });
+    updateView(() => createSearchTableView(filters));
+    onNavigationConsumed?.();
+  }, [staged, initialFilter, rows, searchMasterRead, searchProgressRead, progressError, updateView, onNavigationConsumed]);
 
+  if (staged) return null;
   if (isProfileLoading) return <div className="state-panel" role="status">プロフィールを読み込んでいます…</div>;
   if (selectedProfileId === null) {
     return <div className="state-panel empty-state"><h2>発見物進捗を表示するプロフィールを選択してください</h2><p>プロフィール画面でプロフィールを作成または選択してください。</p></div>;
@@ -359,11 +384,11 @@ export function DiscoveriesPage({
       <ReportHoldFeedback controller={reportHold} />
       <ReportHoldDialogs controller={reportHold} />
       {masterError && <ErrorBanner message={masterError} onRetry={() => setMasterReload((value) => value + 1)} />}
-      {progressError && <ErrorBanner message={progressError} onRetry={() => setProgressReload((value) => value + 1)} />}
+      {progressError && searchProgressRead !== "loading" && <ErrorBanner message={progressError} onRetry={() => setProgressReload((value) => value + 1)} />}
       {updateError && <div className="error-banner" role="alert">{updateError}</div>}
       {updateFeedback && <div className="progress-feedback" role="status">{updateFeedback}</div>}
       <SearchConditionFeedback application={searchCondition} />
-      {isMasterLoading || isProgressLoading ? (
+      {isMasterLoading || isProgressLoading || searchProgressRead === "loading" ? (
         <div className="state-panel" role="status">発見物を読み込んでいます…</div>
       ) : masterError || progressError ? null : discoveries.length === 0 ? (
         <div className="state-panel empty-state">
@@ -379,21 +404,20 @@ export function DiscoveriesPage({
       ) : (
         <DiscoveryTable
           key={searchCondition.resetKey}
+          tableState={tableState}
           searchCondition={searchCondition}
           searchOptions={searchOptions}
           onBookmarkCapture={searchMasterRead === "ready" && searchProgressRead === "ready" ? onBookmarkCapture : undefined}
           historyReadState={reportHold.summaryReadState}
           reportHold={reportHold}
           rows={rows}
-          initialFilter={initialFilter}
-          onNavigationConsumed={onNavigationConsumed}
           paginationResetKey={selectedProfileId}
           onToggleDiscovered={toggleDiscovered}
           onSetReported={setReported}
           onSetCardOwned={setCardOwned}
         />
       )}
-      {questSelection && (
+      {questSelection && searchProgressRead === "ready" && (
         <RelatedQuestDialog
           discoveryName={questSelection.discoveryName}
           quests={questSelection.quests}

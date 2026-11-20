@@ -35,6 +35,56 @@ afterEach(() => {
 });
 
 describe("Discovery search condition application", () => {
+  it("restores a later page after remount when the retained filter must wait for history", async () => {
+    const items = Array.from({ length: 51 }, (_, index) => discovery(index + 1, `合成発見${index + 1}`));
+    const histories = items.map(({ discovery }) => historySummary(discovery.id, "not_reported"));
+    const repositories = setup([profile(1)], items, new Map([[1, items.map(({ discovery }) => progress(1, discovery.id))]]));
+    let finishHistory!: (rows: DiscoveryStateSummary[]) => void;
+    vi.mocked(discoveryStateReader.list).mockResolvedValueOnce(histories)
+      .mockImplementationOnce(() => new Promise(resolve => { finishHistory = resolve; }));
+    const user = await open(repositories);
+    await user.selectOptions(screen.getByLabelText("未報告の内訳"), "not_reported");
+    await user.click(await screen.findByRole("button", { name: "次ページ" }));
+    expect(screen.getByText("2 / 2ページ")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "プロフィール" }));
+    await user.click(screen.getByRole("button", { name: "発見物" }));
+    expect(await screen.findByText("未報告の内訳を読み込んでいます…")).toBeInTheDocument();
+    await act(async () => finishHistory(histories));
+    expect(screen.getByLabelText("未報告の内訳")).toHaveValue("not_reported");
+    expect(screen.getByText("2 / 2ページ")).toBeInTheDocument();
+    expect(bodyRows()[0]).toHaveTextContent("合成発見51");
+  });
+
+  it("keeps the discovery tab filters while switching profiles and ignores a delayed old read", async () => {
+    const items = Array.from({ length: 52 }, (_, index) => discovery(index + 1, `合成発見${index + 1}`));
+    const repositories = setup([profile(1, "A"), profile(2, "B")], items);
+    let finishOldRead!: (rows: DiscoveryProgress[]) => void;
+    repositories.progress.listByProfile.mockImplementation(id => id === 1
+      ? Promise.resolve([progress(1, 1)]) : new Promise(resolve => { finishOldRead = resolve; }));
+    const user = await open(repositories);
+    await user.type(screen.getByRole("searchbox"), "合成");
+    await user.selectOptions(screen.getByLabelText("状態"), "undiscovered");
+    await user.click(screen.getByRole("button", { name: "発見物名で並べ替え" }));
+    const first = screen.getByRole("columnheader", { name: /発見物名/ }).getAttribute("aria-sort");
+    await user.click(screen.getByRole("button", { name: "次ページ" }));
+    expect(screen.getByText("2 / 2ページ")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    expect(screen.getByText("発見物を読み込んでいます…")).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "1");
+    await screen.findByRole("table");
+    await act(async () => finishOldRead([progress(2, 2)]));
+
+    expect(screen.getByRole("searchbox")).toHaveValue("合成");
+    expect(screen.getByLabelText("状態")).toHaveValue("undiscovered");
+    expect(screen.getByRole("columnheader", { name: /発見物名/ })).toHaveAttribute("aria-sort", first);
+    expect(screen.getByText("1 / 2ページ")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "合成発見1の発見状態" })).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "合成発見2の発見状態" })).not.toBeChecked();
+    expect(repositories.progress.markDiscovered).not.toHaveBeenCalled();
+  });
+
   it("keeps the UI-R6G map scope separate from reacquisition and waits only for the required data", async () => {
     let finishRead!: (rows: DiscoveryStateSummary[]) => void;
     vi.mocked(discoveryStateReader.list).mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }));
@@ -203,6 +253,8 @@ describe("Discovery UI", () => {
     expect(screen.getByRole("heading", {name:"冒険勲功値"}).closest("article")).toHaveTextContent(`算入対象発見物 ${status === "confirmed" ? 1 : 0}件`);
     expect(screen.getByRole("heading", {name:"気象・現象"}).closest("article")).toHaveTextContent(status === "not_reported" ? "初回未報告1件再報告待ち0件" : "初回未報告0件再報告待ち1件");
     await user.click(screen.getByRole("button", {name:"発見物"}));
+    expect(await screen.findByLabelText("未報告の内訳")).toHaveValue(status);
+    await user.selectOptions(screen.getByLabelText("未報告の内訳"), "all");
     vi.spyOn(window,"confirm").mockReturnValue(true);
     await user.click(await screen.findByRole("checkbox", {name:"合成の気象の発見状態"}));
     await waitFor(()=>expect(screen.getByRole("checkbox", {name:"合成の気象の発見状態"})).not.toBeChecked());
@@ -408,10 +460,13 @@ describe("Discovery UI", () => {
     expect(screen.getByLabelText("発見物名を検索")).toHaveValue("");
     expect(screen.getByLabelText("状態")).toHaveValue(status === "unreported" ? "all" : "unreported");
     expect(screen.getByLabelText("カード所有")).toHaveValue(status === "unreported" ? "not-owned" : "all");
+    expect(screen.getByLabelText("1ページの件数")).toHaveValue("50");
     await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
-    await screen.findByRole("table");
-    expect(screen.getByLabelText("状態")).toHaveValue("all");
-    expect(screen.getByLabelText("カード所有")).toHaveValue("all");
+    await screen.findByText("条件に一致する発見物がありません");
+    expect(screen.getByLabelText("状態")).toHaveValue(status === "unreported" ? "all" : "unreported");
+    expect(screen.getByLabelText("カード所有")).toHaveValue(status === "unreported" ? "not-owned" : "all");
+    await user.selectOptions(screen.getByLabelText("状態"), "all");
+    await user.selectOptions(screen.getByLabelText("カード所有"), "all");
     expect(screen.getByRole("checkbox", { name: "未報告未所有の発見状態" })).not.toBeChecked();
     await user.click(screen.getByRole("button", { name: "プロフィール" }));
     await user.click(screen.getByRole("button", { name: "発見物" }));
@@ -617,7 +672,7 @@ describe("Discovery UI", () => {
     expect(screen.getByRole("columnheader", { name: /発見物名/ })).not.toHaveAttribute("aria-sort");
   });
 
-  it("consumes drill-down once, allows manual category changes, and does not replay on ordinary navigation", async () => {
+  it("consumes drill-down once and restores a manual category change on ordinary navigation", async () => {
     const categories = [{ id: 1, name: "史跡", sortOrder: 1 }, { id: 2, name: "天文", sortOrder: 2 }];
     const repositories = setup([profile(1)], categories.map((category) => discovery(category.id, `発見物${category.id}`, { category })));
     const user = await openDrilldown(repositories, categoryStats(categories));
@@ -628,8 +683,9 @@ describe("Discovery UI", () => {
     await user.click(screen.getByRole("button", { name: "クエスト" }));
     await user.click(screen.getByRole("button", { name: "発見物" }));
     await screen.findByRole("table");
-    expect(screen.getByLabelText("分類")).toHaveValue("all");
-    expect(bodyRows()).toHaveLength(2);
+    expect(screen.getByLabelText("分類")).toHaveValue("2");
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent("発見物2");
   });
 
   it("falls back to all when an Overview category no longer exists in the loaded master", async () => {

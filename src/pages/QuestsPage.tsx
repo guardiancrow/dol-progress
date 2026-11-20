@@ -21,6 +21,7 @@ import { useSearchConditionApplication, whenSearchDataReady, type SearchConditio
 import { blocked, type SearchConditionDefinition } from "../searchConditions/definition";
 import { SearchConditionFeedback } from "../searchConditions/SearchConditionFeedback";
 import { questSearchOptions, resolveQuestSearch } from "../searchConditions/tableState";
+import { useSearchTableState } from "../searchConditions/useSearchTableState";
 
 interface QuestsPageProps extends SearchConditionApplicationProps {
   onOpenMasterData(): void;
@@ -62,6 +63,8 @@ export function QuestsPage({
   questProgressRepository,
   progressLinkService,
   searchConditionRequest,
+  workspaceTab,
+  staged,
   onBookmarkCapture,
   onSearchConditionSettled,
   masterRevision = 0,
@@ -590,8 +593,11 @@ export function QuestsPage({
     ], () => rows.length ? resolveQuestSearch(condition, searchOptions) : blocked("unavailable", "master"));
   }, [rows.length, searchOptions, masterImporting, masterReadCurrent, masterRead?.state, masterMatches, isMasterLoading, progressError, completionMatches,
     isProfileLoading, isProgressLoading, progressNeedsRefresh, progressReview.status, reportHold.summaryReadState]);
-  const searchCondition = useSearchConditionApplication(selectedProfileId, { searchConditionRequest, onSearchConditionSettled }, resolveSearch);
+  const tableState = useSearchTableState(workspaceTab);
+  const searchCondition = useSearchConditionApplication(selectedProfileId,
+    { workspaceTab, staged, searchConditionRequest, onSearchConditionSettled }, resolveSearch, tableState);
 
+  if (staged) return null;
   if (isProfileLoading) {
     return <div className="state-panel" role="status">プロフィールを読み込んでいます…</div>;
   }
@@ -652,6 +658,7 @@ export function QuestsPage({
       ) : (
         <QuestTable
           key={searchCondition.resetKey}
+          tableState={tableState}
           searchCondition={searchCondition}
           searchOptions={searchOptions}
           onBookmarkCapture={masterMatches && !masterImporting ? onBookmarkCapture : undefined}
