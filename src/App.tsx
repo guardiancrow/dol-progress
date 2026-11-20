@@ -142,6 +142,10 @@ function AppContent({
   const visibleTabId = isSearchPage(page) || page === "overview" ? activeTabId : undefined;
   const stagedTabId = currentRequest && currentRequest.tabId !== visibleTabId
     && !openTabs.some(tab => tab.id === currentRequest.tabId) ? currentRequest.tabId : undefined;
+  // Keep the mounted panels in ID order even when the tab bar is reordered.
+  const panelTabIds = openTabs.map(tab => tab.id);
+  if (stagedTabId !== undefined) panelTabIds.push(stagedTabId);
+  panelTabIds.sort((left, right) => left - right);
   const captureVisibleTab = useCallback((condition: ConditionResult<SearchConditionDefinition> | undefined) => {
     if (visibleTabId === undefined) return;
     setCaptured(current => condition ? { tabId: visibleTabId, condition } : current?.tabId === visibleTabId ? undefined : current);
@@ -375,12 +379,13 @@ function AppContent({
         {visibleTabId !== undefined ? (
           <div className="bookmarked-workspace">
             <WorkspaceTabBar tabs={openTabs} activeId={visibleTabId} closedName={tabs.closedName} focusRequest={focusRequest}
-              onSelect={selectTab} onCreate={createTab} onRename={(id, name) => tabs.rename(id, name)} onClose={closeTab} onRestore={restoreTab} />
+              onSelect={selectTab} onCreate={createTab} onRename={(id, name) => tabs.rename(id, name)} onClose={closeTab} onRestore={restoreTab}
+              onMove={tabs.move} />
             <div className="workspace-sheet">
               {isSearchPage(page) && <BookmarkPanel page={page} tabId={visibleTabId} captured={captured?.tabId === visibleTabId ? captured.condition : undefined} library={bookmarkLibrary} apply={openBookmark} />}
               {searchNotice && <div className="bookmark-application-status" role="status">{searchNotice}</div>}
               {stagedTabId !== undefined && <div className="bookmark-application-status" role="status">適用先の一覧を読み込んでいます…</div>}
-              {openTabs.map(tab => tab.id).concat(stagedTabId === undefined ? [] : [stagedTabId]).map(workspacePage)}
+              {panelTabIds.map(workspacePage)}
             </div>
           </div>
         ) : page === "profiles" ? (

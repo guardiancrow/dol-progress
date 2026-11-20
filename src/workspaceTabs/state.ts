@@ -4,6 +4,7 @@ import type { SearchTableState } from "../searchConditions/tableState";
 
 export type WorkspaceTabId = number;
 export type WorkspacePage = SearchConditionDefinition["page"];
+export type WorkspaceTabPlacement = "before" | "after";
 export const MAX_WORKSPACE_TABS = 6;
 export const workspacePageNames: Record<WorkspacePage, string> = { quests: "クエスト", discoveries: "発見物" };
 
@@ -81,6 +82,21 @@ export class WorkspaceTabs {
   discardStaged(id: WorkspaceTabId) {
     if (!this.openTabs.some(tab => tab.id === id) && this.tabs.delete(id)) this.notify();
   }
+
+  move = (id: WorkspaceTabId, targetId: WorkspaceTabId, placement: WorkspaceTabPlacement) => {
+    const from = this.openTabs.findIndex(tab => tab.id === id);
+    const target = this.openTabs.findIndex(tab => tab.id === targetId);
+    if (from < 0 || target < 0 || from === target) return undefined;
+    const to = target + (placement === "after" ? 1 : 0) - (from < target ? 1 : 0);
+    if (to === from) return undefined;
+
+    const ordered = [...this.openTabs];
+    const [tab] = ordered.splice(from, 1);
+    ordered.splice(to, 0, tab!);
+    this.openTabs = ordered;
+    this.notify();
+    return { position: to + 1, total: ordered.length };
+  };
 
   rename(id: WorkspaceTabId, name: string) {
     const normalized = name.trim();

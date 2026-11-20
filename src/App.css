@@ -230,14 +230,19 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   background: var(--workspace-sheet-surface);
 }
 .workspace-tab-label, .workspace-tab-close { appearance: none; border: 0; background: transparent; color: #223f59; font: inherit; cursor: pointer; min-height: 0; }
-.workspace-tab-label { min-width: 0; max-width: 100%; padding: .25rem .45rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.workspace-tab-label { min-width: 0; max-width: 100%; padding: .25rem .45rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; user-select: none; }
+.workspace-tab-list:has(.workspace-tab:nth-child(2)) .workspace-tab-label { cursor: grab; }
+.workspace-tab-list:has([data-dragging]) .workspace-tab-label { cursor: grabbing; }
+.workspace-tab[data-dragging] > .workspace-tab-label { opacity: .6; }
+.workspace-tab-insertion { position: absolute; z-index: 1; inset-block-start: .15rem; height: calc(var(--workspace-tab-height) - .3rem); width: 3px; border-radius: 2px; background: #215d85; transform: translateX(-50%); pointer-events: none; }
+.workspace-tab-announcement { position: absolute; width: 1px; height: 1px; overflow: hidden; white-space: nowrap; clip-path: inset(50%); }
 .workspace-tab[data-selected="true"] .workspace-tab-label { font-weight: 700; }
 .workspace-tab-close { flex: 0 0 auto; min-width: 1.75rem; padding: .15rem .35rem; }
 .workspace-tab-close:hover { background: #d5e3ed; }
 .workspace-tab-label:focus-visible, .workspace-tab-close:focus-visible { outline: 2px solid #215d85; outline-offset: -2px; }
 .workspace-tab-actions { flex: 0 0 auto; display: flex; align-items: center; gap: .25rem; padding-inline-end: .15rem; white-space: nowrap; }
 .workspace-tab-actions .button, .workspace-tab-editor .button { min-height: 2rem; padding: .25rem .45rem; }
-.workspace-tab-create:not([hidden]) { position: absolute; z-index: 4; inset-block-start: calc(100% + .2rem); inset-inline-end: 0; display: grid; gap: .25rem; width: max-content; max-width: 100%; padding: .4rem; white-space: normal; overflow-wrap: anywhere; border: 1px solid var(--workspace-sheet-border); border-radius: .4rem; background: var(--workspace-sheet-surface); box-shadow: 0 .2rem .6rem #20395126; }
+.workspace-tab-menu:not([hidden]) { position: absolute; z-index: 4; inset-block-start: calc(100% + .2rem); inset-inline-end: 0; display: grid; gap: .25rem; width: max-content; max-width: 100%; padding: .4rem; white-space: normal; overflow-wrap: anywhere; border: 1px solid var(--workspace-sheet-border); border-radius: .4rem; background: var(--workspace-sheet-surface); box-shadow: 0 .2rem .6rem #20395126; }
 .workspace-tab-editor { display: flex; align-items: end; flex-wrap: wrap; gap: .35rem; padding: .35rem .5rem; background: var(--workspace-sheet-surface); }
 .workspace-tab-editor label { display: grid; gap: .15rem; min-width: 0; flex: 1 1 10rem; }
 .workspace-tab-editor input { width: 100%; min-width: 0; }

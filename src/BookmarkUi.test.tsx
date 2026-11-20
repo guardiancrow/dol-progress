@@ -236,7 +236,12 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     expect(search()).toHaveValue("合成3");
 
     await user.click(first);
-    await screen.findByRole("table");
+    const existingTable = await screen.findByRole("table");
+    await user.click(screen.getByRole("button", { name: "タブを並べ替え" }));
+    await user.click(screen.getByRole("button", { name: "右へ移動" }));
+    expect(tabList().getAllByRole("tab").slice(0, 2)).toEqual([second, first]);
+    expect(activeTab()).toBe(first);
+    expect(screen.getByRole("table")).toBe(existingTable);
     expect(search()).toHaveValue("合成");
     expect(screen.getByLabelText("達成状態")).toHaveValue("incomplete");
     expect(screen.getByRole("columnheader", { name: /難易度/ })).toHaveAttribute("aria-sort", initialSort);
@@ -254,6 +259,39 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     expect(search()).toHaveValue("合成");
     expect(listCompletedQuestIds).toHaveBeenLastCalledWith(2);
     expect(screen.getAllByRole("tabpanel")).toHaveLength(1);
+  });
+
+  it.each([[800, 600], [600, 480]])("uses reordered neighbors and preserves the last used search tab at %dx%d", async (width, height) => {
+    const resize = mockWorkspaceMedia(1280, 800);
+    const { props } = fixtures(repository);
+    const { user, navigate } = await show({ ...props, progressStatsRepository: overviewStats });
+    const first = activeTab();
+    await addTab(user, "クエスト");
+    const second = activeTab();
+    await user.type(await screen.findByRole("searchbox"), "対象B");
+    await navigate("概要");
+    const overview = activeTab();
+    act(() => resize(width, height));
+    act(() => first.focus());
+    await user.keyboard("{Shift>}{F10}{/Shift}{Enter}");
+    act(() => first.focus());
+    await user.keyboard("{Shift>}{F10}{/Shift}");
+    await user.click(screen.getByRole("button", { name: "右へ移動" }));
+    expect(tabList().getAllByRole("tab")).toEqual([second, overview, first]);
+    expect(activeTab()).toBe(overview);
+    await user.click(screen.getByRole("button", { name: "メニューを開く" }));
+    await navigate("クエスト");
+    expect(activeTab()).toBe(second);
+    const close = within(second.parentElement!).getByRole("button", { name: "クエストを閉じる" });
+    await user.click(close);
+    expect(activeTab()).toBe(overview);
+    expect(overview).toHaveFocus();
+    await user.click(screen.getByRole("button", { name: "元に戻す" }));
+    const restored = activeTab();
+    expect(restored.id).not.toBe(second.id);
+    expect(tabList().getAllByRole("tab")).toEqual([restored, overview, first]);
+    expect(await screen.findByRole("searchbox")).toHaveValue("対象B");
+    expect(props.questRepository.listWithDiscoveries).toHaveBeenCalledTimes(1);
   });
 
   it("opens overview links in a fresh discovery tab and preserves the earlier tab", async () => {
@@ -455,6 +493,10 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     await navigate("クエスト");
     await user.click(await screen.findByRole("checkbox", { name: "対象Bの達成状態" }));
     expect(completeQuestWithLinkedDiscoveries).toHaveBeenCalledExactlyOnceWith(1, 2);
+    const questTab = activeTab();
+    await user.click(screen.getByRole("button", { name: "タブを並べ替え" }));
+    await user.click(screen.getByRole("button", { name: "左へ移動" }));
+    expect(activeTab()).toBe(questTab);
     await user.click(tabList().getByRole("button", { name: "クエストを閉じる" }));
     expect(tabList().queryByRole("tab", { name: "クエスト" })).not.toBeInTheDocument();
     expect(screen.getByText("発見物を読み込んでいます…")).toBeInTheDocument();
@@ -542,6 +584,34 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     expect(screen.getByRole("alert")).toHaveTextContent("バージョン 2");
     expect(search("発見物名を検索")).toHaveValue("別の");
     expect((await repository.list()).every(row => row.lastUsedAt === null)).toBe(true);
+  });
+
+  it("reorders published tabs while a staged bookmark validates, then appends the same pending tab once", async () => {
+    const bookmark = await repository.create("検証待ちの発見物", { ...discoveryCondition, search: "合成遺跡" });
+    const { props } = fixtures(repository);
+    let finishMaster!: (rows: DiscoveryWithRelations[]) => void;
+    props.discoveryRepository.listWithRelations.mockImplementationOnce(() => new Promise(resolve => { finishMaster = resolve; }));
+    const { user } = await show(props);
+    const first = activeTab();
+    await addTab(user, "クエスト");
+    const second = activeTab();
+    const table = await screen.findByRole("table");
+    await open(user);
+    await allPages(user);
+    await user.click(await panel().findByRole("button", { name: bookmark.name }));
+    expect(screen.getByText("適用先の一覧を読み込んでいます…")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "タブを並べ替え" }));
+    await user.click(screen.getByRole("button", { name: "左へ移動" }));
+    expect(tabList().getAllByRole("tab")).toEqual([second, first]);
+    expect(activeTab()).toBe(second);
+    expect(screen.getByRole("table")).toBe(table);
+    expect((await repository.getById(bookmark.id))?.lastUsedAt).toBeNull();
+    await act(async () => finishMaster([discovery(1, "合成遺跡")]));
+    expect(await screen.findByRole("searchbox", { name: "発見物名を検索" })).toHaveValue("合成遺跡");
+    expect(activeTab()).toHaveAccessibleName(bookmark.name);
+    expect(tabList().getAllByRole("tab")).toEqual([second, first, activeTab()]);
+    expect(props.discoveryRepository.listWithRelations).toHaveBeenCalledTimes(1);
+    await waitFor(async () => expect((await repository.getById(bookmark.id))?.lastUsedAt).not.toBeNull());
   });
 
   it.each(["newer", "profile", "navigation", "close"] as const)("discards a delayed cross-page application after %s", async reason => {

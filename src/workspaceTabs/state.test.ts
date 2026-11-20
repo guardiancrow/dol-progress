@@ -5,6 +5,43 @@ import { captureSearchCondition, questSearchOptions } from "../searchConditions/
 import { WorkspaceTabs } from "./state";
 
 describe("workspace tab state", () => {
+  it("moves published IDs in both directions without changing their views or the staged slot", () => {
+    const tabs = new WorkspaceTabs();
+    const first = tabs.open("quests", "比較A")!;
+    const second = tabs.open("quests", "比較B")!;
+    const overview = tabs.openOverview();
+    const staged = tabs.open("discoveries", "未公開", true)!;
+    const order = () => tabs.getOpenTabs().map(tab => tab.id);
+    tabs.updateView(first, view => ({ ...view, columnFilters: [{ id: "title", value: "合成" }],
+      sorting: [{ id: "difficulty", desc: true }], pagination: { pageIndex: 2, pageSize: 100 } }));
+    const firstView = tabs.getSearchView(first);
+    const secondInfo = tabs.get(second);
+    const original = tabs.getOpenTabs();
+    let notifications = 0;
+    tabs.subscribe(() => notifications++);
+    expect(tabs.move(first, second, "before")).toBeUndefined();
+    expect(tabs.move(first, first, "after")).toBeUndefined();
+    expect(tabs.move(staged, first, "before")).toBeUndefined();
+    expect(tabs.move(first, staged, "after")).toBeUndefined();
+    expect(tabs.getOpenTabs()).toBe(original);
+    expect(notifications).toBe(0);
+    expect(tabs.move(first, second, "after")).toEqual({ position: 2, total: 3 });
+    expect(tabs.move(overview, second, "before")).toEqual({ position: 1, total: 3 });
+    expect(order()).toEqual([overview, second, first]);
+    expect(tabs.getSearchView(first)).toBe(firstView);
+    expect(tabs.get(second)).toBe(secondInfo);
+    expect(notifications).toBe(2);
+    tabs.publishTab(staged);
+    expect(order()).toEqual([overview, second, first, staged]);
+
+    expect(tabs.close(first)).toBe(staged);
+    const restored = tabs.restore()!;
+    expect(restored).not.toBe(first);
+    expect(order()).toEqual([overview, second, restored, staged]);
+    expect(tabs.getSearchView(restored)).toBe(firstView);
+    expect(tabs.close(staged)).toBe(restored);
+  });
+
   it("restores the most recently closed view in order with a fresh ID", () => {
     const tabs = new WorkspaceTabs();
     const first = tabs.open("quests")!;
