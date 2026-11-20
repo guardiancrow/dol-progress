@@ -1269,6 +1269,16 @@ mod tests {
         .unwrap()
     }
 
+    async fn add_search_bookmark(database: &ActiveDatabase, name: &str) {
+        let pool = database.pool().await;
+        sqlx::query("INSERT INTO search_bookmarks (page, name, definition_json, is_favorite) VALUES ('discoveries', ?, ?, 1)")
+            .bind(name)
+            .bind(r#"{"schemaVersion":1,"page":"discoveries","search":"synthetic","filters":{"status":"undiscovered"},"sorting":[]}"#)
+            .execute(&*pool)
+            .await
+            .unwrap();
+    }
+
     async fn logical_snapshot(path: &Path) -> Vec<String> {
         let pool = open_snapshot_pool(path).await;
         let queries = [
@@ -1282,6 +1292,7 @@ mod tests {
             "SELECT group_concat(value, '|') FROM (SELECT printf('%d:%d:%s:%d:%d', quest_id, position, skill_name, coalesce(required_rank, 0), is_language) AS value FROM quest_required_skills ORDER BY quest_id, position)",
             "SELECT group_concat(value, '|') FROM (SELECT printf('%d:%d:%s', quest_id, position, city_name) AS value FROM quest_offer_cities ORDER BY quest_id, position)",
             "SELECT group_concat(value, '|') FROM (SELECT printf('%d:%s:%d:%s', version, description, success, hex(checksum)) AS value FROM _sqlx_migrations ORDER BY version)",
+            "SELECT group_concat(value, '|') FROM (SELECT json_array(id,page,name,definition_json,is_favorite,created_at,updated_at,last_used_at) AS value FROM search_bookmarks ORDER BY id)",
         ];
         let mut snapshot = Vec::new();
         for query in queries {
@@ -1340,6 +1351,7 @@ mod tests {
         let harness = Harness::new("default-custom-custom");
         let (default_database, _) = initialize_at(&harness.paths).await.unwrap();
         seed_fixture(&default_database, "default-old").await;
+        add_search_bookmark(&default_database, "before moving from default").await;
         let default_before = logical_snapshot(&harness.default_db()).await;
 
         migrate_to_root_at(
@@ -1371,6 +1383,7 @@ mod tests {
         );
         assert_integrity(&harness.custom_a_db()).await;
         add_profile_marker(&custom_a, "post-custom-a").await;
+        add_search_bookmark(&custom_a, "new in custom A").await;
         complete_linked_quest(&custom_a).await;
         import_quest_through_active_pool(&custom_a).await;
         let custom_a_before_move = logical_snapshot(&harness.custom_a_db()).await;
@@ -1422,6 +1435,7 @@ mod tests {
         let harness = Harness::new("custom-default");
         let (default_database, _) = initialize_at(&harness.paths).await.unwrap();
         seed_fixture(&default_database, "old-default-only").await;
+        add_search_bookmark(&default_database, "old default bookmark").await;
         let old_default = logical_snapshot(&harness.default_db()).await;
         migrate_to_root_at(
             harness.paths.clone(),
@@ -1434,6 +1448,7 @@ mod tests {
         drop(default_database);
         let (custom_a, _) = initialize_at(&harness.paths).await.unwrap();
         add_profile_marker(&custom_a, "latest-custom-only").await;
+        add_search_bookmark(&custom_a, "new bookmark returning to default").await;
         let latest_custom = logical_snapshot(&harness.custom_a_db()).await;
 
         migrate_to_root_at(
@@ -1472,6 +1487,7 @@ mod tests {
         let harness = Harness::new("custom-backup-restore");
         let (default_database, _) = initialize_at(&harness.paths).await.unwrap();
         seed_fixture(&default_database, "default-source").await;
+        add_search_bookmark(&default_database, "default bookmark copied to custom").await;
         let default_before = logical_snapshot(&harness.default_db()).await;
         migrate_to_root_at(
             harness.paths.clone(),
@@ -1483,6 +1499,7 @@ mod tests {
         .unwrap();
         drop(default_database);
         let (custom_a, _) = initialize_at(&harness.paths).await.unwrap();
+        add_search_bookmark(&custom_a, "custom bookmark before snapshot").await;
         let backup = harness.root.join("custom-backup.sqlite3");
         {
             let pool = custom_a.pool().await;
@@ -1490,6 +1507,7 @@ mod tests {
         }
         let backup_snapshot = logical_snapshot(&backup).await;
         add_profile_marker(&custom_a, "after-backup").await;
+        add_search_bookmark(&custom_a, "custom bookmark after snapshot").await;
         custom_a
             .with_maintenance(|current| {
                 let backup = backup.clone();

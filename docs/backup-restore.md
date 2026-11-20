@@ -12,6 +12,7 @@
 - `quest_progress`
 - `discovery_progress`
 - `discovery_reporting_history`（version 4以降）
+- `search_bookmarks`（version 5以降）
 - `master_import_history`
 - migration管理情報を含むその他のDB内容
 
@@ -52,7 +53,7 @@ Frontendから任意パスを復元commandへ渡す方式は採用しない。
 - migration履歴が空、失敗状態、checksum不一致、順序不正、未知versionである。
 
 backupは独自archiveではなくSQLite DBのsnapshotである。対応versionは別のbackup形式番号ではなく、
-`_sqlx_migrations`に記録された最終migration versionを指す。現在はversion 1〜4の正規prefixを許可する。
+`_sqlx_migrations`に記録された最終migration versionを指す。現在はversion 1〜5の正規prefixを許可する。
 
 | version | migration | 必須schemaの追加 |
 |---|---|---|
@@ -60,15 +61,18 @@ backupは独自archiveではなくSQLite DBのsnapshotである。対応version�
 | 2 | `quest_facets` | 必要スキルと個別オファー都市のfacet table／column |
 | 3 | `master_source_order` | `quests.source_order`と`discoveries.source_order` |
 | 4 | `map_report_hold` | `discovery_progress.report_hold`と`discovery_reporting_history`の全列 |
+| 5 | `search_bookmarks` | `search_bookmarks` の全列 |
 
 各versionで必須table／columnと、version・description・success・checksumが既知migrationの
 連続したprefixであることを確認する。外部キー違反も復元を拒否する。version 3のsnapshotでも
 source orderのcolumnが欠けていれば互換backupとして扱わない。
 
-version 1〜3 backupからの復元後は、再起動時に未適用migrationをversion 4まで適用する。004は旧業務列を変更せず、旧勲功値算入資格だけを履歴不明として引き継ぐ。
+version 1〜4のバックアップを復元した後は、再起動時に未適用のマイグレーションをversion 5まで適用する。004では旧勲功値算入資格を履歴不明として引き継ぎ、005では空の `search_bookmarks` を作成する。
 version 1では保存済みQuest列から必要スキルと個別オファー都市をbackfillしてから通常UIで利用する。
 旧backupに元ファイルの行順がなければsource orderはNULLのままで、値を推測して補わない。
 migration履歴を復元処理独自に書き換えてはならない。
+
+version 5のバックアップから復元すると、ブックマークの定義、表示名、お気に入り、日時もバックアップ時点に戻る。version 1〜4のバックアップから復元した場合、復元前のブックマークは引き継がれない。004までに対応する旧版v0.5.0は、005を含むDBとバックアップを拒否する。旧版へ戻す場合に備え、005の適用前に旧版でバックアップを保存する。
 
 backupはData Rootのbootstrap設定を含まない。Default／Customのどちらでも現在activeなDBへ復元し、
 保存場所を切り替えたり、inactiveな旧DBを置換したりしない。

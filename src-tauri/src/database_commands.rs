@@ -137,6 +137,24 @@ mod tests {
     use sqlx::sqlite::SqlitePoolOptions;
 
     #[tokio::test]
+    async fn adapter_commits_a_mutation_with_returning_and_propagates_constraint_errors() {
+        let pool = SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
+        crate::migrations::run(&pool).await.unwrap();
+        let request = || DatabaseRequest {
+            query: "INSERT INTO search_bookmarks (page, name, definition_json) VALUES ($1, $2, $3) RETURNING id, name, is_favorite".into(),
+            bind_values: vec![Value::from("quests"), Value::from("synthetic"), Value::from(r#"{"schemaVersion":1,"page":"quests"}"#)],
+        };
+        let inserted = select_with_pool(&pool, request()).await.unwrap();
+        assert_eq!(inserted[0]["name"], Value::from("synthetic"));
+        assert_eq!(inserted[0]["is_favorite"], Value::from(0));
+        let error = select_with_pool(&pool, request()).await.unwrap_err();
+        assert!(error.contains("UNIQUE constraint failed: search_bookmarks.page, search_bookmarks.name"));
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM search_bookmarks").fetch_one(&pool).await.unwrap();
+        assert_eq!(count, 1);
+        pool.close().await;
+    }
+
+    #[tokio::test]
     async fn adapter_preserves_scalar_rows_nulls_bound_values_and_execute_results() {
         let pool = SqlitePoolOptions::new()
             .max_connections(1)

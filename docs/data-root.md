@@ -88,4 +88,6 @@ Recovery画面は設定済みroot、空DBを自動作成していないこと、
 
 BackupとRestoreは現在の`ActiveDatabase.path`だけを対象にする。Custom modeでも標準DBへアクセスしない。backup formatは保存場所を含まず、Phase 10/11/12 backupを現在activeなDBへ復元できる。各snapshot、復元、起動確定で`PRAGMA quick_check = ok`と`PRAGMA foreign_key_check = 0 rows`を確認する。候補DBは既知migrationのversion、description、success、checksumからなるprefixと、対応versionの必須table・columnを満たさなければならない。
 
+005以降のDBでは、標準とカスタムの間の保存先移行、カスタム間の移行、内蔵バックアップのいずれにも `search_bookmarks` を含める。復元では、現在使用中のDBのブックマークもバックアップ時点の内容に戻る。
+
 切替後のDefault DBとCustom DBはinactive safety copyとして残し、cleanupを自動化しない。アプリ終了後のfolder移動では、Defaultとconfigは新EXE directoryに追従する。absolute Custom（last-good/previousを含む）は元の外部pathを指し続ける。missing CustomをDefaultに自動切替しない。

@@ -18,6 +18,13 @@ const MAP_REPORT_HOLD_CHECKSUM: &[u8] = &[
     0x25, 0xff, 0x38, 0xb1, 0xcc, 0x9b, 0xbf, 0xf5, 0x6e, 0x76, 0x1b, 0x52, 0x1a, 0x75, 0xf6, 0x9c,
 ];
 
+const SEARCH_BOOKMARKS_SCHEMA: &str = include_str!("../migrations/005_search_bookmarks.sql");
+const SEARCH_BOOKMARKS_CHECKSUM: &[u8] = &[
+    0x77, 0x5c, 0x16, 0x55, 0x8e, 0x83, 0xf6, 0x1d, 0xa3, 0x9d, 0x76, 0xcb, 0xc8, 0xa1, 0xa7, 0xa1,
+    0x56, 0xeb, 0xcb, 0x7a, 0x1f, 0xe5, 0xa9, 0xd1, 0x42, 0x91, 0x0c, 0x7f, 0xda, 0xd0, 0x7d, 0x4c,
+    0x74, 0x29, 0x76, 0x63, 0x5e, 0x24, 0x58, 0x18, 0x6a, 0x2f, 0x44, 0x1d, 0x8d, 0x32, 0x08, 0xc3,
+];
+
 #[derive(Debug)]
 struct MigrationList(Vec<MigrationDefinition>);
 
@@ -50,7 +57,7 @@ const MASTER_SOURCE_ORDER_CHECKSUM: &[u8] = &[
     0x37, 0x70, 0x0c, 0x40, 0x5a, 0x48, 0xad, 0x7f, 0xcf, 0x86, 0xa7, 0x49, 0xa2, 0xb0, 0xfe, 0xda,
 ];
 
-pub(crate) const SUPPORTED_MIGRATION_PREFIX: [MigrationIdentity; 4] = [
+pub(crate) const SUPPORTED_MIGRATION_PREFIX: [MigrationIdentity; 5] = [
     MigrationIdentity {
         version: 1,
         description: "initial_schema",
@@ -70,6 +77,11 @@ pub(crate) const SUPPORTED_MIGRATION_PREFIX: [MigrationIdentity; 4] = [
         version: 4,
         description: "map_report_hold",
         checksum: MAP_REPORT_HOLD_CHECKSUM,
+    },
+    MigrationIdentity {
+        version: 5,
+        description: "search_bookmarks",
+        checksum: SEARCH_BOOKMARKS_CHECKSUM,
     },
 ];
 
@@ -115,15 +127,27 @@ fn all() -> MigrationList {
             description: "map_report_hold",
             sql: MAP_REPORT_HOLD_SCHEMA,
         },
+        MigrationDefinition {
+            version: 5,
+            description: "search_bookmarks",
+            sql: SEARCH_BOOKMARKS_SCHEMA,
+        },
     ])
 }
 
-/// Runs the historical migrations with metadata compatible with Phase 12.
+/// Runs migrations while retaining the identities of all historical versions.
 pub(crate) async fn run(pool: &SqlitePool) -> Result<(), String> {
     let migrator = Migrator::new(all())
         .await
         .map_err(|error| error.to_string())?;
     migrator.run(pool).await.map_err(|error| error.to_string())
+}
+
+#[cfg(test)]
+pub(crate) async fn run_through(pool: &SqlitePool, version: i64) -> Result<(), sqlx::migrate::MigrateError> {
+    let mut migrations = all();
+    migrations.0.retain(|migration| migration.version <= version);
+    Migrator::new(migrations).await?.run(pool).await
 }
 
 #[cfg(test)]
@@ -168,8 +192,13 @@ mod tests {
         .fetch_all(&pool)
         .await
         .unwrap();
-        assert_eq!(migrations.len(), 4);
-        assert_eq!(migrations[3].3, super::MAP_REPORT_HOLD_CHECKSUM);
+        assert_eq!(migrations.len(), 5);
+        for ((version, description, success, checksum), expected) in migrations.iter().zip(&super::SUPPORTED_MIGRATION_PREFIX) {
+            assert_eq!(*version, expected.version);
+            assert_eq!(description, expected.description);
+            assert!(*success);
+            assert_eq!(checksum, expected.checksum);
+        }
         assert_eq!(migrations[0].0, 1);
         assert_eq!(migrations[0].1, "initial_schema");
         assert!(migrations[0].2);
@@ -193,6 +222,54 @@ mod tests {
         );
 
         pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn search_bookmark_limits_hold_for_concurrent_writers() {
+        const INSERT: &str = "INSERT INTO search_bookmarks (page, name, definition_json) VALUES ('quests', ?, ?)";
+        const DEFINITION: &str = r#"{"schemaVersion":1,"page":"quests","search":"","filters":{},"sorting":[]}"#;
+        let path = test_path("bookmark-concurrent-writers");
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .max_connections(2)
+            .connect_with(SqliteConnectOptions::new().filename(&path).create_if_missing(true))
+            .await
+            .unwrap();
+        run(&pool).await.unwrap();
+
+        let insert = |name: &'static str| sqlx::query(INSERT).bind(name).bind(DEFINITION).execute(&pool);
+        let (first, second) = tokio::join!(insert("duplicate"), insert("duplicate"));
+        let conflict = match (first, second) {
+            (Ok(_), Err(error)) | (Err(error), Ok(_)) => error,
+            result => panic!("expected one success and one conflict, got {result:?}"),
+        };
+        assert!(conflict.as_database_error().unwrap().is_unique_violation());
+
+        for id in 1..49 {
+            sqlx::query(INSERT).bind(format!("Synthetic {id}")).bind(DEFINITION).execute(&pool).await.unwrap();
+        }
+        let (first, second) = tokio::join!(insert("last slot A"), insert("last slot B"));
+        let conflict = match (first, second) {
+            (Ok(_), Err(error)) | (Err(error), Ok(_)) => error,
+            result => panic!("expected one success and one conflict, got {result:?}"),
+        };
+        assert_eq!(conflict.as_database_error().unwrap().message(), "search_bookmark_limit");
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM search_bookmarks").fetch_one(&pool).await.unwrap();
+        assert_eq!(count, 50);
+
+        sqlx::query("UPDATE search_bookmarks SET is_favorite = 1 WHERE id IN (SELECT id FROM search_bookmarks ORDER BY id LIMIT 4)")
+            .execute(&pool).await.unwrap();
+        let favorite = |name: &'static str| sqlx::query("UPDATE search_bookmarks SET is_favorite = 1 WHERE name = ?").bind(name).execute(&pool);
+        let (first, second) = tokio::join!(favorite("Synthetic 8"), favorite("Synthetic 9"));
+        let conflict = match (first, second) {
+            (Ok(_), Err(error)) | (Err(error), Ok(_)) => error,
+            result => panic!("expected one success and one conflict, got {result:?}"),
+        };
+        assert_eq!(conflict.as_database_error().unwrap().message(), "search_bookmark_favorite_limit");
+        let favorites: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM search_bookmarks WHERE is_favorite = 1")
+            .fetch_one(&pool).await.unwrap();
+        assert_eq!(favorites, 5);
+        pool.close().await;
+        fs::remove_file(path).unwrap();
     }
 
     #[tokio::test]
