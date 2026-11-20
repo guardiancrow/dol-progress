@@ -33,7 +33,7 @@ const discoveries: DiscoveryRowViewModel[] = Array.from({ length: 205 }, (_, i) 
   id: i + 1, name: `合成発見物${i + 1}`, description: "合成の説明", notes: null,
   category: { id: 1, name: "気象・現象", sortOrder: 1 }, rank: 1, era: null, points: 1, difficulty: 1, experience: 100,
   relatedQuests: [], canReport: true, hasCard: true, status: "undiscovered", progress: null, updating: false,
-  automaticReporting: false, effectiveReported: false,
+  automaticReporting: false, effectiveReported: false, mapTarget: false,
 }));
 
 function Harness({ initialPage = "quests", initialFilter = false, repository = profiles }: { initialPage?: AppPage; initialFilter?: boolean; repository?: ProfileRepositoryPort }) {

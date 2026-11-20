@@ -26,7 +26,7 @@ function quest(id: number, notes: string | null): QuestRowViewModel {
 
 function discovery(id: number, description: string | null, notes: string | null): DiscoveryRowViewModel {
   return {
-    automaticReporting: false, effectiveReported: false,
+    automaticReporting: false, effectiveReported: false, mapTarget: false,
     id, name: `合成発見物${id}`, description, notes, category: null, rank: null,
     era: null, points: null, difficulty: null, experience: null, relatedQuests: [],
     canReport: true, hasCard: true, status: "undiscovered", progress: null, updating: false,

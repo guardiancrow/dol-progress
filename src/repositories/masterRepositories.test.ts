@@ -192,6 +192,7 @@ describe("DiscoveryRepository", () => {
     database.selectResults.push([
       {
         ...discoveryRow,
+        mapTarget: 1,
         categoryName: "史跡",
         categorySortOrder: 4,
         relatedQuestId: 10,
@@ -201,6 +202,7 @@ describe("DiscoveryRepository", () => {
       },
       {
         ...discoveryRow,
+        mapTarget: 1,
         categoryName: "史跡",
         categorySortOrder: 4,
         relatedQuestId: 11,
@@ -214,6 +216,7 @@ describe("DiscoveryRepository", () => {
     await expect(repository.listWithRelations()).resolves.toEqual([
       {
         automaticReporting: false,
+        mapTarget: true,
         discovery: expect.objectContaining({ id: 20, name: "発見物" }),
         category: { id: 3, name: "史跡", sortOrder: 4 },
         relatedQuests: [
@@ -223,6 +226,9 @@ describe("DiscoveryRepository", () => {
       },
     ]);
     expect(database.selectCalls).toHaveLength(1);
+    expect(database.selectCalls[0]?.parameters).toEqual([
+      "地理学", "考古学", "宗教学", "生物学", "美術", "財宝鑑定", "天文学", "陸地再調査時の報酬",
+    ]);
     expect(database.selectCalls[0]?.sql).toContain("LEFT JOIN discovery_categories");
     expect(database.selectCalls[0]?.sql).toContain("LEFT JOIN quest_discoveries");
     expect(database.selectCalls[0]?.sql).toContain("q.is_active = 1");

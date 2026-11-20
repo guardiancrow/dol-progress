@@ -99,6 +99,7 @@ export interface DiscoveryRelatedQuestSummary {
 
 export interface DiscoveryWithRelations {
   automaticReporting: boolean;
+  readonly mapTarget: boolean;
   discovery: Discovery;
   category: DiscoveryCategorySummary | null;
   relatedQuests: DiscoveryRelatedQuestSummary[];

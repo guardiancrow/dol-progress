@@ -6,6 +6,7 @@ import history from "../../src-tauri/migrations/004_map_report_hold.sql?raw";
 import type { DatabaseClient } from "../db/client";
 import type { ProgressStats } from "../overview/types";
 import { ProgressStatsRepository } from "./progressStatsRepository";
+import { DiscoveryRepository } from "./discoveryRepository";
 import { DiscoveryStateReader } from "../discoveries/stateReader";
 import { currentUnreportedHistory } from "../discoveries/unreportedBreakdown";
 import { mapDiscoveryReviewReason, mapDiscoveryStatus } from "../discoveries/mapReacquisition";
@@ -64,7 +65,7 @@ function fixture(seed = true) {
     return JSON.stringify(["profiles", "discovery_progress", "discovery_reporting_history", "quest_progress"]
       .map((table) => db.prepare(`SELECT * FROM ${table} ORDER BY 1,2`).all({})));
   }
-  return { db, read, calls, snapshot, reader: new DiscoveryStateReader(async () => client) };
+  return { db, read, calls, snapshot, reader: new DiscoveryStateReader(async () => client), master: new DiscoveryRepository(async () => client) };
 }
 
 function partition(stats: ProgressStats, expected: [number, number, number, number]) {
@@ -337,7 +338,7 @@ describe.skipIf(sqlite === null)("current-unreported history groups with actual 
     } finally { f.db.close(); }
   });
 
-  it("adds only eligible land resurvey discoveries to the Overview and preserves existing list classifications", async () => {
+  it("shares land resurvey membership between the Overview and discovery filters without changing operation summaries", async () => {
     const f = fixture();
     try {
       f.db.exec(`
@@ -354,6 +355,7 @@ describe.skipIf(sqlite === null)("current-unreported history groups with actual 
       `);
       const before = await f.read();
       const beforeListStates = await f.reader.list(1);
+      const beforeMaster = await f.master.listWithRelations();
       const beforeProgress = f.snapshot();
       const byCategory = (stats: ProgressStats) => new Map(stats.categories.map(({ categoryId, mapDiscoveries }) => [categoryId, mapDiscoveries]));
       expect(byCategory(before)).toEqual(new Map([
@@ -374,8 +376,25 @@ describe.skipIf(sqlite === null)("current-unreported history groups with actual 
       expect(withoutMapCounts(after)).toEqual(withoutMapCounts(before));
       const afterListStates = await f.reader.list(1);
       expect(afterListStates).toEqual(beforeListStates);
-      expect(afterListStates.find(row => row.id === 7)).toMatchObject({ mapRelated: 0, mapNeedsReview: 0 });
+      expect(afterListStates.find(row => row.id === 7)).toMatchObject({ mapRelated: 0, mapNeedsReview: 0, discovered: 0 });
+      expect((await f.reader.list(2)).find(row => row.id === 7)).toMatchObject({ mapRelated: 0, mapNeedsReview: 0, discovered: 1 });
       expect(afterListStates.find(row => row.id === 11)).toMatchObject({ mapRelated: 1, mapNeedsReview: 0 });
+      const callsBeforeMaster = f.calls.length;
+      const afterMaster = await f.master.listWithRelations();
+      expect(f.calls).toHaveLength(callsBeforeMaster + 1);
+      const targets = (rows: typeof afterMaster) => rows.filter(row => row.discovery.isActive && row.mapTarget);
+      expect(targets(beforeMaster).map(row => row.discovery.id)).toEqual([11]);
+      expect(targets(afterMaster).map(row => row.discovery.id)).toEqual([7, 8, 11, 12, 13, 14]);
+      expect(targets(afterMaster).find(row => row.discovery.id === 13)?.category).toBeNull();
+      expect(targets(afterMaster).find(row => row.discovery.id === 7)?.relatedQuests).toEqual([
+        { id: 6, title: "resurvey map", notes: null, offerCity: null },
+      ]);
+      expect(targets(afterMaster).find(row => row.discovery.id === 11)?.relatedQuests.map(quest => quest.id)).toEqual([1, 2, 6]);
+      const withoutTarget = (rows: typeof afterMaster) => rows.map(({ mapTarget, ...row }) => row);
+      expect(withoutTarget(afterMaster)).toEqual(withoutTarget(beforeMaster));
+      for (const [categoryId, counts] of byCategory(after)) {
+        expect(targets(afterMaster).filter(row => row.category?.id === categoryId)).toHaveLength(counts.total);
+      }
       expect(f.snapshot()).toBe(beforeProgress);
     } finally { f.db.close(); }
   });

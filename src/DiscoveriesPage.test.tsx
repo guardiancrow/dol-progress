@@ -368,6 +368,49 @@ describe("Discovery UI", () => {
     expect(screen.queryByText("報告済み（自動）")).not.toBeInTheDocument();
   });
 
+  it("filters resurvey discoveries across profiles while retaining their ordinary report controls", async () => {
+    const repositories = setup([profile(1, "A"), profile(2, "B")], [
+      discovery(1, "再調査限定", { mapTarget: true, relatedQuests: [{ id: 10, title: "再調査報酬" }] }),
+      discovery(2, "書庫と再調査で共通", { mapTarget: true, relatedQuests: [{ id: 10, title: "再調査報酬" }, { id: 11, title: "書庫地図" }] }),
+      discovery(3, "関連なし"),
+      discovery(4, "再調査の別分類", { mapTarget: true, category: { id: 2, name: "史跡", sortOrder: 20 } }),
+      discovery(5, "無効な発見物", { mapTarget: true, isActive: false }),
+    ], new Map([[1, [progress(1, 1)]], [2, [progress(2, 2)]]]));
+    vi.mocked(discoveryStateReader.list).mockImplementation(async profileId => [
+      historySummary(1, "unknown", { discovered: Number(profileId === 1) }),
+      historySummary(2, "unknown", { discovered: Number(profileId === 2), mapRelated: 1 }),
+    ]);
+    const user = await open(repositories);
+    await user.selectOptions(screen.getByLabelText("地図"), "related");
+    expect(screen.getByText("4件中 3件表示")).toBeInTheDocument();
+    expect(screen.getAllByText("書庫と再調査で共通")).toHaveLength(1);
+    expect(await screen.findByRole("combobox", { name: "書庫と再調査で共通の地図の状態" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "再調査限定の報告状態" })).toBeEnabled();
+    expect(screen.queryByRole("combobox", { name: "再調査限定の地図の状態" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "再調査限定の初回報告を確認" })).toBeEnabled();
+
+    await user.selectOptions(screen.getByLabelText("分類"), "1");
+    await user.selectOptions(screen.getByLabelText("状態"), "unreported");
+    await user.type(screen.getByLabelText("発見物名を検索"), "再調査");
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent("再調査限定");
+
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    await user.selectOptions(await screen.findByLabelText("地図"), "related");
+    await user.selectOptions(screen.getByLabelText("分類"), "1");
+    await user.selectOptions(screen.getByLabelText("状態"), "undiscovered");
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent("再調査限定");
+    expect(screen.getByRole("checkbox", { name: "再調査限定の発見状態" })).not.toBeChecked();
+    await user.clear(screen.getByLabelText("発見物名を検索"));
+    await user.selectOptions(screen.getByLabelText("地図"), "unrelated");
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent("関連なし");
+    expect(repositories.progress.setReported).not.toHaveBeenCalled();
+    expect(repositories.link.discoverWithLinkedQuest).not.toHaveBeenCalled();
+    expect(repositories.master.listWithRelations).toHaveBeenCalledTimes(1);
+  });
+
   it("uses persisted reported state immediately after selecting a special route among multiple quests", async () => {
     const repositories = setup([profile(1)], [discovery(1, "複数経路", {
       relatedQuests: [{ id: 10, title: "特殊Quest" }, { id: 20, title: "通常Quest" }],
@@ -1135,9 +1178,10 @@ function progress(profileId: number, discoveryId: number, reported = false, card
 
 function masterThree() { return [discovery(1, "未発見物"), discovery(2, "未報告物"), discovery(3, "報告済み物")]; }
 
-function discovery(id: number, name: string, overrides: { isActive?: boolean; automaticReporting?: boolean; description?: string | null; notes?: string | null; category?: { id: number; name: string; sortOrder: number } | null; rank?: number | null; era?: string | null; points?: number | null; difficulty?: number | null; experience?: number | null; relatedQuests?: Array<{ id: number; title: string; notes?: string | null }> } = {}): DiscoveryWithRelations {
+function discovery(id: number, name: string, overrides: { isActive?: boolean; automaticReporting?: boolean; mapTarget?: boolean; description?: string | null; notes?: string | null; category?: { id: number; name: string; sortOrder: number } | null; rank?: number | null; era?: string | null; points?: number | null; difficulty?: number | null; experience?: number | null; relatedQuests?: Array<{ id: number; title: string; notes?: string | null }> } = {}): DiscoveryWithRelations {
   return {
     automaticReporting: overrides.automaticReporting ?? false,
+    mapTarget: overrides.mapTarget ?? false,
     discovery: { id, gvdbId: id + 1000, categoryId: overrides.category === null ? null : (overrides.category?.id ?? 1), name, rank: overrides.rank ?? null, description: overrides.description ?? null, era: overrides.era ?? null, points: overrides.points ?? null, difficulty: overrides.difficulty ?? null, experience: overrides.experience ?? null, notes: overrides.notes ?? null, sourceUpdatedAt: null, isActive: overrides.isActive ?? true, rawRowJson: "{}", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
     category: overrides.category === null ? null : (overrides.category ?? { id: 1, name: "地理", sortOrder: 10 }),
     relatedQuests: (overrides.relatedQuests ?? []).map((quest) => ({ ...quest, notes: quest.notes ?? null, offerCity: null })),

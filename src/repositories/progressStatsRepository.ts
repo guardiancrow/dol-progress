@@ -3,16 +3,13 @@ import { getDatabase } from "../db/connection";
 import { handleDatabaseErrors } from "../db/errors";
 import { RELIC_CATEGORY_NAME } from "../discoveries/capabilities";
 import { automaticReportingDiscoveriesSql, meritEligibleDiscoveriesSql } from "../discoveries/automaticReporting";
-import { MAP_OFFER_METHODS } from "../quests/offerMethods";
+import { MAP_TARGET_OFFER_METHODS, mapTargetDiscoveriesSql } from "../discoveries/mapTargets";
 import type {
   AdventureMeritStats,
   DiscoveryCategoryProgressStats,
   DiscoveryProgressStats,
   ProgressStats,
 } from "../overview/types";
-
-const overviewMapOfferMethods = [...MAP_OFFER_METHODS, "陸地再調査時の報酬"];
-const mapOfferMethodParameters = overviewMapOfferMethods.map((_, index) => `$${index + 2}`).join(", ");
 
 interface QuestStatsRow {
   total: number;
@@ -72,10 +69,7 @@ export class ProgressStatsRepository {
              LEFT JOIN discovery_reporting_history h ON h.profile_id = dp.profile_id AND h.discovery_id = dp.discovery_id
              WHERE dp.profile_id = $1
            ), map_discoveries AS (
-             SELECT DISTINCT qd.discovery_id
-             FROM quest_discoveries qd
-             JOIN quests q ON q.id = qd.quest_id
-             WHERE q.is_active = 1 AND q.offer_method COLLATE BINARY IN (${mapOfferMethodParameters})
+             ${mapTargetDiscoveriesSql(2)}
            ), stats AS (
              SELECT d.category_id AS categoryId,
                     COUNT(*) AS total,
@@ -138,7 +132,7 @@ export class ProgressStatsRepository {
            JOIN discovery_categories c ON c.id = s.categoryId
            WHERE s.total > 0
            ORDER BY scope DESC, sortOrder, categoryName`,
-          [profileId, ...overviewMapOfferMethods],
+          [profileId, ...MAP_TARGET_OFFER_METHODS],
         ),
         database.select<AdventureMeritStatsRow[]>(
           `SELECT COALESCE(SUM(d.experience), 0) AS knownMerit,
