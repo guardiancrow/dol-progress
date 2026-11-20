@@ -1043,6 +1043,7 @@ function categoryStats(categories: Array<{ id: number; name: string; sortOrder: 
     categories: categories.map((category): DiscoveryCategoryProgressStats => ({
       categoryId: category.id, categoryName: category.name, sortOrder: category.sortOrder,
       total: 1, discovered: 0, undiscovered: 1, unreported: 0, cardOwned: 0,
+      mapDiscoveries: { total: 0, undiscovered: 0 },
       canReport: category.name !== "レリック", hasCard: category.name !== "レリック",
     })),
   };

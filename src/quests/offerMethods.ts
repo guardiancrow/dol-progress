@@ -4,7 +4,7 @@ const QUEST_OFFER_METHODS: ReadonlySet<string> = new Set([
   "海事クエスト",
 ]);
 
-const MAP_OFFER_METHODS: ReadonlySet<string> = new Set([
+export const MAP_OFFER_METHODS: ReadonlySet<string> = new Set([
   "地理学",
   "考古学",
   "宗教学",

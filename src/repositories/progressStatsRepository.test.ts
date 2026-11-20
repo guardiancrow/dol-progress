@@ -28,7 +28,7 @@ describe("ProgressStatsRepository", () => {
       [{ total: 8, completed: 3 }],
       [
         { scope: "total", categoryId: null, categoryName: null, sortOrder: null, total: 10, discovered: 6, unreported: 2, reported: 4, cardOwned: 5, cardCapableDiscovered: 6, canReport: null, hasCard: null },
-        { scope: "category", categoryId: 2, categoryName: "地理", sortOrder: 1, total: 6, discovered: 4, unreported: 1, reported: 3, cardOwned: 4, cardCapableDiscovered: 4, canReport: 1, hasCard: 1 },
+        { scope: "category", categoryId: 2, categoryName: "地理", sortOrder: 1, total: 6, discovered: 4, unreported: 1, reported: 3, cardOwned: 4, cardCapableDiscovered: 4, canReport: 1, hasCard: 1, mapDiscoveryTotal: 3, mapDiscoveryUndiscovered: 2 },
         { scope: "category", categoryId: 3, categoryName: "史跡", sortOrder: 2, total: 4, discovered: 2, unreported: 1, reported: 1, cardOwned: 1, cardCapableDiscovered: 2, canReport: 1, hasCard: 1 },
       ],
       [{ knownMerit: 350, reportedCount: 2, knownExperienceCount: 2, unknownExperienceCount: 0 }],
@@ -40,8 +40,8 @@ describe("ProgressStatsRepository", () => {
       discoveries: { total: 10, discovered: 6, undiscovered: 4, unreported: 2, reported: 4, cardOwned: 5, cardCapableDiscovered: 6 },
       adventureMerit: { knownMerit: 350, reportedCount: 2, knownExperienceCount: 2, unknownExperienceCount: 0 },
       categories: [
-        { categoryId: 2, categoryName: "地理", sortOrder: 1, total: 6, discovered: 4, undiscovered: 2, unreported: 1, cardOwned: 4, canReport: true, hasCard: true },
-        { categoryId: 3, categoryName: "史跡", sortOrder: 2, total: 4, discovered: 2, undiscovered: 2, unreported: 1, cardOwned: 1, canReport: true, hasCard: true },
+        { categoryId: 2, categoryName: "地理", sortOrder: 1, total: 6, discovered: 4, undiscovered: 2, unreported: 1, cardOwned: 4, canReport: true, hasCard: true, mapDiscoveries: { total: 3, undiscovered: 2 } },
+        { categoryId: 3, categoryName: "史跡", sortOrder: 2, total: 4, discovered: 2, undiscovered: 2, unreported: 1, cardOwned: 1, canReport: true, hasCard: true, mapDiscoveries: { total: 0, undiscovered: 0 } },
       ],
     });
   });
@@ -58,6 +58,10 @@ describe("ProgressStatsRepository", () => {
     expect(database.selectCalls[0]?.sql).toContain("q.is_active = 1");
     expect(database.selectCalls[1]?.sql).toContain("d.is_active = 1");
     expect(database.selectCalls[1]?.sql).toContain("GROUP BY d.category_id");
+    expect(database.selectCalls[1]?.sql).toContain("SELECT DISTINCT qd.discovery_id");
+    expect(database.selectCalls[1]?.parameters).toEqual([
+      42, "地理学", "考古学", "宗教学", "生物学", "美術", "財宝鑑定", "天文学", "陸地再調査時の報酬",
+    ]);
     expect(database.selectCalls[1]?.sql).toContain("c.name IS NOT 'レリック'");
     expect(database.selectCalls[1]?.sql).not.toContain("42");
     expect(database.selectCalls[2]?.sql).toContain("FROM discovery_reporting_history");

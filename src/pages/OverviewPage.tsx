@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import type {
   DiscoveryCategoryProgressStats,
@@ -14,38 +14,32 @@ interface OverviewPageProps {
   onOpenDiscoveries(filter: DiscoveryInitialFilter): void;
 }
 
+type StatsResult = { profileId: number } & (
+  | { status: "ready"; stats: ProgressStats }
+  | { status: "error" }
+);
+
 export function OverviewPage({ statsRepository, onOpenDiscoveries }: OverviewPageProps) {
   const { selectedProfileId, isLoading: isProfileLoading } = useProfiles();
-  const [stats, setStats] = useState<ProgressStats | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<StatsResult | null>(null);
   const [reload, setReload] = useState(0);
-  const generation = useRef(0);
+  const currentResult = result?.profileId === selectedProfileId ? result : null;
 
   useEffect(() => {
-    const currentGeneration = ++generation.current;
-    setStats(null);
-    setError(null);
-    if (selectedProfileId === null) {
-      setIsLoading(false);
-      return;
-    }
+    setResult(null);
+    if (selectedProfileId === null) return;
 
-    setIsLoading(true);
+    let active = true;
     void statsRepository
       .getForProfile(selectedProfileId)
-      .then((loaded) => {
-        if (generation.current === currentGeneration) setStats(loaded);
+      .then((stats) => {
+        if (active) setResult({ profileId: selectedProfileId, status: "ready", stats });
       })
       .catch((caught: unknown) => {
         console.error("Progress stats load failed", caught);
-        if (generation.current === currentGeneration) {
-          setError("進捗集計を読み込めませんでした。");
-        }
-      })
-      .finally(() => {
-        if (generation.current === currentGeneration) setIsLoading(false);
+        if (active) setResult({ profileId: selectedProfileId, status: "error" });
       });
+    return () => { active = false; };
   }, [reload, selectedProfileId, statsRepository]);
 
   if (isProfileLoading) {
@@ -70,16 +64,15 @@ export function OverviewPage({ statsRepository, onOpenDiscoveries }: OverviewPag
         </div>
       </div>
 
-      {error && (
+      {currentResult?.status === "error" ? (
         <div className="error-banner" role="alert">
-          <span>{error}</span>
+          <span>進捗集計を読み込めませんでした。</span>
           <button type="button" className="button secondary" onClick={() => setReload((value) => value + 1)}>再読み込み</button>
         </div>
-      )}
-      {isLoading ? (
+      ) : currentResult === null ? (
         <div className="state-panel" role="status">進捗を集計しています…</div>
-      ) : error || stats === null ? null : (
-        <OverviewContent stats={stats} onOpenDiscoveries={onOpenDiscoveries} />
+      ) : (
+        <OverviewContent stats={currentResult.stats} onOpenDiscoveries={onOpenDiscoveries} />
       )}
     </section>
   );
@@ -264,8 +257,14 @@ function CategoryProgress({ category, onOpen }: { category: DiscoveryCategoryPro
         />
         <strong>{rateLabel}</strong>
       </div>
-      <p>未発見 {formatNumber(category.undiscovered)}件・{category.canReport ? `未報告 ${formatNumber(category.unreported)}件` : "報告: 対象外"}・{category.hasCard ? `カード所有 ${formatNumber(category.cardOwned)}件` : "カード: 対象外"}</p>
-      {category.canReport && <UnreportedBreakdown discoveries={category} compact label={`${category.categoryName}の現在未報告の内訳`} repeatNotApplicable={repeatNotApplicable} />}
+      <p>未発見 {formatNumber(category.undiscovered)}件・{category.hasCard ? `カード所有 ${formatNumber(category.cardOwned)}件` : "カード: 対象外"}</p>
+      <p>地図対象の発見物：未発見{formatNumber(category.mapDiscoveries.undiscovered)}件 / 全{formatNumber(category.mapDiscoveries.total)}件</p>
+      {category.canReport ? (
+        <div className="category-unreported">
+          <p className="category-unreported-total">現在未報告 {formatNumber(category.unreported)}件</p>
+          <UnreportedBreakdown discoveries={category} compact label={`${category.categoryName}の現在未報告の内訳`} repeatNotApplicable={repeatNotApplicable} />
+        </div>
+      ) : <p>報告: 対象外</p>}
       <button
         type="button"
         className="category-drilldown"

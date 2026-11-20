@@ -3,12 +3,16 @@ import { getDatabase } from "../db/connection";
 import { handleDatabaseErrors } from "../db/errors";
 import { RELIC_CATEGORY_NAME } from "../discoveries/capabilities";
 import { automaticReportingDiscoveriesSql, meritEligibleDiscoveriesSql } from "../discoveries/automaticReporting";
+import { MAP_OFFER_METHODS } from "../quests/offerMethods";
 import type {
   AdventureMeritStats,
   DiscoveryCategoryProgressStats,
   DiscoveryProgressStats,
   ProgressStats,
 } from "../overview/types";
+
+const overviewMapOfferMethods = [...MAP_OFFER_METHODS, "陸地再調査時の報酬"];
+const mapOfferMethodParameters = overviewMapOfferMethods.map((_, index) => `$${index + 2}`).join(", ");
 
 interface QuestStatsRow {
   total: number;
@@ -31,6 +35,8 @@ interface DiscoveryStatsRow {
   cardCapableDiscovered: number;
   canReport: number | null;
   hasCard: number | null;
+  mapDiscoveryTotal: number | null;
+  mapDiscoveryUndiscovered: number | null;
 }
 
 interface AdventureMeritStatsRow {
@@ -65,10 +71,17 @@ export class ProgressStatsRepository {
              FROM discovery_progress dp
              LEFT JOIN discovery_reporting_history h ON h.profile_id = dp.profile_id AND h.discovery_id = dp.discovery_id
              WHERE dp.profile_id = $1
+           ), map_discoveries AS (
+             SELECT DISTINCT qd.discovery_id
+             FROM quest_discoveries qd
+             JOIN quests q ON q.id = qd.quest_id
+             WHERE q.is_active = 1 AND q.offer_method COLLATE BINARY IN (${mapOfferMethodParameters})
            ), stats AS (
              SELECT d.category_id AS categoryId,
                     COUNT(*) AS total,
                     COUNT(ap.discovery_id) AS discovered,
+                    COUNT(md.discovery_id) AS mapDiscoveryTotal,
+                    COUNT(CASE WHEN ap.discovery_id IS NULL THEN md.discovery_id END) AS mapDiscoveryUndiscovered,
                     CASE WHEN c.name = '${RELIC_CATEGORY_NAME}' THEN 0 ELSE 1 END AS canReport,
                     CASE WHEN c.name = '${RELIC_CATEGORY_NAME}' THEN 0 ELSE 1 END AS hasCard,
                     COALESCE(SUM(CASE WHEN c.name IS NOT '${RELIC_CATEGORY_NAME}' AND ap.discovery_id IS NOT NULL AND ap.reported = 0 THEN 1 ELSE 0 END), 0) AS unreported,
@@ -81,6 +94,7 @@ export class ProgressStatsRepository {
              FROM discoveries d
              LEFT JOIN discovery_categories c ON c.id = d.category_id
              LEFT JOIN active_progress ap ON ap.discovery_id = d.id
+             LEFT JOIN map_discoveries md ON md.discovery_id = d.id AND c.id IS NOT NULL
              WHERE d.is_active = 1
              GROUP BY d.category_id
            )
@@ -98,7 +112,9 @@ export class ProgressStatsRepository {
                   COALESCE(SUM(cardOwned), 0) AS cardOwned,
                   COALESCE(SUM(cardCapableDiscovered), 0) AS cardCapableDiscovered,
                   NULL AS canReport,
-                  NULL AS hasCard
+                  NULL AS hasCard,
+                  NULL AS mapDiscoveryTotal,
+                  NULL AS mapDiscoveryUndiscovered
            FROM stats
            UNION ALL
            SELECT 'category' AS scope,
@@ -115,12 +131,14 @@ export class ProgressStatsRepository {
                   s.cardOwned,
                   s.cardCapableDiscovered,
                   s.canReport,
-                  s.hasCard
+                  s.hasCard,
+                  s.mapDiscoveryTotal,
+                  s.mapDiscoveryUndiscovered
            FROM stats s
            JOIN discovery_categories c ON c.id = s.categoryId
            WHERE s.total > 0
            ORDER BY scope DESC, sortOrder, categoryName`,
-          [profileId],
+          [profileId, ...overviewMapOfferMethods],
         ),
         database.select<AdventureMeritStatsRow[]>(
           `SELECT COALESCE(SUM(d.experience), 0) AS knownMerit,
@@ -222,6 +240,7 @@ function mapCategoryStats(
     undiscovered: row.total - row.discovered,
     unreported: row.unreported,
     ...mapUnreportedBreakdown(row),
+    mapDiscoveries: { total: row.mapDiscoveryTotal ?? 0, undiscovered: row.mapDiscoveryUndiscovered ?? 0 },
     cardOwned: row.cardOwned,
     canReport: row.canReport === 1,
     hasCard: row.hasCard === 1,
