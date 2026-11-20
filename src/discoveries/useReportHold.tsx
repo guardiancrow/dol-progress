@@ -20,10 +20,10 @@ export type HoldDialog = {
   initialHistoryStatus?: FirstReportStatus;
 };
 
-export function useReportHold(profileId: number | null, onChanged: () => void, dependencies = defaults) {
+export function useReportHold(profileId: number | null, onChanged: () => void, dependencies = defaults, masterRevision = 0) {
   const [summaries, setSummaries] = useState(new Map<number, DiscoveryStateSummary>());
   const [summariesProfileId,setSummariesProfileId] = useState<number|null>(null);
-  const [summaryRead, setSummaryRead] = useState<{profileId: number; state: "loading" | "ready" | "error"} | null>(null);
+  const [summaryRead, setSummaryRead] = useState<{profileId: number; masterRevision: number; state: "loading" | "ready" | "error"} | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,28 +33,34 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
   const epoch = useRef(0);
   const readGeneration = useRef(0);
   const profile = useRef(profileId);
+  const currentMasterRevision = useRef(masterRevision);
+  const loadedMasterRevision = useRef(masterRevision);
   const locked = useRef(false);
   const focus = useRef<HTMLElement | null>(null);
   const focusPending = useRef(false);
   const changed = useRef(onChanged);
   changed.current = onChanged;
   profile.current = profileId;
+  currentMasterRevision.current = masterRevision;
 
   const reload = useCallback(async () => {
     if (profileId === null) return;
     const token = epoch.current;
     const generation = ++readGeneration.current;
-    const isCurrent = () => epoch.current === token && profile.current === profileId && readGeneration.current === generation;
-    setSummaryRead({profileId, state: "loading"});
+    const revision = currentMasterRevision.current;
+    loadedMasterRevision.current = revision;
+    const isCurrent = () => epoch.current === token && profile.current === profileId && readGeneration.current === generation
+      && currentMasterRevision.current === revision;
+    setSummaryRead({profileId, masterRevision: revision, state: "loading"});
     try {
       const rows = await dependencies.reader.list(profileId);
       if (isCurrent()) {
         setSummaries(new Map(rows.map(s => [s.id, s])));setSummariesProfileId(profileId);
-        setSummaryRead({profileId, state: "ready"});
+        setSummaryRead({profileId, masterRevision: revision, state: "ready"});
       }
     } catch (error: unknown) {
       if (isCurrent()) {
-        setSummaryRead({profileId, state: "error"});
+        setSummaryRead({profileId, masterRevision: revision, state: "error"});
         setError("地図・報告履歴を読み込めませんでした。再読み込みしてください。");
       }
       throw error;
@@ -71,6 +77,10 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
       .finally(() => { if (epoch.current === token) setLoading(false); });
     return () => { ++epoch.current; };
   }, [profileId, reload]);
+
+  useEffect(() => {
+    if (profileId !== null && loadedMasterRevision.current !== masterRevision) void reload().catch(() => undefined);
+  }, [masterRevision, profileId, reload]);
 
   useEffect(() => {
     if (!focusPending.current || dialog || selection || busy || loading) return;
@@ -178,7 +188,7 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
     setSelection({kind,name,targets});
   }
 
-  const summaryReadState = summaryRead?.profileId === profileId ? summaryRead.state : "loading";
+  const summaryReadState = summaryRead?.profileId === profileId && summaryRead.masterRevision === masterRevision ? summaryRead.state : "loading";
   return { summaries:summariesProfileId===profileId?summaries:EMPTY_SUMMARIES, summaryReadState, loading:loading || profileId!==null&&summaryReadState === "loading", busy, error, notice, dialog, selection, openSelection, setDialog, close, save, open, reload, retry };
 }
 export type ReportHoldController = ReturnType<typeof useReportHold>;

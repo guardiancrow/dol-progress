@@ -18,7 +18,12 @@ import type {
   ProgressLinkServicePort,
 } from "../progressLink";
 
-interface DiscoveriesPageProps {
+import { useSearchConditionApplication, whenSearchDataReady, type ReadState, type SearchConditionApplicationProps } from "../searchConditions/application";
+import { blocked, type SearchConditionDefinition } from "../searchConditions/definition";
+import { SearchConditionFeedback } from "../searchConditions/SearchConditionFeedback";
+import { discoverySearchOptions, resolveDiscoverySearch } from "../searchConditions/tableState";
+
+interface DiscoveriesPageProps extends SearchConditionApplicationProps {
   onOpenMasterData(): void;
   discoveryRepository: DiscoveryRepositoryPort;
   discoveryProgressRepository: DiscoveryProgressRepositoryPort;
@@ -34,6 +39,10 @@ export function DiscoveriesPage({
   progressLinkService,
   initialFilter,
   onNavigationConsumed,
+  searchConditionRequest,
+  onSearchConditionSettled,
+  masterRevision = 0,
+  masterImporting = false,
 }: DiscoveriesPageProps) {
   const { selectedProfileId, isLoading: isProfileLoading } = useProfiles();
   const [discoveries, setDiscoveries] = useState<DiscoveryWithRelations[]>([]);
@@ -52,23 +61,38 @@ export function DiscoveriesPage({
   } | null>(null);
   const [masterReload, setMasterReload] = useState(0);
   const [progressReload, setProgressReload] = useState(0);
+  const [masterRead, setMasterRead] = useState<{ repository: DiscoveryRepositoryPort; reload: number; revision: number; state: ReadState }>();
+  const [progressRead, setProgressRead] = useState<{
+    repository: DiscoveryProgressRepositoryPort; reload: number; profileId: number; state: ReadState;
+  }>();
   const progressGeneration = useRef(0);
   const selectedProfileRef = useRef(selectedProfileId);
+  const masterGeneration = useRef(0);
   const pendingUpdatesRef = useRef<Set<string>>(new Set());
 
   const reportHold = useReportHold(selectedProfileId, () => {
     const id=selectedProfileId;
     const generation=progressGeneration.current;
     if(id === null) return;
+    const masterTicket = ++masterGeneration.current;
+    const source = { repository: discoveryRepository, reload: masterReload, revision: masterRevision };
+    setMasterRead({ ...source, state: "loading" });
     void Promise.all([discoveryProgressRepository.listByProfile(id),discoveryRepository.listWithRelations()]).then(([saved,master])=>{
-      if(selectedProfileRef.current === id && progressGeneration.current === generation) {setProgressById(new Map(saved.map(p=>[p.discoveryId,p])));setDiscoveries(master);}
-    }).catch(()=>{if(selectedProfileRef.current === id && progressGeneration.current === generation) setUpdateError("進捗の再取得に失敗しました。再読み込みしてください。");});
-  });
+      if (masterGeneration.current === masterTicket) {
+        setDiscoveries(master);
+        setMasterRead({ ...source, state: "ready" });
+      }
+      if (selectedProfileRef.current === id && progressGeneration.current === generation) {
+        setProgressById(new Map(saved.map(p => [p.discoveryId, p])));
+      }
+    }).catch(() => {
+      if (masterGeneration.current === masterTicket) setMasterRead({ ...source, state: "error" });
+      if (selectedProfileRef.current === id && progressGeneration.current === generation) setUpdateError("進捗の再取得に失敗しました。再読み込みしてください。");
+    });
+  }, undefined, masterRevision);
   const reloadReportStates = useRef(reportHold.reload);
   reloadReportStates.current = reportHold.reload;
-  useEffect(() => {
-    selectedProfileRef.current = selectedProfileId;
-  }, [selectedProfileId]);
+  selectedProfileRef.current = selectedProfileId;
 
   useEffect(() => {
     if (updateFeedback === null) return;
@@ -78,16 +102,26 @@ export function DiscoveriesPage({
 
   useEffect(() => {
     let active = true;
+    const ticket = ++masterGeneration.current;
+    const source = { repository: discoveryRepository, reload: masterReload, revision: masterRevision };
+    const isCurrent = () => active && masterGeneration.current === ticket;
+    setMasterRead({ ...source, state: "loading" });
     setIsMasterLoading(true);
     setMasterError(null);
     void discoveryRepository
       .listWithRelations()
       .then((loaded) => {
-        if (active) setDiscoveries(loaded);
+        if (isCurrent()) {
+          setDiscoveries(loaded);
+          setMasterRead({ ...source, state: "ready" });
+        }
       })
       .catch((error: unknown) => {
         console.error("Discovery master load failed", error);
-        if (active) setMasterError("発見物を読み込めませんでした。");
+        if (isCurrent()) {
+          setMasterError("発見物を読み込めませんでした。");
+          setMasterRead({ ...source, state: "error" });
+        }
       })
       .finally(() => {
         if (active) setIsMasterLoading(false);
@@ -95,7 +129,7 @@ export function DiscoveriesPage({
     return () => {
       active = false;
     };
-  }, [discoveryRepository, masterReload]);
+  }, [discoveryRepository, masterReload, masterRevision]);
 
   useEffect(() => {
     const generation = ++progressGeneration.current;
@@ -109,21 +143,25 @@ export function DiscoveriesPage({
       return;
     }
     setIsProgressLoading(true);
+    const source = { repository: discoveryProgressRepository, reload: progressReload, profileId: selectedProfileId };
+    const isCurrent = () => progressGeneration.current === generation && selectedProfileRef.current === selectedProfileId;
     void discoveryProgressRepository
       .listByProfile(selectedProfileId)
       .then((progress) => {
-        if (progressGeneration.current === generation) {
+        if (isCurrent()) {
           setProgressById(new Map(progress.map((item) => [item.discoveryId, item])));
+          setProgressRead({ ...source, state: "ready" });
         }
       })
       .catch((error: unknown) => {
         console.error("Discovery progress load failed", error);
-        if (progressGeneration.current === generation) {
+        if (isCurrent()) {
           setProgressError("発見物進捗を読み込めませんでした。");
+          setProgressRead({ ...source, state: "error" });
         }
       })
       .finally(() => {
-        if (progressGeneration.current === generation) setIsProgressLoading(false);
+        if (isCurrent()) setIsProgressLoading(false);
       });
   }, [discoveryProgressRepository, progressReload, selectedProfileId]);
 
@@ -290,6 +328,25 @@ export function DiscoveriesPage({
     [discoveries, pendingUpdates, progressById, selectedProfileId, reportHold.busy, reportHold.dialog, reportHold.selection, reportHold.summaries, reportHold.summaryReadState],
   );
 
+  const searchOptions = useMemo(() => discoverySearchOptions(rows), [rows]);
+  const searchMasterRead = !masterImporting && masterRead?.repository === discoveryRepository && masterRead.reload === masterReload
+    && masterRead.revision === masterRevision ? masterRead.state : "loading";
+  const searchProgressRead = !isProfileLoading && progressRead?.profileId === selectedProfileId
+    && progressRead.repository === discoveryProgressRepository && progressRead.reload === progressReload
+    ? progressRead.state : "loading";
+  const resolveSearch = useCallback((condition: SearchConditionDefinition) => {
+    if (condition.page !== "discoveries") return blocked("invalid", "page");
+    const map = condition.filters.mapReacquisition;
+    const needsMapState = map === "candidate" || map === "suppressed" || map === "review";
+    return whenSearchDataReady([
+      ["master", searchMasterRead],
+      ["progress", searchProgressRead],
+      ["unreportedBreakdown", condition.filters.unreportedBreakdown ? reportHold.summaryReadState : "ready"],
+      ["mapReacquisition", needsMapState ? reportHold.summaryReadState : "ready"],
+    ], () => resolveDiscoverySearch(condition, searchOptions));
+  }, [searchMasterRead, searchProgressRead, reportHold.summaryReadState, searchOptions]);
+  const searchCondition = useSearchConditionApplication(selectedProfileId, { searchConditionRequest, onSearchConditionSettled }, resolveSearch);
+
   if (isProfileLoading) return <div className="state-panel" role="status">プロフィールを読み込んでいます…</div>;
   if (selectedProfileId === null) {
     return <div className="state-panel empty-state"><h2>発見物進捗を表示するプロフィールを選択してください</h2><p>プロフィール画面でプロフィールを作成または選択してください。</p></div>;
@@ -304,6 +361,7 @@ export function DiscoveriesPage({
       {progressError && <ErrorBanner message={progressError} onRetry={() => setProgressReload((value) => value + 1)} />}
       {updateError && <div className="error-banner" role="alert">{updateError}</div>}
       {updateFeedback && <div className="progress-feedback" role="status">{updateFeedback}</div>}
+      <SearchConditionFeedback application={searchCondition} />
       {isMasterLoading || isProgressLoading ? (
         <div className="state-panel" role="status">発見物を読み込んでいます…</div>
       ) : masterError || progressError ? null : discoveries.length === 0 ? (
@@ -319,6 +377,9 @@ export function DiscoveriesPage({
         </div>
       ) : (
         <DiscoveryTable
+          key={searchCondition.resetKey}
+          searchCondition={searchCondition}
+          searchOptions={searchOptions}
           historyReadState={reportHold.summaryReadState}
           reportHold={reportHold}
           rows={rows}

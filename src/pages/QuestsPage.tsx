@@ -17,8 +17,12 @@ import type {
   QuestRepositoryPort,
   QuestRowViewModel,
 } from "../quests/types";
+import { useSearchConditionApplication, whenSearchDataReady, type SearchConditionApplicationProps } from "../searchConditions/application";
+import { blocked, type SearchConditionDefinition } from "../searchConditions/definition";
+import { SearchConditionFeedback } from "../searchConditions/SearchConditionFeedback";
+import { questSearchOptions, resolveQuestSearch } from "../searchConditions/tableState";
 
-interface QuestsPageProps {
+interface QuestsPageProps extends SearchConditionApplicationProps {
   onOpenMasterData(): void;
   questRepository: QuestRepositoryPort;
   questProgressRepository: QuestProgressRepositoryPort;
@@ -30,6 +34,7 @@ interface MasterSnapshot {
   dependencies: QuestDependency[];
   generation: number;
   reload: number;
+  revision: number;
   repository: QuestRepositoryPort;
 }
 interface CompletionSnapshot {
@@ -56,6 +61,10 @@ export function QuestsPage({
   questRepository,
   questProgressRepository,
   progressLinkService,
+  searchConditionRequest,
+  onSearchConditionSettled,
+  masterRevision = 0,
+  masterImporting = false,
 }: QuestsPageProps) {
   const { selectedProfileId, selectedProfile, isLoading: isProfileLoading } = useProfiles();
   const [masterSnapshot, setMasterSnapshot] = useState<MasterSnapshot | null>(null);
@@ -81,7 +90,9 @@ export function QuestsPage({
   const progressReadGeneration = useRef(0);
   const writeRevision = useRef(0);
   const [progressNeedsRefresh, setProgressNeedsRefresh] = useState(false);
-  const [masterRead, setMasterRead] = useState<{ generation: number; state: "loading" | "ready" | "error" } | null>(null);
+  const [masterRead, setMasterRead] = useState<(Pick<MasterSnapshot, "generation" | "reload" | "revision" | "repository"> & {
+    state: "loading" | "ready" | "error";
+  }) | null>(null);
   const [reviewConfirmation, setReviewConfirmation] = useState<ReviewConfirmation | null>(null);
   const reviewConfirmationRef = useRef<ReviewConfirmation | null>(null);
   const reviewSavingRef = useRef<ReviewConfirmation | null>(null);
@@ -109,13 +120,14 @@ export function QuestsPage({
     const generation = progressGeneration.current;
     if (id === null) return;
     const masterTicket = ++masterGeneration.current;
+    const masterSource = { generation: masterTicket, reload: masterReload, revision: masterRevision, repository: questRepository };
     const progressTicket = ++progressReadGeneration.current;
     const revision = writeRevision.current;
-    setMasterRead({ generation: masterTicket, state: "loading" });
+    setMasterRead({ ...masterSource, state: "loading" });
     void Promise.all([questProgressRepository.listCompletedQuestIds(id), loadMasterPair()]).then(([ids, [loaded, loadedDependencies]]) => {
       if (masterGeneration.current === masterTicket) {
-        setMasterSnapshot({ quests: loaded, dependencies: loadedDependencies, generation: masterTicket, reload: masterReload, repository: questRepository });
-        setMasterRead({ generation: masterTicket, state: "ready" });
+        setMasterSnapshot({ ...masterSource, quests: loaded, dependencies: loadedDependencies });
+        setMasterRead({ ...masterSource, state: "ready" });
       }
       if (selectedProfileRef.current !== id || progressGeneration.current !== generation) return;
       if (progressReadGeneration.current !== progressTicket) return;
@@ -126,10 +138,10 @@ export function QuestsPage({
         setProgressNeedsRefresh(true);
       }
     }).catch(() => {
-      if (masterGeneration.current === masterTicket) setMasterRead({ generation: masterTicket, state: "error" });
+      if (masterGeneration.current === masterTicket) setMasterRead({ ...masterSource, state: "error" });
       if (selectedProfileRef.current === id && progressGeneration.current === generation && progressReadGeneration.current === progressTicket) setUpdateError("進捗の再取得に失敗しました。再読み込みしてください。");
     });
-  });
+  }, undefined, masterRevision);
   useEffect(() => {
     if (!progressNeedsRefresh || pendingForProfile || reportHold.busy || reviewSaving) return;
     setProgressNeedsRefresh(false);
@@ -145,21 +157,22 @@ export function QuestsPage({
   useEffect(() => {
     let active = true;
     const generation = ++masterGeneration.current;
-    setMasterRead({ generation, state: "loading" });
+    const source = { generation, reload: masterReload, revision: masterRevision, repository: questRepository };
+    setMasterRead({ ...source, state: "loading" });
     setIsMasterLoading(true);
     setMasterError(null);
     void loadMasterPair()
       .then(([loaded, loadedDependencies]) => {
         if (active && masterGeneration.current === generation) {
-          setMasterSnapshot({ quests: loaded, dependencies: loadedDependencies, generation, reload: masterReload, repository: questRepository });
-          setMasterRead({ generation, state: "ready" });
+          setMasterSnapshot({ ...source, quests: loaded, dependencies: loadedDependencies });
+          setMasterRead({ ...source, state: "ready" });
         }
       })
       .catch((error: unknown) => {
         console.error("Quest master load failed", error);
         if (active && masterGeneration.current === generation) {
           setMasterError("クエストを読み込めませんでした。");
-          setMasterRead({ generation, state: "error" });
+          setMasterRead({ ...source, state: "error" });
         }
       })
       .finally(() => {
@@ -168,7 +181,7 @@ export function QuestsPage({
     return () => {
       active = false;
     };
-  }, [masterReload, questRepository, loadMasterPair]);
+  }, [masterReload, masterRevision, questRepository, loadMasterPair]);
 
   useEffect(() => {
     let active = true;
@@ -327,7 +340,9 @@ export function QuestsPage({
   const candidates = useMemo(() => derivePrerequisiteProgressReview(reviewIndex, completedQuestIds, statuses), [reviewIndex, completedQuestIds, statuses]);
   const completionMatches = completionSnapshot?.profileId === selectedProfileId && completionSnapshot?.epoch === progressGeneration.current
     && completionSnapshot?.reload === progressReload && completionSnapshot?.repository === questProgressRepository;
-  const masterMatches = masterSnapshot?.repository === questRepository && masterSnapshot?.reload === masterReload
+  const masterReadCurrent = masterRead?.repository === questRepository && masterRead.reload === masterReload && masterRead.revision === masterRevision;
+  const masterMatches = masterReadCurrent && masterSnapshot?.repository === questRepository && masterSnapshot?.reload === masterReload
+    && masterSnapshot.revision === masterRevision
     && masterRead?.generation === masterSnapshot?.generation && masterRead?.state === "ready";
   const successorStatuses = useMemo(() => masterSnapshot
     ? deriveSuccessorStatuses(masterSnapshot.quests.map(({ quest }) => quest), masterSnapshot.dependencies)
@@ -562,6 +577,20 @@ export function QuestsPage({
       }));
   }, [completedQuestIds, statuses, successorStatuses, masterMatches, directPrerequisites, pendingUpdates, quests, selectedProfileId, reviewSaving, reportHold.busy, reportHold.dialog, reportHold.selection, reportHold.summaries]);
 
+  const searchOptions = useMemo(() => questSearchOptions(rows), [rows]);
+  const resolveSearch = useCallback((condition: SearchConditionDefinition) => {
+    if (condition.page !== "quests") return blocked("invalid", "page");
+    return whenSearchDataReady([
+      [condition.filters.successorStatus === undefined ? "master" : "successorStatus",
+        masterImporting || !masterReadCurrent ? "loading" : masterRead?.state === "error" ? "error" : masterMatches && !isMasterLoading ? "ready" : "loading"],
+      ["progress", progressError ? "error" : completionMatches && !isProfileLoading && !isProgressLoading && !progressNeedsRefresh ? "ready" : "loading"],
+      ["progressReview", condition.filters.progressReview ? progressReview.status === "updating" ? "loading" : progressReview.status : "ready"],
+      ["mapState", condition.filters.mapState ? reportHold.summaryReadState : "ready"],
+    ], () => resolveQuestSearch(condition, searchOptions));
+  }, [searchOptions, masterImporting, masterReadCurrent, masterRead?.state, masterMatches, isMasterLoading, progressError, completionMatches,
+    isProfileLoading, isProgressLoading, progressNeedsRefresh, progressReview.status, reportHold.summaryReadState]);
+  const searchCondition = useSearchConditionApplication(selectedProfileId, { searchConditionRequest, onSearchConditionSettled }, resolveSearch);
+
   if (isProfileLoading) {
     return <div className="state-panel" role="status">プロフィールを読み込んでいます…</div>;
   }
@@ -609,6 +638,7 @@ export function QuestsPage({
       {updateDiagnostic && <p>診断情報：<code>{updateDiagnostic}</code></p>}
       </>}
       {updateFeedback && <div className="progress-feedback" role="status">{updateFeedback}</div>}
+      <SearchConditionFeedback application={searchCondition} />
 
       {isMasterLoading || isProgressLoading || (!progressError && !completionMatches) || (!masterError && masterSnapshot?.reload !== masterReload) ? (
         <div className="state-panel" role="status">クエストを読み込んでいます…</div>
@@ -620,6 +650,9 @@ export function QuestsPage({
         </div>
       ) : (
         <QuestTable
+          key={searchCondition.resetKey}
+          searchCondition={searchCondition}
+          searchOptions={searchOptions}
           reportHold={reportHold}
           rows={rows}
           successorFilterReady={masterMatches}

@@ -10,6 +10,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
@@ -25,6 +26,8 @@ import type { QuestDependency } from "./quests/prerequisites";
 import type { UpdateProfileInput } from "./repositories/profileRepository";
 import type { ProgressLinkServicePort } from "./progressLink";
 import type { MasterDataStatusRepositoryPort } from "./masterData/types";
+import type { ImportResult, PreparedImport } from "./importer";
+import type { QuestSearchCondition } from "./searchConditions/definition";
 
 vi.mock("./discoveries/stateReader", async (importOriginal) => ({...await importOriginal<typeof import("./discoveries/stateReader")>(),discoveryStateReader: {list: vi.fn().mockResolvedValue([])}}));
 
@@ -32,6 +35,117 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
+
+describe("Quest search condition application", () => {
+  it("retains the current filters, sorting and page on rejection, then replaces all of them on success", async () => {
+    const repositories = createRepositories([profile(1, "航海者")], Array.from({ length: 55 }, (_, index) =>
+      quest(index + 1, `合成依頼${index + 1}`, { offerCities: ["ロンドン"] })));
+    const { user, submit } = await renderQuestConditions(repositories);
+    await user.click(screen.getByRole("button", { name: "クエスト" }));
+    const search = await screen.findByRole("searchbox");
+    await user.type(search, "合成依頼");
+    await user.click(screen.getByRole("button", { name: "クエスト名／地図名で並べ替え" }));
+    await user.click(screen.getByRole("button", { name: "次ページ" }));
+    const before = questTitles();
+
+    submit({ search: "別の条件", filters: { completed: true, offerCity: { kind: "named", name: "消えた都市" } } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("消えた都市");
+    expect(search).toHaveValue("合成依頼");
+    expect(screen.getByText("2 / 2ページ")).toBeInTheDocument();
+    expect(questTitles()).toEqual(before);
+    expect(screen.getByLabelText("達成状態")).toHaveValue("all");
+
+    submit({ filters: { completed: false, offerCity: { kind: "named", name: "ロンドン" } } });
+    expect(search).toHaveValue("");
+    expect(screen.getByLabelText("達成状態")).toHaveValue("incomplete");
+    expect(screen.getByLabelText("オファー都市")).toHaveValue("city:ロンドン");
+    expect(screen.getByText("1 / 2ページ")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /クエスト名／地図名/ })).not.toHaveAttribute("aria-sort");
+    expect(questTitles()[0]).toBe("合成依頼1");
+    expect(repositories.link.completeQuestWithLinkedDiscoveries).not.toHaveBeenCalled();
+  });
+
+  it("applies candidate review and rank together using current progress", async () => {
+    const ranked = (id: number, rank: number) => quest(id, `合成${id}`, {
+      offerMethod: "冒険クエスト", requiredSkills: `探索${rank}`, requiredSkillNames: ["探索"],
+      requiredSkillsNormalized: [{ skillName: "探索", requiredRank: rank }],
+    });
+    const repositories = createRepositories([profile(1, "航海者")], [ranked(1, 4), ranked(2, 2), ranked(3, 9), ranked(4, 1)],
+      new Map([[1, [1, 2]]]), [edge(1, 3), edge(2, 4)]);
+    const { user, submit } = await renderQuestConditions(repositories);
+    await user.click(screen.getByRole("button", { name: "クエスト" }));
+    submit({ filters: { progressReview: true, requiredSkills: "探索" }, sorting: [{ key: "requiredSkillRank", direction: "asc" }] });
+    await screen.findByRole("table");
+    await waitFor(() => expect(questTitles()).toEqual(["合成2", "合成1"]));
+    expect(screen.getByLabelText("要求Rank")).toHaveValue("asc");
+    await user.click(screen.getByRole("button", { name: "進捗の確認候補 2件" }));
+    expect(screen.getByLabelText("候補のある後続だけを表示")).toBeChecked();
+    expect(repositories.progress.markCompleted).not.toHaveBeenCalled();
+  });
+
+  it.each(["profile", "page", "newer"] as const)("drops a pending successor condition on %s change", async (change) => {
+    const repositories = createRepositories([profile(1, "航海者A"), profile(2, "航海者B")],
+      [quest(1, "合成A"), quest(2, "合成B")], new Map([[2, [2]]]), [edge(2, 1)]);
+    let finishDependencies!: (dependencies: QuestDependency[]) => void;
+    repositories.quests.listDependencies.mockImplementationOnce(() => new Promise(resolve => { finishDependencies = resolve; }));
+    const { user, submit } = await renderQuestConditions(repositories);
+
+    await user.click(screen.getByRole("button", { name: "クエスト" }));
+    submit({ search: "合成A", filters: { successorStatus: "present" } });
+    await screen.findByText("検索条件に必要なデータを読み込んでいます…");
+    if (change === "profile") await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    if (change === "page") await user.click(screen.getByRole("button", { name: "プロフィール" }));
+    if (change === "newer") submit({ search: "合成B" });
+    await act(async () => finishDependencies(repositories.quests.dependencies));
+    if (change === "page") await user.click(screen.getByRole("button", { name: "クエスト" }));
+    expect(await screen.findByRole("searchbox")).toHaveValue(change === "newer" ? "合成B" : "");
+    expect(screen.getByLabelText("後継クエスト")).toHaveValue("all");
+    if (change === "profile") {
+      expect(screen.getByLabelText("現在のプロフィール")).toHaveValue("2");
+      submit({ filters: { completed: false } });
+      expect(questTitles()).toEqual(["合成A"]);
+    }
+  });
+
+  it("waits for an in-flight import from another page and rejects a city removed by the commit", async () => {
+    const repositories = createRepositories([profile(1, "航海者")], [quest(1, "合成依頼", { offerCities: ["ロンドン"] })]);
+    const prepared: PreparedImport = { dataset: "quests", fileName: "synthetic.csv", sha256: "a".repeat(64), rowCount: 1, warningCount: 0,
+      request: { dataset: "quests", fileName: "synthetic.csv", sha256: "a".repeat(64), quests: [], discoveries: [], warnings: [] } };
+    let finishImport!: (result: ImportResult) => void;
+    const { user, submit } = await renderQuestConditions(repositories, {
+      masterImportService: { selectFile: async () => prepared, importPrepared: () => new Promise(resolve => { finishImport = resolve; }) },
+      masterDataStatusRepository: { getStatus: async () => ({
+        datasets: { quests: { dataset: "quests", activeCount: 1, latestImport: null }, discoveries: { dataset: "discoveries", activeCount: 0, latestImport: null } },
+        recentHistory: [],
+      }) },
+    });
+    await user.click(screen.getByRole("button", { name: "マスターデータ" }));
+    await user.click(await screen.findByRole("button", { name: "quests.csv を選択" }));
+    await user.click(within(await screen.findByLabelText("クエストインポート確認")).getByRole("button", { name: "クエスト情報を更新" }));
+    await user.click(screen.getByRole("button", { name: "クエスト" }));
+    submit({ search: "合成", filters: { offerCity: { kind: "named", name: "ロンドン" } } });
+    await screen.findByText("検索条件に必要なデータを読み込んでいます…");
+    expect(await screen.findByRole("searchbox")).toHaveValue("");
+    repositories.quests.items[0] = quest(1, "合成依頼", { offerCities: ["セビリア"] });
+    await act(async () => finishImport({ dataset: "quests", fileName: prepared.fileName, sha256: prepared.sha256,
+      importedRowCount: 1, insertedCount: 0, updatedCount: 1, inactiveCount: 0, relationCount: 0, warningCount: 0, warnings: [] }));
+    expect(await screen.findByText(/オファー都市「ロンドン」/)).toBeInTheDocument();
+    expect(await screen.findByRole("searchbox")).toHaveValue("");
+    expect(screen.getByLabelText("オファー都市")).toHaveValue("");
+  });
+});
+
+async function renderQuestConditions(repositories: Repositories, overrides: Partial<ComponentProps<typeof App>> = {}) {
+  const user = userEvent.setup();
+  const props = {
+    profileRepository: repositories.profiles, questRepository: repositories.quests,
+    questProgressRepository: repositories.progress, progressLinkService: repositories.link, ...overrides,
+  };
+  const view = render(<App {...props} />);
+  await screen.findByRole("list", { name: "プロフィール一覧" });
+  return { user, submit: (condition: Partial<QuestSearchCondition>) => view.rerender(<App {...props}
+    searchConditionRequest={{ definition: { schemaVersion: 1, page: "quests", search: "", filters: {}, sorting: [], ...condition } }} />) };
+}
 
 describe("Quest UI", () => {
   it("passes master notes to the popup without changing completion, and closes on profile or page changes", async () => {

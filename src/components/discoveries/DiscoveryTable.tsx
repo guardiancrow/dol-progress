@@ -5,7 +5,7 @@ import { currentUnreportedHistory } from "../../discoveries/unreportedBreakdown"
 import { FirstReportControl } from "./FirstReportControl";
 import { DiscoveryStateControl } from "./ReportHoldControls";
 import type { ReportHoldController } from "../../discoveries/useReportHold";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef } from "react";
 import {
   columnFilteringFeature,
   columnVisibilityFeature,
@@ -16,15 +16,15 @@ import {
   rowPaginationFeature,
   rowSortingFeature,
   tableFeatures,
-  type ColumnFiltersState,
-  type PaginationState,
-  type SortingState,
   useTable,
 } from "@tanstack/react-table";
 
 import type { DiscoveryInitialFilter, DiscoveryRowViewModel } from "../../discoveries/types";
 import { MasterInfoButton, MasterInfoProvider } from "../MasterInfoPopover";
 import { formatOfferCities } from "../../domain/offerCities";
+import type { SearchConditionApplication } from "../../searchConditions/application";
+import { discoverySearchOptions, type DiscoverySearchOptions } from "../../searchConditions/tableState";
+import { useSearchTableState } from "../../searchConditions/useSearchTableState";
 
 const featureSet = tableFeatures({
   columnFilteringFeature,
@@ -41,6 +41,8 @@ const STATUS_ORDER = { undiscovered: 0, unreported: 1, reported: 2 } as const;
 type CardOwnedFilter = "all" | "owned" | "not-owned";
 
 interface DiscoveryTableProps {
+  searchCondition?: SearchConditionApplication;
+  searchOptions?: DiscoverySearchOptions;
   historyReadState?: "loading" | "ready" | "error";
   reportHold?: ReportHoldController;
   rows: DiscoveryRowViewModel[];
@@ -62,22 +64,22 @@ export function DiscoveryTable({
   onToggleDiscovered,
   onSetReported,
   onSetCardOwned,
+  searchCondition,
+  searchOptions,
 }: DiscoveryTableProps) {
   const controlsVisible = useWorkspaceView()?.controlsVisible ?? true;
   const mapFilterHelpId = useId();
   const reportHoldRef = useRef(reportHold);
   reportHoldRef.current = reportHold;
   // Navigation initializes this mount only; consuming the intent must not reset later user filters.
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(() => {
+  const { columnFilters, sorting, pagination, setColumnFilters, setSorting, setPagination } = useSearchTableState(() => {
     if (initialFilter?.kind === "category" && rows.some((row) => row.category?.id === initialFilter.categoryId)) {
       return [{ id: "category", value: initialFilter.categoryId }];
     }
     if (initialFilter?.kind === "unreported") return [{ id: "status", value: "unreported" }];
     if (initialFilter?.kind === "card-not-owned") return [{ id: "cardOwned", value: false }];
     return [];
-  });
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 });
+  }, searchCondition?.applied);
 
   useEffect(() => {
     if (initialFilter !== undefined) onNavigationConsumed?.();
@@ -219,8 +221,12 @@ export function DiscoveryTable({
       columns,
       data: rows,
       state: { columnFilters, sorting, pagination, columnVisibility: {mapReacquisition:false, unreportedBreakdown:false} },
-      onColumnFiltersChange: setColumnFilters,
+      onColumnFiltersChange: (updater) => {
+        searchCondition?.forgetApplied();
+        setColumnFilters(updater);
+      },
       onSortingChange: (updater) => {
+        searchCondition?.forgetApplied();
         setSorting(updater);
         setPagination((current) => ({ ...current, pageIndex: 0 }));
       },
@@ -231,12 +237,8 @@ export function DiscoveryTable({
     (state) => ({ columnFilters: state.columnFilters, sorting: state.sorting, pagination: state.pagination }),
   );
 
-  const categories = useMemo(() => {
-    const unique = new Map<number, { id: number; name: string; sortOrder: number }>();
-    for (const row of rows) if (row.category) unique.set(row.category.id, row.category);
-    return [...unique.values()].sort((a, b) => a.sortOrder - b.sortOrder || collator.compare(a.name, b.name));
-  }, [rows]);
-  const hasUncategorized = rows.some((row) => row.category === null);
+  const { categories, hasUncategorized } = useMemo(() => searchOptions ?? discoverySearchOptions(rows), [rows, searchOptions]);
+  const selectedCategory = table.getColumn("category")?.getFilterValue() ?? "all";
   const filteredRows = table.getPrePaginatedRowModel().rows;
   const discoveredCount = filteredRows.filter((row) => row.original.progress !== null).length;
   const unreportedCount = filteredRows.filter((row) => row.original.canReport && row.original.progress !== null && !row.original.effectiveReported).length;
@@ -253,13 +255,14 @@ export function DiscoveryTable({
   }, [paginationResetKey]);
 
   useEffect(() => {
+    if (searchCondition?.suspended) return;
     const lastValidPage = pageCount === 0 ? 0 : pageCount - 1;
     setPagination((current) =>
       current.pageIndex > lastValidPage
         ? { ...current, pageIndex: lastValidPage }
         : current,
     );
-  }, [pageCount]);
+  }, [pageCount, searchCondition?.suspended]);
 
   function setFilter(id: string, value: unknown) {
     table.getColumn(id)?.setFilterValue(value);
@@ -284,12 +287,12 @@ export function DiscoveryTable({
       resetKey={JSON.stringify([paginationResetKey, columnFilters, sorting, pagination])}
       hint="説明・備考を表示"
     >
-    <div className="workspace-table">
+    <div className="workspace-table" hidden={searchCondition?.suspended}>
       <WorkspaceFilters label="発見物の詳細フィルター" searchActive={String(table.getColumn("name")?.getFilterValue() ?? "").trim() !== ""}
         activeFilterCount={columnFilters.filter(filter => filter.id !== "name").length} sorted={sorting.length > 0}
         search={<label>発見物名を検索<input type="search" value={String(table.getColumn("name")?.getFilterValue() ?? "")} onChange={(event) => setFilter("name", event.target.value || undefined)} /></label>}>
         <div className="quest-filters discovery-filters">
-        <label>分類<select value={String(table.getColumn("category")?.getFilterValue() ?? "all")} onChange={(event) => setFilter("category", event.target.value === "all" ? undefined : event.target.value === "unset" ? "unset" : Number(event.target.value))}><option value="all">すべて</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}{hasUncategorized && <option value="unset">未設定</option>}</select></label>
+        <label>分類<select value={String(selectedCategory)} onChange={(event) => setFilter("category", event.target.value === "all" ? undefined : event.target.value === "unset" ? "unset" : Number(event.target.value))}><option value="all">すべて</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}{(hasUncategorized || selectedCategory === "unset") && <option value="unset">未設定</option>}</select></label>
         <label>状態<select value={String(table.getColumn("status")?.getFilterValue() ?? "all")} onChange={(event) => setFilter("status", event.target.value === "all" ? undefined : event.target.value)}><option value="all">すべて</option><option value="undiscovered">未発見</option><option value="unreported">発見済み・未報告</option><option value="reported">報告済み</option></select></label>
         <label title="発見済み・未報告の発見物を初回報告履歴で絞り込みます。地図以外も対象です。">未報告の内訳<select value={String(table.getColumn("unreportedBreakdown")?.getFilterValue() ?? "all")} onChange={event => setFilter("unreportedBreakdown", event.target.value === "all" ? undefined : event.target.value)}><option value="all">すべて</option><option value="not_reported">初回未報告</option><option value="confirmed">再報告待ち</option><option value="unknown">履歴未確定</option></select></label>
         <label>カード所有<select value={cardOwnedFilterValue(table.getColumn("cardOwned")?.getFilterValue())} onChange={(event) => setFilter("cardOwned", event.target.value === "all" ? undefined : event.target.value === "owned")}><option value="all">すべて</option><option value="owned">所有</option><option value="not-owned">未所有（発見済みのみ）</option></select></label>
