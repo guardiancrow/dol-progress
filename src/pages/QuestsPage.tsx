@@ -62,6 +62,7 @@ export function QuestsPage({
   questProgressRepository,
   progressLinkService,
   searchConditionRequest,
+  onBookmarkCapture,
   onSearchConditionSettled,
   masterRevision = 0,
   masterImporting = false,
@@ -586,8 +587,8 @@ export function QuestsPage({
       ["progress", progressError ? "error" : completionMatches && !isProfileLoading && !isProgressLoading && !progressNeedsRefresh ? "ready" : "loading"],
       ["progressReview", condition.filters.progressReview ? progressReview.status === "updating" ? "loading" : progressReview.status : "ready"],
       ["mapState", condition.filters.mapState ? reportHold.summaryReadState : "ready"],
-    ], () => resolveQuestSearch(condition, searchOptions));
-  }, [searchOptions, masterImporting, masterReadCurrent, masterRead?.state, masterMatches, isMasterLoading, progressError, completionMatches,
+    ], () => rows.length ? resolveQuestSearch(condition, searchOptions) : blocked("unavailable", "master"));
+  }, [rows.length, searchOptions, masterImporting, masterReadCurrent, masterRead?.state, masterMatches, isMasterLoading, progressError, completionMatches,
     isProfileLoading, isProgressLoading, progressNeedsRefresh, progressReview.status, reportHold.summaryReadState]);
   const searchCondition = useSearchConditionApplication(selectedProfileId, { searchConditionRequest, onSearchConditionSettled }, resolveSearch);
 
@@ -653,6 +654,7 @@ export function QuestsPage({
           key={searchCondition.resetKey}
           searchCondition={searchCondition}
           searchOptions={searchOptions}
+          onBookmarkCapture={masterMatches && !masterImporting ? onBookmarkCapture : undefined}
           reportHold={reportHold}
           rows={rows}
           successorFilterReady={masterMatches}

@@ -199,6 +199,8 @@ describe("Quest UI", () => {
     expect(screen.queryByText(/後続フェーズで提供/)).not.toBeInTheDocument();
     screen.getByRole("button", { name: "保存場所" }).focus();
     await user.tab();
+    expect(screen.getByRole("button", { name: "ブックマーク" })).toHaveFocus();
+    await user.tab();
     expect(screen.getByRole("button", { name: "マスターデータを開く" })).toHaveFocus();
     await user.keyboard("{Enter}");
     expect(await screen.findByRole("heading", { name: "マスターデータ" })).toBeInTheDocument();

@@ -40,6 +40,7 @@ export function DiscoveriesPage({
   initialFilter,
   onNavigationConsumed,
   searchConditionRequest,
+  onBookmarkCapture,
   onSearchConditionSettled,
   masterRevision = 0,
   masterImporting = false,
@@ -343,8 +344,8 @@ export function DiscoveriesPage({
       ["progress", searchProgressRead],
       ["unreportedBreakdown", condition.filters.unreportedBreakdown ? reportHold.summaryReadState : "ready"],
       ["mapReacquisition", needsMapState ? reportHold.summaryReadState : "ready"],
-    ], () => resolveDiscoverySearch(condition, searchOptions));
-  }, [searchMasterRead, searchProgressRead, reportHold.summaryReadState, searchOptions]);
+    ], () => rows.length ? resolveDiscoverySearch(condition, searchOptions) : blocked("unavailable", "master"));
+  }, [rows.length, searchMasterRead, searchProgressRead, reportHold.summaryReadState, searchOptions]);
   const searchCondition = useSearchConditionApplication(selectedProfileId, { searchConditionRequest, onSearchConditionSettled }, resolveSearch);
 
   if (isProfileLoading) return <div className="state-panel" role="status">プロフィールを読み込んでいます…</div>;
@@ -380,6 +381,7 @@ export function DiscoveriesPage({
           key={searchCondition.resetKey}
           searchCondition={searchCondition}
           searchOptions={searchOptions}
+          onBookmarkCapture={searchMasterRead === "ready" && searchProgressRead === "ready" ? onBookmarkCapture : undefined}
           historyReadState={reportHold.summaryReadState}
           reportHold={reportHold}
           rows={rows}

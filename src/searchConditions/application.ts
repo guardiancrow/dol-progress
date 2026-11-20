@@ -12,6 +12,7 @@ export interface SearchConditionApplicationProps {
   onSearchConditionSettled?: (request: SearchConditionRequest, issue?: SearchConditionIssue) => void;
   masterRevision?: number;
   masterImporting?: boolean;
+  onBookmarkCapture?: (condition: ConditionResult<SearchConditionDefinition> | undefined) => void;
 }
 
 export type ReadState = "loading" | "ready" | "error";

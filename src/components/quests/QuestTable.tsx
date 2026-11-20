@@ -23,7 +23,8 @@ import {
 } from "@tanstack/react-table";
 
 import type { QuestRowViewModel } from "../../quests/types";
-import type { SearchConditionApplication } from "../../searchConditions/application";
+import type { SearchConditionApplication, SearchConditionApplicationProps } from "../../searchConditions/application";
+import { useBookmarkCapture } from "../../searchConditions/useBookmarkCapture";
 import { DISCOVERY_CATEGORY_PREFIX, questSearchOptions, RANK_COLUMN_ID, type QuestSearchOptions } from "../../searchConditions/tableState";
 import { useSearchTableState } from "../../searchConditions/useSearchTableState";
 import { MasterInfoButton, MasterInfoProvider } from "../MasterInfoPopover";
@@ -53,6 +54,7 @@ const columnHelper = createColumnHelper<
 const collator = new Intl.Collator("ja", { numeric: true });
 
 interface QuestTableProps {
+  onBookmarkCapture?: SearchConditionApplicationProps["onBookmarkCapture"];
   searchCondition?: SearchConditionApplication;
   searchOptions?: QuestSearchOptions;
   prerequisiteDetails?: {
@@ -71,7 +73,7 @@ interface QuestTableProps {
   onToggleCompletion(questId: number, completed: boolean): Promise<void>;
 }
 
-export function QuestTable({ rows, successorFilterReady = false, paginationResetKey, onToggleCompletion, reportHold, progressReview, onReloadReview, reviewCompletion, prerequisiteDetails, searchCondition, searchOptions }: QuestTableProps) {
+export function QuestTable({ rows, successorFilterReady = false, paginationResetKey, onToggleCompletion, reportHold, progressReview, onReloadReview, reviewCompletion, prerequisiteDetails, searchCondition, searchOptions, onBookmarkCapture }: QuestTableProps) {
   const controlsVisible = useWorkspaceView()?.controlsVisible ?? true;
   const reportHoldRef = useRef(reportHold);
   reportHoldRef.current = reportHold;
@@ -417,8 +419,9 @@ export function QuestTable({ rows, successorFilterReady = false, paginationReset
     }),
   );
 
-  const { offerMethods: offerMethodOptions, cities: offerCities, skills: requiredSkills, categories: discoveryCategories } = useMemo(
-    () => searchOptions ?? questSearchOptions(rows), [rows, searchOptions]);
+  const captureScope = useMemo(() => ({ page: "quests" as const, options: searchOptions ?? questSearchOptions(rows) }), [rows, searchOptions]);
+  useBookmarkCapture(onBookmarkCapture, captureScope, { columnFilters, sorting }, !searchCondition?.suspended);
+  const { offerMethods: offerMethodOptions, cities: offerCities, skills: requiredSkills, categories: discoveryCategories } = captureScope.options;
   const selectedOfferMethod = String(table.getColumn("offerMethod")?.getFilterValue() ?? "all");
   useEffect(() => {
     if (protectedSearch || isOfferMethodSelectionAvailable(selectedOfferMethod, offerMethodOptions)) return;

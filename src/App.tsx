@@ -1,7 +1,9 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import "./App.css";
 import { AppShell } from "./components/layout/AppShell";
+import { BookmarkPanel } from "./components/layout/BookmarkPanel";
+import { useWorkspaceView, WorkspaceViewContext } from "./components/layout/WorkspaceView";
 import type { AppPage } from "./components/layout/Sidebar";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { DataRootSettingsPage } from "./pages/DataRootSettingsPage";
@@ -37,9 +39,11 @@ import type {
 } from "./discoveries/types";
 import { BackupRestoreService, type BackupRestoreServicePort } from "./backupRestore";
 import { ProgressLinkService, type ProgressLinkServicePort } from "./progressLink";
-import { decodeSearchCondition, type SearchConditionIssue } from "./searchConditions/definition";
+import { decodeSearchCondition, type ConditionResult, type SearchConditionDefinition, type SearchConditionIssue } from "./searchConditions/definition";
 import type { SearchConditionRequest } from "./searchConditions/application";
 import { searchConditionIssueMessage } from "./searchConditions/SearchConditionFeedback";
+import { SearchBookmarkRepository, type SearchBookmark } from "./repositories/searchBookmarkRepository";
+import { useBookmarkLibrary, type BookmarkRepository } from "./searchConditions/useBookmarkLibrary";
 
 interface AppProps {
   profileRepository?: ProfileRepositoryPort;
@@ -53,6 +57,7 @@ interface AppProps {
   backupRestoreService?: BackupRestoreServicePort;
   progressLinkService?: ProgressLinkServicePort;
   dataRootInfo?: DataRootInfo;
+  bookmarkRepository?: BookmarkRepository;
   // One-shot input for the current workspace. A new request has a new object identity.
   searchConditionRequest?: { definition: unknown };
 }
@@ -67,6 +72,19 @@ const defaultMasterDataStatusRepository = new MasterDataStatusRepository();
 const defaultMasterImportService = new ImportService();
 const defaultBackupRestoreService = new BackupRestoreService();
 const defaultProgressLinkService = new ProgressLinkService();
+const defaultBookmarkRepository = new SearchBookmarkRepository();
+
+function isSearchPage(page: AppPage): page is SearchBookmark["page"] {
+  return page === "quests" || page === "discoveries";
+}
+
+function SearchPageSlot({ visible, children }: { visible: boolean; children: ReactNode }) {
+  const workspace = useWorkspaceView();
+  // A staged page can read data and validate its request before it owns the visible workspace.
+  return <div hidden={!visible} className="bookmark-page-slot">
+    <WorkspaceViewContext.Provider value={visible ? workspace : null}>{children}</WorkspaceViewContext.Provider>
+  </div>;
+}
 
 function App(props: AppProps) {
   return <ProfileProvider repository={props.profileRepository ?? defaultProfileRepository}>
@@ -86,19 +104,28 @@ function AppContent({
   progressLinkService = defaultProgressLinkService,
   dataRootInfo = { mode: "default", dataRoot: "", databasePath: "", portableRoot: "", defaultDataRoot: "", configRoot: "", defaultDatabasePath: "", defaultDatabaseExists: false },
   searchConditionRequest,
+  bookmarkRepository = defaultBookmarkRepository,
 }: AppProps) {
   const { selectedProfileId, isLoading: isProfileLoading } = useProfiles();
   const [page, setPage] = useState<AppPage>("profiles");
   const [discoveryFilter, setDiscoveryFilter] = useState<DiscoveryInitialFilter | undefined>();
   const [searchApplication, setSearchApplication] = useState<{
-    source: NonNullable<AppProps["searchConditionRequest"]>;
+    source?: AppProps["searchConditionRequest"];
     request: SearchConditionRequest;
+    bookmark?: SearchBookmark;
   }>();
   const [searchMessage, setSearchMessage] = useState<string>();
+  const [searchNotice, setSearchNotice] = useState<string>();
+  const [captured, setCaptured] = useState<ConditionResult<SearchConditionDefinition>>();
+  const bookmarkLibrary = useBookmarkLibrary(bookmarkRepository);
   const [masterImport, setMasterImport] = useState({ pending: 0, revision: 0 });
   const seenRequest = useRef<AppProps["searchConditionRequest"]>(undefined);
-  const currentRequest = searchApplication?.source === searchConditionRequest && searchApplication?.request.profileId === selectedProfileId
-    && searchApplication.request.definition.page === page ? searchApplication.request : undefined;
+  const settledRequest = useRef<SearchConditionRequest>(undefined);
+  const noticeVersion = useRef(0);
+  const { mutate: mutateBookmark } = bookmarkLibrary;
+  const currentRequest = searchApplication?.request.profileId === selectedProfileId && !isProfileLoading
+    && (searchApplication.source === undefined || searchApplication.source === searchConditionRequest) ? searchApplication.request : undefined;
+  const stagedPage = currentRequest?.definition.page !== page ? currentRequest?.definition.page : undefined;
   const consumeDiscoveryNavigation = useCallback(() => setDiscoveryFilter(undefined), []);
   const trackMasterImport = useCallback(() => {
     setMasterImport(current => ({ ...current, pending: current.pending + 1 }));
@@ -113,6 +140,8 @@ function AppContent({
     seenRequest.current = searchConditionRequest;
     setSearchApplication(undefined);
     setSearchMessage(undefined);
+    setSearchNotice(undefined);
+    noticeVersion.current++;
     if (!searchConditionRequest) return;
 
     const decoded = decodeSearchCondition(searchConditionRequest.definition);
@@ -128,23 +157,59 @@ function AppContent({
   }, [searchConditionRequest, selectedProfileId, isProfileLoading, page]);
 
   useLayoutEffect(() => {
-    if (searchApplication && searchApplication.request.profileId !== selectedProfileId) {
+    if (searchApplication && (searchApplication.request.profileId !== selectedProfileId || isProfileLoading)) {
       setSearchApplication(current => current === searchApplication ? undefined : current);
-      if (searchApplication.source === searchConditionRequest) {
+      if (searchApplication.source === undefined || searchApplication.source === searchConditionRequest) {
         setSearchMessage("プロフィールが切り替わったため、検索条件の適用を取り消しました。");
       }
     }
-  }, [searchApplication, searchConditionRequest, selectedProfileId]);
+  }, [searchApplication, searchConditionRequest, selectedProfileId, isProfileLoading]);
+
+  useLayoutEffect(() => {
+    noticeVersion.current++;
+    setSearchNotice(undefined);
+  }, [selectedProfileId]);
 
   const settleSearchCondition = useCallback((request: SearchConditionRequest, issue?: SearchConditionIssue) => {
-    if (request !== currentRequest) return;
+    if (request !== currentRequest || request === settledRequest.current) return;
+    settledRequest.current = request;
     setSearchApplication(undefined);
     setSearchMessage(issue && searchConditionIssueMessage(issue));
-  }, [currentRequest]);
+    if (issue || !searchApplication?.bookmark) return;
+
+    const { bookmark } = searchApplication;
+    setDiscoveryFilter(undefined);
+    setPage(request.definition.page);
+    setSearchNotice(`「${bookmark.name}」を適用しました。`);
+    const version = noticeVersion.current;
+    void mutateBookmark(repo => repo.markUsed(bookmark.id)).catch(() => {
+      if (version === noticeVersion.current) setSearchMessage("検索条件は適用されましたが、最終使用日時を保存できませんでした。");
+    });
+  }, [currentRequest, searchApplication, mutateBookmark]);
 
   function cancelSearchApplication() {
+    noticeVersion.current++;
     setSearchApplication(undefined);
     setSearchMessage(undefined);
+    setSearchNotice(undefined);
+  }
+
+  function openBookmark(bookmark: SearchBookmark) {
+    cancelSearchApplication();
+    if (bookmark.definition.status === "blocked") {
+      setSearchMessage(searchConditionIssueMessage(bookmark.definition.issue));
+      return;
+    }
+    if (selectedProfileId === null || isProfileLoading) {
+      setSearchMessage("プロフィールを選択してから検索条件を適用してください。");
+      return;
+    }
+    const definition = decodeSearchCondition(bookmark.definition.value);
+    if (definition.status === "blocked") {
+      setSearchMessage(searchConditionIssueMessage(definition.issue));
+      return;
+    }
+    setSearchApplication({ request: { definition: definition.value, profileId: selectedProfileId }, bookmark });
   }
 
   function navigate(nextPage: AppPage) {
@@ -159,6 +224,23 @@ function AppContent({
     setPage("discoveries");
   }
 
+  function searchPage(target: SearchBookmark["page"]) {
+    const shared = {
+      onOpenMasterData: () => navigate("master-data"),
+      progressLinkService,
+      searchConditionRequest: currentRequest?.definition.page === target ? currentRequest : undefined,
+      onSearchConditionSettled: settleSearchCondition,
+      onBookmarkCapture: target === page ? setCaptured : undefined,
+      masterRevision: masterImport.revision,
+      masterImporting: masterImport.pending > 0,
+    };
+    return <SearchPageSlot key={target} visible={target === page}>
+      {target === "quests" ? <QuestsPage {...shared} questRepository={questRepository} questProgressRepository={questProgressRepository} />
+        : <DiscoveriesPage {...shared} discoveryRepository={discoveryRepository} discoveryProgressRepository={discoveryProgressRepository}
+          initialFilter={target === page ? discoveryFilter : undefined} onNavigationConsumed={consumeDiscoveryNavigation} />}
+    </SearchPageSlot>;
+  }
+
   return (
     <AppShell currentPage={page} onNavigate={navigate}>
         {searchMessage && <div className="error-banner" role="alert">{searchMessage}</div>}
@@ -166,30 +248,13 @@ function AppContent({
           <OverviewPage statsRepository={progressStatsRepository} onOpenDiscoveries={openDiscoveries} />
         ) : page === "profiles" ? (
           <ProfilesPage />
-        ) : page === "quests" ? (
-          <QuestsPage
-            onOpenMasterData={() => navigate("master-data")}
-            questRepository={questRepository}
-            questProgressRepository={questProgressRepository}
-            progressLinkService={progressLinkService}
-            searchConditionRequest={currentRequest}
-            onSearchConditionSettled={settleSearchCondition}
-            masterRevision={masterImport.revision}
-            masterImporting={masterImport.pending > 0}
-          />
-        ) : page === "discoveries" ? (
-          <DiscoveriesPage
-            onOpenMasterData={() => navigate("master-data")}
-            initialFilter={discoveryFilter}
-            onNavigationConsumed={consumeDiscoveryNavigation}
-            discoveryRepository={discoveryRepository}
-            discoveryProgressRepository={discoveryProgressRepository}
-            progressLinkService={progressLinkService}
-            searchConditionRequest={currentRequest}
-            onSearchConditionSettled={settleSearchCondition}
-            masterRevision={masterImport.revision}
-            masterImporting={masterImport.pending > 0}
-          />
+        ) : isSearchPage(page) ? (
+          <div className="bookmarked-workspace">
+            <BookmarkPanel page={page} captured={captured} library={bookmarkLibrary} apply={openBookmark} />
+            {searchNotice && <div className="bookmark-application-status" role="status">{searchNotice}</div>}
+            {stagedPage && <div className="bookmark-application-status" role="status">適用先の一覧を読み込んでいます…</div>}
+            {(stagedPage ? [page, stagedPage] : [page]).map(searchPage)}
+          </div>
         ) : page === "master-data" ? (
           <MasterDataPage
             statusRepository={masterDataStatusRepository}

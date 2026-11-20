@@ -22,7 +22,8 @@ import {
 import type { DiscoveryInitialFilter, DiscoveryRowViewModel } from "../../discoveries/types";
 import { MasterInfoButton, MasterInfoProvider } from "../MasterInfoPopover";
 import { formatOfferCities } from "../../domain/offerCities";
-import type { SearchConditionApplication } from "../../searchConditions/application";
+import type { SearchConditionApplication, SearchConditionApplicationProps } from "../../searchConditions/application";
+import { useBookmarkCapture } from "../../searchConditions/useBookmarkCapture";
 import { discoverySearchOptions, type DiscoverySearchOptions } from "../../searchConditions/tableState";
 import { useSearchTableState } from "../../searchConditions/useSearchTableState";
 
@@ -41,6 +42,7 @@ const STATUS_ORDER = { undiscovered: 0, unreported: 1, reported: 2 } as const;
 type CardOwnedFilter = "all" | "owned" | "not-owned";
 
 interface DiscoveryTableProps {
+  onBookmarkCapture?: SearchConditionApplicationProps["onBookmarkCapture"];
   searchCondition?: SearchConditionApplication;
   searchOptions?: DiscoverySearchOptions;
   historyReadState?: "loading" | "ready" | "error";
@@ -66,6 +68,7 @@ export function DiscoveryTable({
   onSetCardOwned,
   searchCondition,
   searchOptions,
+  onBookmarkCapture,
 }: DiscoveryTableProps) {
   const controlsVisible = useWorkspaceView()?.controlsVisible ?? true;
   const mapFilterHelpId = useId();
@@ -237,7 +240,9 @@ export function DiscoveryTable({
     (state) => ({ columnFilters: state.columnFilters, sorting: state.sorting, pagination: state.pagination }),
   );
 
-  const { categories, hasUncategorized } = useMemo(() => searchOptions ?? discoverySearchOptions(rows), [rows, searchOptions]);
+  const captureScope = useMemo(() => ({ page: "discoveries" as const, options: searchOptions ?? discoverySearchOptions(rows) }), [rows, searchOptions]);
+  useBookmarkCapture(onBookmarkCapture, captureScope, { columnFilters, sorting }, !searchCondition?.suspended);
+  const { categories, hasUncategorized } = captureScope.options;
   const selectedCategory = table.getColumn("category")?.getFilterValue() ?? "all";
   const filteredRows = table.getPrePaginatedRowModel().rows;
   const discoveredCount = filteredRows.filter((row) => row.original.progress !== null).length;
