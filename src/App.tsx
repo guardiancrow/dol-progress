@@ -1,8 +1,9 @@
-import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import "./App.css";
 import { AppShell } from "./components/layout/AppShell";
 import { BookmarkPanel } from "./components/layout/BookmarkPanel";
+import { WorkspaceTabBar, workspacePanelId, workspaceTabId, type WorkspaceFocus } from "./components/layout/WorkspaceTabBar";
 import { useWorkspaceView, WorkspaceViewContext } from "./components/layout/WorkspaceView";
 import type { AppPage } from "./components/layout/Sidebar";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
@@ -45,7 +46,7 @@ import type { SearchTableState } from "./searchConditions/tableState";
 import { searchConditionIssueMessage } from "./searchConditions/SearchConditionFeedback";
 import { SearchBookmarkRepository, type SearchBookmark } from "./repositories/searchBookmarkRepository";
 import { useBookmarkLibrary, type BookmarkRepository } from "./searchConditions/useBookmarkLibrary";
-import { WorkspaceTabs, type WorkspaceTabId } from "./workspaceTabs/state";
+import { MAX_WORKSPACE_TABS, WorkspaceTabs, type WorkspacePage, type WorkspaceTabId } from "./workspaceTabs/state";
 import { WorkspaceReads } from "./workspaceReads/WorkspaceReads";
 
 interface AppProps {
@@ -77,16 +78,25 @@ const defaultBackupRestoreService = new BackupRestoreService();
 const defaultProgressLinkService = new ProgressLinkService();
 const defaultBookmarkRepository = new SearchBookmarkRepository();
 
-function isSearchPage(page: AppPage): page is SearchBookmark["page"] {
+function isSearchPage(page: AppPage): page is WorkspacePage {
   return page === "quests" || page === "discoveries";
 }
 
-function SearchPageSlot({ visible, children }: { visible: boolean; children: ReactNode }) {
+function SearchPageSlot({ tabId, visible, children }: { tabId: WorkspaceTabId; visible: boolean; children?: ReactNode }) {
   const workspace = useWorkspaceView();
   // A staged page can read data and validate its request before it owns the visible workspace.
-  return <div hidden={!visible} className="bookmark-page-slot">
+  return <div hidden={!visible} className="bookmark-page-slot" role="tabpanel" id={workspacePanelId(tabId)}
+    aria-labelledby={workspaceTabId(tabId)} tabIndex={visible ? 0 : undefined}>
     <WorkspaceViewContext.Provider value={visible ? workspace : null}>{children}</WorkspaceViewContext.Provider>
   </div>;
+}
+
+const tabLimitMessage = `一覧タブは${MAX_WORKSPACE_TABS}件まで開けます。追加するには、開いているタブを閉じてください。`;
+
+interface PendingSearchApplication {
+  source?: AppProps["searchConditionRequest"];
+  request: SearchConditionRequest;
+  bookmark?: SearchBookmark;
 }
 
 function App(props: AppProps) {
@@ -111,38 +121,62 @@ function AppContent({
 }: AppProps) {
   const { selectedProfileId, isLoading: isProfileLoading } = useProfiles();
   const [page, setPage] = useState<AppPage>("profiles");
-  const [{ tabs, initialIds }] = useState(() => {
-    const tabs = new WorkspaceTabs();
-    return { tabs, initialIds: { quests: tabs.open("quests", "クエスト"), discoveries: tabs.open("discoveries", "発見物") } };
-  });
-  const [tabIds, setTabIds] = useState(initialIds);
+  const [tabs] = useState(() => new WorkspaceTabs());
+  const openTabs = useSyncExternalStore(tabs.subscribe, tabs.getOpenTabs);
+  const [activeTabId, setActiveTabId] = useState<WorkspaceTabId>();
+  const recentTabs = useRef<WorkspaceTabId[]>([]);
+  const [focusRequest, setFocusRequest] = useState<WorkspaceFocus>();
+  const overviewUndo = useRef<HTMLButtonElement>(null);
   const [workspaceReads] = useState(() => new WorkspaceReads());
-  const [discoveryNavigation, setDiscoveryNavigation] = useState<{ tabId: WorkspaceTabId; filter: DiscoveryInitialFilter }>();
-  const [searchApplication, setSearchApplication] = useState<{
-    source?: AppProps["searchConditionRequest"];
-    request: SearchConditionRequest;
-    bookmark?: SearchBookmark;
-  }>();
+  const [discoveryNavigation, setDiscoveryNavigation] = useState(() => new Map<WorkspaceTabId, DiscoveryInitialFilter>());
+  const [searchApplication, setSearchApplication] = useState<PendingSearchApplication>();
+  const pendingRequest = useRef<SearchConditionRequest>(undefined);
   const [searchMessage, setSearchMessage] = useState<string>();
   const [searchNotice, setSearchNotice] = useState<string>();
   const [captured, setCaptured] = useState<{ tabId: WorkspaceTabId; condition: ConditionResult<SearchConditionDefinition> }>();
   const bookmarkLibrary = useBookmarkLibrary(bookmarkRepository);
   const [masterImport, setMasterImport] = useState({ pending: 0, revision: 0 });
   const seenRequest = useRef<AppProps["searchConditionRequest"]>(undefined);
-  const settledRequest = useRef<SearchConditionRequest>(undefined);
   const noticeVersion = useRef(0);
   const { mutate: mutateBookmark } = bookmarkLibrary;
   const currentRequest = searchApplication?.request.profileId === selectedProfileId && !isProfileLoading
     && (searchApplication.source === undefined || searchApplication.source === searchConditionRequest) ? searchApplication.request : undefined;
-  const visibleTabId = isSearchPage(page) ? tabIds[page] : undefined;
-  const stagedTabId = currentRequest?.tabId !== visibleTabId ? currentRequest?.tabId : undefined;
+  const visibleTabId = isSearchPage(page) ? activeTabId : undefined;
+  const stagedTabId = currentRequest && currentRequest.tabId !== visibleTabId
+    && !openTabs.some(tab => tab.id === currentRequest.tabId) ? currentRequest.tabId : undefined;
   const captureVisibleTab = useCallback((condition: ConditionResult<SearchConditionDefinition> | undefined) => {
     if (visibleTabId === undefined) return;
     setCaptured(current => condition ? { tabId: visibleTabId, condition } : current?.tabId === visibleTabId ? undefined : current);
   }, [visibleTabId]);
-  const consumeDiscoveryNavigation = useCallback(() => {
-    setDiscoveryNavigation(current => current?.tabId === visibleTabId ? undefined : current);
-  }, [visibleTabId]);
+  const clearDiscoveryNavigation = useCallback((tabId: WorkspaceTabId) => {
+    setDiscoveryNavigation(current => {
+      if (!current.has(tabId)) return current;
+      const next = new Map(current);
+      next.delete(tabId);
+      return next;
+    });
+  }, []);
+
+  const activateTab = useCallback((id: WorkspaceTabId, focus = false) => {
+    const tab = tabs.get(id);
+    if (!tab) return;
+    recentTabs.current = [id, ...recentTabs.current.filter(previous => previous !== id)];
+    setActiveTabId(id);
+    setPage(tab.page);
+    setFocusRequest(focus ? { tabId: id } : undefined);
+  }, [tabs]);
+
+  const discardApplication = useCallback(() => {
+    const request = pendingRequest.current;
+    pendingRequest.current = undefined;
+    if (request) tabs.discardStaged(request.tabId);
+    setSearchApplication(undefined);
+  }, [tabs]);
+
+  function beginApplication(application: PendingSearchApplication) {
+    pendingRequest.current = application.request;
+    setSearchApplication(application);
+  }
   const trackMasterImport = useCallback(() => {
     setMasterImport(current => ({ ...current, pending: current.pending + 1 }));
     return (committed: boolean) => {
@@ -157,7 +191,7 @@ function AppContent({
   useLayoutEffect(() => {
     if (seenRequest.current === searchConditionRequest) return;
     seenRequest.current = searchConditionRequest;
-    setSearchApplication(undefined);
+    discardApplication();
     setSearchMessage(undefined);
     setSearchNotice(undefined);
     noticeVersion.current++;
@@ -168,22 +202,23 @@ function AppContent({
       setSearchMessage(searchConditionIssueMessage(decoded.issue));
     } else if (selectedProfileId === null || isProfileLoading) {
       setSearchMessage("プロフィールを選択してから検索条件を適用してください。");
-    } else if (decoded.value.page !== page) {
+    } else if (decoded.value.page !== page || visibleTabId === undefined) {
       setSearchMessage("検索条件の対象となる一覧を開いてから適用してください。");
     } else {
-      setSearchApplication({ source: searchConditionRequest,
-        request: { definition: decoded.value, profileId: selectedProfileId, tabId: tabIds[decoded.value.page] } });
+      beginApplication({ source: searchConditionRequest,
+        request: { definition: decoded.value, profileId: selectedProfileId, tabId: visibleTabId } });
     }
-  }, [searchConditionRequest, selectedProfileId, isProfileLoading, page, tabIds]);
+  }, [searchConditionRequest, selectedProfileId, isProfileLoading, page, visibleTabId, discardApplication]);
 
   useLayoutEffect(() => {
     if (searchApplication && (searchApplication.request.profileId !== selectedProfileId || isProfileLoading)) {
-      setSearchApplication(current => current === searchApplication ? undefined : current);
+      if (pendingRequest.current !== searchApplication.request) return;
+      discardApplication();
       if (searchApplication.source === undefined || searchApplication.source === searchConditionRequest) {
         setSearchMessage("プロフィールが切り替わったため、検索条件の適用を取り消しました。");
       }
     }
-  }, [searchApplication, searchConditionRequest, selectedProfileId, isProfileLoading]);
+  }, [searchApplication, searchConditionRequest, selectedProfileId, isProfileLoading, discardApplication]);
 
   useLayoutEffect(() => {
     if (selectedProfileId !== null) workspaceReads.invalidateProfile(selectedProfileId);
@@ -192,36 +227,42 @@ function AppContent({
     setSearchNotice(undefined);
   }, [selectedProfileId, tabs, workspaceReads]);
 
+  useLayoutEffect(() => {
+    if (focusRequest && "undo" in focusRequest) overviewUndo.current?.focus();
+  }, [focusRequest]);
+
   const settleSearchCondition = useCallback((request: SearchConditionRequest, result: ConditionResult<SearchTableState>) => {
-    if (request !== currentRequest || request === settledRequest.current || tabs.get(request.tabId)?.page !== request.definition.page) return;
-    settledRequest.current = request;
+    if (request !== currentRequest || request !== pendingRequest.current || tabs.get(request.tabId)?.page !== request.definition.page) return;
+    pendingRequest.current = undefined;
     setSearchApplication(undefined);
     if (result.status === "blocked") {
+      tabs.discardStaged(request.tabId);
       setSearchMessage(searchConditionIssueMessage(result.issue));
       return;
     }
     tabs.updateView(request.tabId, view => applySearchCondition(view, request.definition, result.value));
+    tabs.publishTab(request.tabId);
     setSearchMessage(undefined);
     if (!searchApplication?.bookmark) return;
 
     const { bookmark } = searchApplication;
-    setDiscoveryNavigation(undefined);
-    setPage(request.definition.page);
+    clearDiscoveryNavigation(request.tabId);
+    activateTab(request.tabId);
     setSearchNotice(`「${bookmark.name}」を適用しました。`);
     const version = noticeVersion.current;
     void mutateBookmark(repo => repo.markUsed(bookmark.id)).catch(() => {
       if (version === noticeVersion.current) setSearchMessage("検索条件は適用されましたが、最終使用日時を保存できませんでした。");
     });
-  }, [currentRequest, searchApplication, mutateBookmark, tabs]);
+  }, [currentRequest, searchApplication, mutateBookmark, tabs, clearDiscoveryNavigation, activateTab]);
 
   function cancelSearchApplication() {
     noticeVersion.current++;
-    setSearchApplication(undefined);
+    discardApplication();
     setSearchMessage(undefined);
     setSearchNotice(undefined);
   }
 
-  function openBookmark(bookmark: SearchBookmark) {
+  function openBookmark(bookmark: SearchBookmark, inNewTab = false) {
     cancelSearchApplication();
     if (bookmark.definition.status === "blocked") {
       setSearchMessage(searchConditionIssueMessage(bookmark.definition.issue));
@@ -236,29 +277,71 @@ function AppContent({
       setSearchMessage(searchConditionIssueMessage(definition.issue));
       return;
     }
-    setSearchApplication({ request: { definition: definition.value, profileId: selectedProfileId, tabId: tabIds[definition.value.page] }, bookmark });
+    const tabId = inNewTab || definition.value.page !== page ? tabs.open(definition.value.page, bookmark.name, true) : visibleTabId;
+    if (tabId === undefined) {
+      setSearchMessage(tabLimitMessage);
+      return;
+    }
+    beginApplication({ request: { definition: definition.value, profileId: selectedProfileId, tabId }, bookmark });
   }
 
   function navigate(nextPage: AppPage) {
     cancelSearchApplication();
-    setDiscoveryNavigation(undefined);
-    setPage(nextPage);
+    if (!isSearchPage(nextPage)) {
+      setFocusRequest(undefined);
+      setPage(nextPage);
+      return;
+    }
+    const recent = recentTabs.current.find(id => tabs.get(id)?.page === nextPage);
+    openTab(recent ?? tabs.open(nextPage));
+  }
+
+  function openTab(id: WorkspaceTabId | undefined, focus = false) {
+    if (id === undefined) setSearchMessage(tabLimitMessage);
+    else activateTab(id, focus);
+  }
+
+  function createTab(target: WorkspacePage) {
+    cancelSearchApplication();
+    openTab(tabs.open(target), true);
+  }
+
+  function selectTab(id: WorkspaceTabId) {
+    cancelSearchApplication();
+    activateTab(id);
+  }
+
+  function closeTab(id: WorkspaceTabId) {
+    if (!tabs.getOpenTabs().some(tab => tab.id === id)) return;
+    cancelSearchApplication();
+    recentTabs.current = recentTabs.current.filter(previous => previous !== id);
+    clearDiscoveryNavigation(id);
+    const adjacent = tabs.close(id);
+    if (adjacent !== undefined) activateTab(adjacent, true);
+    else {
+      setActiveTabId(undefined);
+      setPage("overview");
+      setFocusRequest({ undo: true });
+    }
+  }
+
+  function restoreTab() {
+    cancelSearchApplication();
+    openTab(tabs.restore(), true);
   }
 
   function openDiscoveries(filter: DiscoveryInitialFilter) {
     cancelSearchApplication();
-    // Phase 1 keeps one slot per page. An overview link starts a fresh discovery view.
-    const tabId = tabs.open("discoveries", "発見物");
-    setTabIds({ ...tabIds, discoveries: tabId });
-    tabs.close(tabIds.discoveries);
-    setDiscoveryNavigation({ tabId, filter });
-    setPage("discoveries");
+    const tabId = tabs.open("discoveries");
+    if (tabId !== undefined) setDiscoveryNavigation(current => new Map(current).set(tabId, filter));
+    openTab(tabId, true);
   }
 
   function searchPage(tabId: WorkspaceTabId) {
     const tab = tabs.get(tabId);
     if (!tab) return null;
     const visible = tabId === visibleTabId;
+    if (!visible && tabId !== stagedTabId) return <SearchPageSlot key={tabId} tabId={tabId} visible={false} />;
     const shared = {
       onOpenMasterData: () => navigate("master-data"),
       progressLinkService,
@@ -271,10 +354,10 @@ function AppContent({
       masterRevision: masterImport.revision,
       masterImporting: masterImport.pending > 0,
     };
-    return <SearchPageSlot key={tabId} visible={visible}>
+    return <SearchPageSlot key={tabId} tabId={tabId} visible={visible}>
       {tab.page === "quests" ? <QuestsPage {...shared} questRepository={questRepository} questProgressRepository={questProgressRepository} />
         : <DiscoveriesPage {...shared} discoveryRepository={discoveryRepository} discoveryProgressRepository={discoveryProgressRepository}
-          initialFilter={discoveryNavigation?.tabId === tabId ? discoveryNavigation.filter : undefined} onNavigationConsumed={consumeDiscoveryNavigation} />}
+          initialFilter={discoveryNavigation.get(tabId)} onNavigationConsumed={() => clearDiscoveryNavigation(tabId)} />}
     </SearchPageSlot>;
   }
 
@@ -282,15 +365,21 @@ function AppContent({
     <AppShell currentPage={page} onNavigate={navigate}>
         {searchMessage && <div className="error-banner" role="alert">{searchMessage}</div>}
         {page === "overview" ? (
-          <OverviewPage statsRepository={progressStatsRepository} onOpenDiscoveries={openDiscoveries} />
+          <>
+            {openTabs.length === 0 && tabs.closedName !== undefined && <button className="button secondary workspace-overview-undo"
+              ref={overviewUndo} type="button" title={`「${tabs.closedName}」を復元`} onClick={restoreTab}>元に戻す</button>}
+            <OverviewPage statsRepository={progressStatsRepository} onOpenDiscoveries={openDiscoveries} />
+          </>
         ) : page === "profiles" ? (
           <ProfilesPage />
         ) : isSearchPage(page) && visibleTabId !== undefined ? (
           <div className="bookmarked-workspace">
-            <BookmarkPanel page={page} captured={captured?.tabId === visibleTabId ? captured.condition : undefined} library={bookmarkLibrary} apply={openBookmark} />
+            <WorkspaceTabBar tabs={openTabs} activeId={visibleTabId} closedName={tabs.closedName} focusRequest={focusRequest}
+              onSelect={selectTab} onCreate={createTab} onRename={(id, name) => tabs.rename(id, name)} onClose={closeTab} onRestore={restoreTab} />
+            <BookmarkPanel page={page} tabId={visibleTabId} captured={captured?.tabId === visibleTabId ? captured.condition : undefined} library={bookmarkLibrary} apply={openBookmark} />
             {searchNotice && <div className="bookmark-application-status" role="status">{searchNotice}</div>}
             {stagedTabId !== undefined && <div className="bookmark-application-status" role="status">適用先の一覧を読み込んでいます…</div>}
-            {(stagedTabId === undefined ? [visibleTabId] : [visibleTabId, stagedTabId]).map(searchPage)}
+            {openTabs.map(tab => tab.id).concat(stagedTabId === undefined ? [] : [stagedTabId]).map(searchPage)}
           </div>
         ) : page === "master-data" ? (
           <MasterDataPage

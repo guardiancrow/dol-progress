@@ -246,8 +246,13 @@ describe("Quest UI", () => {
     expect(screen.getByText("「マスターデータ」画面でクエスト情報を取り込むと、クエストの一覧を表示できます。")).toBeInTheDocument();
     expect(screen.queryByText(/後続フェーズで提供/)).not.toBeInTheDocument();
     screen.getByRole("button", { name: "保存場所" }).focus();
-    await user.tab();
-    expect(screen.getByRole("button", { name: "ブックマーク" })).toHaveFocus();
+    for (const control of [screen.getByRole("tab", { name: "クエスト" }),
+      screen.getByRole("button", { name: "クエストを閉じる" }), screen.getByRole("button", { name: "新しいタブ" }),
+      screen.getByRole("button", { name: "タブ名を変更" }), screen.getByRole("button", { name: "ブックマーク" }),
+      screen.getByRole("tabpanel", { name: "クエスト" })]) {
+      await user.tab();
+      expect(control).toHaveFocus();
+    }
     await user.tab();
     expect(screen.getByRole("button", { name: "マスターデータを開く" })).toHaveFocus();
     await user.keyboard("{Enter}");

@@ -35,12 +35,13 @@ function summary({ definition }: SearchBookmark): string {
 
 interface BookmarkPanelProps {
   page: Page;
+  tabId: number;
   captured?: ConditionResult<SearchConditionDefinition>;
   library: BookmarkLibrary;
-  apply(bookmark: SearchBookmark): void;
+  apply(bookmark: SearchBookmark, inNewTab?: boolean): void;
 }
 
-export function BookmarkPanel({ page, captured, library, apply }: BookmarkPanelProps) {
+export function BookmarkPanel({ page, tabId, captured, library, apply }: BookmarkPanelProps) {
   const panelId = useId();
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<Page | "all">(page);
@@ -56,20 +57,21 @@ export function BookmarkPanel({ page, captured, library, apply }: BookmarkPanelP
   const editorOrigin = useRef<HTMLElement>(null);
   const composing = useRef(false);
   const writePending = useRef(false);
-  const displayedPage = useRef(page);
+  const displayedTab = useRef(tabId);
+  const panel = useRef<HTMLElement>(null);
   const condition = captured?.status === "ready" && captured.value.page === page ? captured.value : undefined;
 
   useLayoutEffect(() => {
-    if (displayedPage.current === page) return;
-    displayedPage.current = page;
+    if (displayedTab.current === tabId) return;
+    displayedTab.current = tabId;
     if (open) {
       editorOrigin.current = null;
       composing.current = false;
       setEdit(undefined);
       setOpen(false);
-      trigger.current?.focus({ preventScroll: true });
+      if (panel.current?.contains(document.activeElement)) trigger.current?.focus({ preventScroll: true });
     }
-  }, [page, open]);
+  }, [tabId, open]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -159,7 +161,7 @@ export function BookmarkPanel({ page, captured, library, apply }: BookmarkPanelP
   return <div className="bookmark-toolbar">
     <button ref={trigger} className="button secondary" type="button" aria-controls={panelId} aria-expanded={open} onClick={open ? close : openPanel}>ブックマーク</button>
     {notice && <span className="bookmark-notice" role={notice.error ? "alert" : "status"}>{notice.text}</span>}
-    <section id={panelId} hidden={!open} aria-label="ブックマーク管理" className="bookmark-panel" onKeyDown={panelKey}>
+    <section id={panelId} ref={panel} hidden={!open} aria-label="ブックマーク管理" className="bookmark-panel" onKeyDown={panelKey}>
       {open && <>
         <div className="bookmark-controls">
           <label>対象ページ<select value={target} onChange={event => setTarget(event.target.value as Page | "all")}>
@@ -204,6 +206,8 @@ export function BookmarkPanel({ page, captured, library, apply }: BookmarkPanelP
               <details className="bookmark-row-menu">
                 <summary aria-label={`${bookmark.name}の操作`}>操作</summary>
                 <div className="bookmark-actions">
+                  <button type="button" className="button secondary" disabled={busy || !!edit}
+                    onClick={() => { setNotice(undefined); apply(bookmark, true); }}>新しいタブで開く</button>
                   <button type="button" className="button secondary" disabled={busy || !!edit} onClick={event => start({ kind: "rename", bookmark }, event.currentTarget)}>名前を変更</button>
                   {bookmark.page === page && <button type="button" className="button secondary" disabled={busy || !!edit || !condition}
                     onClick={event => start({ kind: "update", bookmark }, event.currentTarget)}>現在の条件で更新</button>}
