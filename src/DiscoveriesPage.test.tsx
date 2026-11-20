@@ -23,6 +23,7 @@ import type { ProgressStats, DiscoveryCategoryProgressStats } from "./overview/t
 import { DiscoveryStateService, type DiscoveryState } from "./discoveries/stateService";
 import { discoveryStateReader, type DiscoveryStateSummary } from "./discoveries/stateReader";
 import { mockWorkspaceMedia } from "./components/layout/responsiveTestMedia";
+import type { DiscoverySearchCondition } from "./searchConditions/definition";
 
 vi.mock("./discoveries/stateReader", async (importOriginal) => ({...await importOriginal<typeof import("./discoveries/stateReader")>(),discoveryStateReader: {list: vi.fn().mockResolvedValue([])}}));
 
@@ -32,6 +33,98 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.mocked(discoveryStateReader.list).mockReset().mockResolvedValue([]);
 });
+
+describe("Discovery search condition application", () => {
+  it("keeps the UI-R6G map scope separate from reacquisition and waits only for the required data", async () => {
+    let finishRead!: (rows: DiscoveryStateSummary[]) => void;
+    vi.mocked(discoveryStateReader.list).mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }));
+    const repositories = setup([profile(1)], [
+      discovery(1, "書庫地図", { mapTarget: true }),
+      discovery(2, "陸地再調査報酬", { mapTarget: true }),
+      discovery(3, "地図以外"),
+    ]);
+    const { submit } = await renderDiscoveryConditions(repositories);
+    submit({ filters: { mapReacquisition: "related" } });
+    await screen.findByRole("table");
+    expect(bodyRows().map(row => row.querySelector(".quest-title")?.textContent)).toEqual(["書庫地図", "陸地再調査報酬"]);
+    expect(screen.queryByText("検索条件に必要なデータを読み込んでいます…")).not.toBeInTheDocument();
+
+    submit({ filters: { mapReacquisition: "candidate" }, sorting: [{ key: "name", direction: "desc" }] });
+    expect(await screen.findByText("検索条件に必要なデータを読み込んでいます…")).toBeInTheDocument();
+    expect(screen.getByLabelText("地図")).toHaveValue("related");
+    expect(bodyRows()).toHaveLength(2);
+    await act(async () => finishRead([historySummary(1, "unknown", { mapRelated: 1, discovered: 0 })]));
+    expect(screen.getByLabelText("地図")).toHaveValue("candidate");
+    expect(bodyRows().map(row => row.querySelector(".quest-title")?.textContent)).toEqual(["書庫地図"]);
+    expect(screen.getByRole("columnheader", { name: /発見物名/ })).toHaveAttribute("aria-sort", "descending");
+    expect(repositories.progress.markDiscovered).not.toHaveBeenCalled();
+    expect(repositories.progress.setReported).not.toHaveBeenCalled();
+    expect(repositories.progress.setCardOwned).not.toHaveBeenCalled();
+  });
+
+  it("keeps active conditions when a category disappears and resolves the same name again if it returns", async () => {
+    const category = { id: 7, name: "合成史跡", sortOrder: 5 };
+    const repositories = setup([profile(1)], [discovery(1, "合成発見", { category }), discovery(2, "ほかの発見")]);
+    const { submit, changeMaster } = await renderDiscoveryConditions(repositories);
+    submit({ search: "合成", filters: { category: { kind: "named", name: category.name }, status: "undiscovered" } });
+    expect(await screen.findByLabelText("分類")).toHaveValue("7");
+
+    changeMaster([discovery(2, "ほかの発見")]);
+    expect(await screen.findByText(/発見物の分類「合成史跡」/)).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "条件に一致する発見物がありません" })).not.toBeInTheDocument();
+
+    changeMaster([discovery(1, "合成発見", { category: { ...category, id: 24 } }), discovery(2, "ほかの発見")]);
+    expect(await screen.findByLabelText("分類")).toHaveValue("24");
+    expect(screen.getByRole("searchbox")).toHaveValue("合成");
+    expect(screen.getByLabelText("状態")).toHaveValue("undiscovered");
+    expect(bodyRows()).toHaveLength(1);
+
+    submit({ search: "該当なし" });
+    expect(screen.getByText("条件に一致する発見物がありません")).toBeInTheDocument();
+    expect(screen.getByRole("searchbox")).toHaveValue("該当なし");
+  });
+
+  it("keeps previous discovery conditions on an async read failure and rejects unsupported versions", async () => {
+    let failRead!: (error: Error) => void;
+    vi.mocked(discoveryStateReader.list).mockImplementationOnce(() => new Promise((_resolve, reject) => { failRead = reject; }));
+    const repositories = setup([profile(1)], [discovery(1, "合成発見")]);
+    const { submit } = await renderDiscoveryConditions(repositories);
+    submit({ search: "合成" });
+    expect(await screen.findByRole("searchbox")).toHaveValue("合成");
+    submit({ search: "別の条件", filters: { unreportedBreakdown: "unknown" } });
+    await screen.findByText("検索条件に必要なデータを読み込んでいます…");
+    await act(async () => failRead(new Error("synthetic read failure")));
+    expect(await screen.findByText("検索条件の適用に必要な未報告の内訳を取得できませんでした。")).toBeInTheDocument();
+    expect(screen.getByRole("searchbox")).toHaveValue("合成");
+    expect(screen.getByLabelText("未報告の内訳")).toHaveValue("all");
+
+    submit({ schemaVersion: 3 });
+    expect(screen.getByText(/この形式の検索条件は適用できません/)).toBeInTheDocument();
+    expect(screen.getByRole("searchbox")).toHaveValue("合成");
+  });
+});
+
+async function renderDiscoveryConditions(repositories: Repositories) {
+  const user = userEvent.setup();
+  let master = repositories.master;
+  let request: { definition: unknown } | undefined;
+  const app = () => <App profileRepository={repositories.profiles} discoveryRepository={master}
+    discoveryProgressRepository={repositories.progress} progressLinkService={repositories.link} searchConditionRequest={request} />;
+  const view = render(app());
+  await screen.findByRole("list", { name: "プロフィール一覧" });
+  await user.click(screen.getByRole("button", { name: "発見物" }));
+  return {
+    submit: (overrides: Partial<Omit<DiscoverySearchCondition, "schemaVersion">> & { schemaVersion?: number }) => {
+      request = { definition: { schemaVersion: 1, page: "discoveries", search: "", filters: {}, sorting: [], ...overrides } };
+      view.rerender(app());
+    },
+    changeMaster: (items: DiscoveryWithRelations[]) => {
+      master = new MockMaster(items);
+      view.rerender(app());
+    },
+  };
+}
 
 describe("Discovery UI", () => {
   it.each(["not_reported", "confirmed"] as const)("registers weather, confirms %s, removes progress and withdraws history with overview updates", async status => {

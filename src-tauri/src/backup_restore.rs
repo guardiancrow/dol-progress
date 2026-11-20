@@ -14,6 +14,7 @@ use tauri::{AppHandle, State};
 use tauri_plugin_dialog::{DialogExt, FilePath};
 
 use crate::active_database::ActiveDatabase;
+use crate::migrations::{MigrationIdentity, SUPPORTED_MIGRATION_PREFIX};
 
 const REQUIRED_COLUMNS_V1: &[(&str, &[&str])] = &[
     (
@@ -148,6 +149,20 @@ const REQUIRED_COLUMNS_V4: &[(&str, &[&str])] = &[
         ],
     ),
 ];
+
+const REQUIRED_COLUMNS_V5: &[(&str, &[&str])] = &[(
+    "search_bookmarks",
+    &[
+        "id",
+        "page",
+        "name",
+        "definition_json",
+        "is_favorite",
+        "created_at",
+        "updated_at",
+        "last_used_at",
+    ],
+)];
 
 static UNIQUE_ID: AtomicU64 = AtomicU64::new(0);
 
@@ -577,7 +592,7 @@ async fn validate_database(path: &Path) -> Result<i64, ValidationError> {
         });
     }
     validate_required_columns(&mut connection, REQUIRED_COLUMNS_V1).await?;
-    let version = validate_migration_history(&mut connection).await?;
+    let version = validate_migration_history(&mut connection, &SUPPORTED_MIGRATION_PREFIX).await?;
     if version >= 2 {
         validate_required_columns(&mut connection, REQUIRED_COLUMNS_V2).await?;
     }
@@ -586,6 +601,9 @@ async fn validate_database(path: &Path) -> Result<i64, ValidationError> {
     }
     if version >= 4 {
         validate_required_columns(&mut connection, REQUIRED_COLUMNS_V4).await?;
+    }
+    if version >= 5 {
+        validate_required_columns(&mut connection, REQUIRED_COLUMNS_V5).await?;
     }
     connection.close().await.map_err(|error| ValidationError {
         incompatible: false,
@@ -596,6 +614,7 @@ async fn validate_database(path: &Path) -> Result<i64, ValidationError> {
 
 async fn validate_migration_history(
     connection: &mut SqliteConnection,
+    supported_prefix: &[MigrationIdentity],
 ) -> Result<i64, ValidationError> {
     let rows = sqlx::query(
         "SELECT version, description, success, checksum FROM _sqlx_migrations ORDER BY version",
@@ -612,14 +631,14 @@ async fn validate_migration_history(
             detail: "Migration history is empty".into(),
         });
     }
-    if rows.len() > crate::migrations::SUPPORTED_MIGRATION_PREFIX.len() {
+    if rows.len() > supported_prefix.len() {
         return Err(ValidationError {
             incompatible: true,
             detail: "Migration history contains an unknown version".into(),
         });
     }
     for (index, row) in rows.iter().enumerate() {
-        let expected = &crate::migrations::SUPPORTED_MIGRATION_PREFIX[index];
+        let expected = &supported_prefix[index];
         let version: i64 = row.get("version");
         let description: String = row.get("description");
         let success: bool = row.get("success");
@@ -637,7 +656,7 @@ async fn validate_migration_history(
             });
         }
     }
-    Ok(crate::migrations::SUPPORTED_MIGRATION_PREFIX[rows.len() - 1].version)
+    Ok(supported_prefix[rows.len() - 1].version)
 }
 
 async fn validate_required_columns(
@@ -1120,7 +1139,7 @@ mod tests {
         crate::migrations::run(&pool).await.unwrap();
         crate::quest_facets::backfill_pool(&pool).await.unwrap();
         pool.close().await;
-        assert_eq!(validate_database(&current).await.unwrap(), 4);
+        assert_eq!(validate_database(&current).await.unwrap(), 5);
         assert_eq!(application_snapshot(&current).await, baseline);
         assert_eq!(
             scalar(
@@ -1148,7 +1167,7 @@ mod tests {
         )
         .await
         .unwrap();
-        crate::migrations::run(&pool).await.unwrap();
+        crate::migrations::run_through(&pool, 4).await.unwrap();
         sqlx::query("UPDATE discovery_progress SET reported=0, report_hold=1 WHERE profile_id=1 AND discovery_id=1")
             .execute(&pool).await.unwrap();
         sqlx::query("INSERT INTO discovery_reporting_history(profile_id,discovery_id,first_report_status) VALUES (2,1,'confirmed') ON CONFLICT(profile_id,discovery_id) DO UPDATE SET first_report_status='confirmed',legacy_merit_credit=0")
@@ -1178,6 +1197,167 @@ mod tests {
             .unwrap();
         connection.close().await.unwrap();
         assert!(validate_database(&current).await.is_err());
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    const BOOKMARK_ROWS: &str = "SELECT json_array(id,page,name,definition_json,is_favorite,created_at,updated_at,last_used_at) FROM search_bookmarks ORDER BY id";
+    const REPORT_HISTORY_ROWS: &str = "SELECT json_array(profile_id,discovery_id,first_report_status,legacy_merit_credit,updated_at) FROM discovery_reporting_history ORDER BY profile_id,discovery_id";
+    const REPORT_HOLD_ROWS: &str = "SELECT json_array(profile_id,discovery_id,report_hold) FROM discovery_progress ORDER BY profile_id,discovery_id";
+
+    #[tokio::test]
+    async fn restores_every_pre_bookmark_backup_without_carrying_forward_current_bookmarks() {
+        let directory = test_directory("pre-bookmark-backups");
+        for version in 1..=4 {
+            let source = directory.join(format!("legacy-{version}.db"));
+            let backup = directory.join(format!("legacy-{version}.sqlite3"));
+            let current = directory.join(format!("current-{version}.db"));
+            let legacy = ActiveDatabase::open(source.clone()).await.unwrap();
+            {
+                let pool = legacy.pool().await;
+                crate::migrations::run_through(&pool, version).await.unwrap();
+                sqlx::raw_sql(
+                    "INSERT INTO profiles (id, name, memo) VALUES (1, 'Synthetic profile', 'profile memo');
+                     INSERT INTO quests (id, gvdb_id, title, raw_row_json) VALUES (1, 101, 'Synthetic quest', '{}');
+                     INSERT INTO discoveries (id, gvdb_id, name, raw_row_json) VALUES (1, 201, 'Synthetic discovery', '{}');
+                     INSERT INTO quest_progress (profile_id, quest_id, memo) VALUES (1, 1, 'quest memo');
+                     INSERT INTO discovery_progress (profile_id, discovery_id, reported, card_owned, memo)
+                        VALUES (1, 1, 1, 0, 'discovery memo');",
+                ).execute(&*pool).await.unwrap();
+                if version == 4 {
+                    sqlx::query("INSERT INTO discovery_reporting_history (profile_id, discovery_id, first_report_status) VALUES (1, 1, 'confirmed')")
+                        .execute(&*pool).await.unwrap();
+                }
+            }
+            create_active_backup(&legacy, &backup).await.unwrap();
+            assert_eq!(validate_database(&backup).await.unwrap(), version);
+            let target = ActiveDatabase::open(current.clone()).await.unwrap();
+            {
+                let pool = target.pool().await;
+                crate::migrations::run(&pool).await.unwrap();
+                insert_bookmark(&pool, "Created after legacy backup").await;
+                pool.close().await;
+            }
+            drop(target);
+            restore_backup(&current, &backup).await.unwrap();
+            assert_eq!(validate_database(&current).await.unwrap(), version);
+            let target = ActiveDatabase::open_existing(current.clone()).await.unwrap();
+            {
+                let pool = target.pool().await;
+                crate::migrations::run(&pool).await.unwrap();
+                crate::quest_facets::backfill_pool(&pool).await.unwrap();
+                pool.close().await;
+            }
+            assert_eq!(validate_database(&current).await.unwrap(), 5);
+            assert!(snapshot_rows(&current, BOOKMARK_ROWS).await.is_empty());
+            for query in [
+                "SELECT json_array(id,name,memo,created_at,updated_at) FROM profiles",
+                "SELECT json_array(id,gvdb_id,title,raw_row_json,created_at,updated_at) FROM quests",
+                "SELECT json_array(id,gvdb_id,name,raw_row_json,created_at,updated_at) FROM discoveries",
+                "SELECT json_array(profile_id,quest_id,memo,updated_at) FROM quest_progress",
+                "SELECT json_array(profile_id,discovery_id,reported,card_owned,memo,updated_at) FROM discovery_progress",
+            ] {
+                assert_eq!(snapshot_rows(&current, query).await, snapshot_rows(&backup, query).await);
+            }
+            if version == 4 {
+                assert_eq!(snapshot_rows(&current, REPORT_HISTORY_ROWS).await, snapshot_rows(&backup, REPORT_HISTORY_ROWS).await);
+            }
+        }
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    async fn insert_bookmark(pool: &SqlitePool, name: &str) {
+        sqlx::query("INSERT INTO search_bookmarks (page,name,definition_json,is_favorite,last_used_at) VALUES ('quests', ?, ?, 1, '2026-01-02T00:00:00.000Z')")
+            .bind(name)
+            .bind(r#"{"schemaVersion":1,"page":"quests","search":"synthetic","filters":{"completed":false},"sorting":[]}"#)
+            .execute(pool).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn bookmark_migration_rolls_back_on_failure_then_preserves_the_complete_v4_data() {
+        let directory = test_directory("bookmark-migration-rollback");
+        let current = directory.join("current.db");
+        create_application_database(&current).await;
+        let database = ActiveDatabase::open_existing(current.clone()).await.unwrap();
+        let pool = database.pool().await;
+        crate::migrations::run_through(&pool, 4).await.unwrap();
+        sqlx::raw_sql(
+            "UPDATE discovery_progress SET reported=0, report_hold=1 WHERE profile_id=1 AND discovery_id=1;
+             UPDATE discovery_reporting_history SET first_report_status='confirmed', legacy_merit_credit=0
+                 WHERE profile_id=1 AND discovery_id=1;
+             CREATE TRIGGER search_bookmarks_before_favorite AFTER UPDATE ON profiles BEGIN SELECT 1; END;",
+        ).execute(&*pool).await.unwrap();
+        let baseline = application_snapshot(&current).await;
+        let history = snapshot_rows(&current, REPORT_HISTORY_ROWS).await;
+        let hold = snapshot_rows(&current, REPORT_HOLD_ROWS).await;
+        let migration_history = snapshot_rows(&current, "SELECT json_array(version,description,success,hex(checksum),installed_on,execution_time) FROM _sqlx_migrations ORDER BY version").await;
+
+        let failure = crate::migrations::run(&pool).await.unwrap_err();
+        assert!(failure.contains("search_bookmarks_before_favorite"));
+        assert_eq!(validate_database(&current).await.unwrap(), 4);
+        assert_eq!(scalar(&current, "SELECT COUNT(*) FROM sqlite_schema WHERE name IN ('search_bookmarks', 'search_bookmarks_before_insert')").await, 0);
+        assert_eq!(application_snapshot(&current).await, baseline);
+        assert_eq!(snapshot_rows(&current, REPORT_HISTORY_ROWS).await, history);
+        assert_eq!(snapshot_rows(&current, REPORT_HOLD_ROWS).await, hold);
+
+        sqlx::query("DROP TRIGGER search_bookmarks_before_favorite").execute(&*pool).await.unwrap();
+        crate::migrations::run(&pool).await.unwrap();
+        assert_eq!(validate_database(&current).await.unwrap(), 5);
+        assert!(snapshot_rows(&current, BOOKMARK_ROWS).await.is_empty());
+        assert_eq!(application_snapshot(&current).await, baseline);
+        assert_eq!(snapshot_rows(&current, REPORT_HISTORY_ROWS).await, history);
+        assert_eq!(snapshot_rows(&current, REPORT_HOLD_ROWS).await, hold);
+        assert_eq!(snapshot_rows(&current, "SELECT json_array(version,description,success,hex(checksum),installed_on,execution_time) FROM _sqlx_migrations WHERE version <= 4 ORDER BY version").await, migration_history);
+        assert_eq!(integrity(&current).await, ("ok".to_string(), 0));
+        pool.close().await;
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[tokio::test]
+    async fn v5_backups_restore_bookmarks_and_are_rejected_by_the_v050_migration_prefix() {
+        let directory = test_directory("bookmark-v5-backup");
+        let current = directory.join("current.db");
+        let backup = directory.join("snapshot.sqlite3");
+        create_application_database(&current).await;
+        let database = ActiveDatabase::open_existing(current.clone()).await.unwrap();
+        {
+            let pool = database.pool().await;
+            crate::migrations::run(&pool).await.unwrap();
+            insert_bookmark(&pool, "Saved before backup").await;
+        }
+        let expected = snapshot_rows(&current, BOOKMARK_ROWS).await;
+        let business = application_snapshot(&current).await;
+        create_active_backup(&database, &backup).await.unwrap();
+        assert_eq!(validate_database(&backup).await.unwrap(), 5);
+        assert_eq!(snapshot_rows(&backup, BOOKMARK_ROWS).await, expected);
+
+        let mut old_validation_connection = open_database(&backup).await.unwrap();
+        let error = validate_migration_history(&mut old_validation_connection, &SUPPORTED_MIGRATION_PREFIX[..4]).await.unwrap_err();
+        assert!(error.incompatible);
+        assert_eq!(error.detail, "Migration history contains an unknown version");
+        old_validation_connection.close().await.unwrap();
+        {
+            let pool = database.pool().await;
+            assert!(matches!(crate::migrations::run_through(&pool, 4).await, Err(sqlx::migrate::MigrateError::VersionMissing(5))));
+            sqlx::query("UPDATE search_bookmarks SET name='Changed after backup', is_favorite=0, last_used_at=NULL")
+                .execute(&*pool).await.unwrap();
+            insert_bookmark(&pool, "Added after backup").await;
+        }
+        database.with_maintenance(|path| {
+            let backup = backup.clone();
+            let path = path.to_path_buf();
+            async move { restore_backup(&path, &backup).await.map_err(|error| error.detail) }
+        }).await.unwrap();
+        assert_eq!(snapshot_rows(&current, BOOKMARK_ROWS).await, expected);
+        assert_eq!(application_snapshot(&current).await, business);
+        assert_eq!(integrity(&current).await, ("ok".to_string(), 0));
+
+        let mut connection = open_database(&backup).await.unwrap();
+        sqlx::query("ALTER TABLE search_bookmarks DROP COLUMN last_used_at").execute(&mut connection).await.unwrap();
+        assert!(validate_database(&backup).await.unwrap_err().detail.contains("last_used_at"));
+        sqlx::query("DROP TABLE search_bookmarks").execute(&mut connection).await.unwrap();
+        connection.close().await.unwrap();
+        assert!(validate_database(&backup).await.unwrap_err().detail.contains("Required table is missing: search_bookmarks"));
+        database.pool().await.close().await;
         fs::remove_dir_all(directory).unwrap();
     }
 
@@ -1270,7 +1450,7 @@ mod tests {
         let database = directory.join("future.sqlite3");
         create_application_database(&database).await;
         let mut connection = open_database(&database).await.unwrap();
-        sqlx::query("UPDATE _sqlx_migrations SET version = 5 WHERE version = 3")
+        sqlx::query("UPDATE _sqlx_migrations SET version = 6 WHERE version = 3")
             .execute(&mut connection)
             .await
             .unwrap();

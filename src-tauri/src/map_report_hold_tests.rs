@@ -47,14 +47,7 @@ async fn legacy() -> SqlitePool {
         .execute(&pool)
         .await
         .unwrap();
-    let mut definitions = migrations::all().0;
-    definitions.truncate(3);
-    sqlx::migrate::Migrator::new(MigrationList(definitions))
-        .await
-        .unwrap()
-        .run(&pool)
-        .await
-        .unwrap();
+    migrations::run_through(&pool, 3).await.unwrap();
     sqlx::raw_sql("INSERT INTO profiles (id,name,memo,created_at,updated_at) VALUES (1,'A','memo','created','updated'),(2,'B',NULL,'c','u');
         INSERT INTO discovery_categories(id,name) VALUES (1,'史跡'),(2,'レリック');
         INSERT INTO quests(id,gvdb_id,title,offer_method,is_active,raw_row_json) VALUES
@@ -119,8 +112,8 @@ async fn migration_preserves_every_old_column_and_all_profile_aggregates() {
             reports(&pool, profile).await,
         ));
     }
-    migrations::run(&pool).await.unwrap();
-    migrations::run(&pool).await.unwrap();
+    migrations::run_through(&pool, 4).await.unwrap();
+    migrations::run_through(&pool, 4).await.unwrap();
     assert_eq!(snapshot(&pool).await, before);
     assert_eq!(
         sqlx::query_scalar::<_, i64>(
@@ -165,7 +158,9 @@ async fn migration_failure_rolls_back_schema_credit_and_history() {
     let pool = legacy().await;
     let before = snapshot(&pool).await;
     let mut definitions = migrations::all().0;
-    definitions.last_mut().unwrap().sql = Box::leak(
+    definitions.retain(|definition| definition.version <= 4);
+    let migration = definitions.iter_mut().find(|definition| definition.version == 4).unwrap();
+    migration.sql = Box::leak(
         format!(
             "{}\nSELECT * FROM deliberately_missing_table;",
             migrations::MAP_REPORT_HOLD_SCHEMA
@@ -202,7 +197,7 @@ async fn migration_failure_rolls_back_schema_credit_and_history() {
             .unwrap(),
         3
     );
-    migrations::run(&pool).await.unwrap();
+    migrations::run_through(&pool, 4).await.unwrap();
 }
 
 #[tokio::test]

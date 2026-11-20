@@ -44,6 +44,7 @@ PRAGMA foreign_keys = ON;
 | `quest_progress` | ユーザー | プロフィール別クエスト達成 |
 | `discovery_progress` | ユーザー | プロフィール別発見・報告・カード状態 |
 | `discovery_reporting_history` | ユーザー | 初回報告確認と旧勲功値の引継ぎ資格 |
+| `search_bookmarks` | ユーザー | 両一覧の検索条件をDB単位で保存 |
 | `master_import_history` | 管理 | マスターファイル取込履歴 |
 
 ## 4. 状態表現の不変条件
@@ -338,10 +339,28 @@ backfillでは実装しない。
 
 `dataset + file_sha256` をUNIQUEとする。
 
+## 5.10 `search_bookmarks`
+
+005で空のテーブルを追加する。既存テーブルの行と001〜004のマイグレーション履歴を保持する。
+
+| 列 | 型 | NULL | 説明 |
+|---|---|---|---|
+| `id` | INTEGER | NO | 自動採番のPK。削除したIDは再利用しない |
+| `page` | TEXT | NO | `quests` または `discoveries`。登録後は固定 |
+| `name` | TEXT | NO | 前後空白を除いた表示名 |
+| `definition_json` | TEXT | NO | `schemaVersion` と `page` を含む条件定義 |
+| `is_favorite` | INTEGER | NO | 0または1。既定値は0 |
+| `created_at` | TEXT | NO | 作成日時 |
+| `updated_at` | TEXT | NO | 名称・条件・お気に入りの更新日時 |
+| `last_used_at` | TEXT | YES | 最終使用日時。未使用時はNULL |
+
+`UNIQUE (page, name)` で同じ対象ページの同名を拒否する。上限は両ページ合計50件、お気に入り合計5件とし、追加とお気に入り登録を行う文と同じSQLiteトランザクション内でトリガーが検査する。上限に達しても、既存行の削除や上書きは利用者の操作で行う。リポジトリは `RETURNING` で書き込みと更新後の行の取得を一つの文で行う。日時にはUTCのISO 8601を使用する。
+
+保存前にPhase 1の検証を通す。DBの制約はJSONの構文、正の整数の形式バージョン、対象ページの一致を確認する。読取時は条件定義を行ごとに検証し、未知の形式・条件は適用不可として扱い、元のJSONを保持する。最終使用日時だけを記録する操作では `updated_at` を変更しない。プロフィール・マスターへの外部キーは設けない。マスター取込の更新対象からも除く。
+
 ## 6. 現行DDL
 
-新規DBではmigration 001から004を順に適用し、本節と等価なスキーマを作成する。既存DBには
-既適用migrationを編集せず、追加migrationで列を加える。
+新規DBではmigration 001から005を順に適用する。004の追加分は「Map-C1：004による互換移行」、005のテーブルとトリガーのDDLは [005_search_bookmarks.sql](../src-tauri/migrations/005_search_bookmarks.sql) に示す。
 
 ```sql
 PRAGMA foreign_keys = ON;

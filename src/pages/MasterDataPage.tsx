@@ -14,11 +14,12 @@ interface MasterDataPageProps {
   statusRepository: MasterDataStatusRepositoryPort;
   importService: MasterImportServicePort;
   backupRestoreService: BackupRestoreServicePort;
+  onImportStarted?(): (committed: boolean) => void;
 }
 
 const DATASETS: ImportDataset[] = ["quests", "discoveries"];
 
-export function MasterDataPage({ statusRepository, importService, backupRestoreService }: MasterDataPageProps) {
+export function MasterDataPage({ statusRepository, importService, backupRestoreService, onImportStarted }: MasterDataPageProps) {
   const [status, setStatus] = useState<MasterDataStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -76,8 +77,12 @@ export function MasterDataPage({ statusRepository, importService, backupRestoreS
     setImportingDataset(dataset);
     setErrors((current) => ({ ...current, [dataset]: undefined }));
     setResults((current) => ({ ...current, [dataset]: undefined }));
+    const finishImport = onImportStarted?.();
+    let committed = false;
     try {
       const result = await importService.importPrepared(selection);
+      committed = true;
+      finishImport?.(true);
       setResults((current) => ({ ...current, [dataset]: result }));
       setPrepared((current) => ({ ...current, [dataset]: undefined }));
       await loadStatus();
@@ -85,6 +90,7 @@ export function MasterDataPage({ statusRepository, importService, backupRestoreS
       console.error("Master import failed", error);
       setErrors((current) => ({ ...current, [dataset]: displayImportError(error) }));
     } finally {
+      if (!committed) finishImport?.(false);
       setImportingDataset(null);
     }
   }

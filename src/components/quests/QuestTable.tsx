@@ -1,5 +1,5 @@
 import { WorkspaceFilters } from "../layout/WorkspaceFilters";
-import { matchesOfferCity, offerCityDisplay, offerCityFilterValue, validOfferCities } from "../../quests/offerCityUi";
+import { matchesOfferCity, offerCityDisplay, offerCityFilterValue } from "../../quests/offerCityUi";
 import { useWorkspaceView } from "../layout/WorkspaceView";
 import { DiscoveryStateControl } from "../discoveries/ReportHoldControls";
 import type { ReportHoldController } from "../../discoveries/useReportHold";
@@ -19,27 +19,25 @@ import {
   rowPaginationFeature,
   rowSortingFeature,
   tableFeatures,
-  type ColumnFiltersState,
-  type PaginationState,
-  type SortingState,
   useTable,
 } from "@tanstack/react-table";
 
 import type { QuestRowViewModel } from "../../quests/types";
+import type { SearchConditionApplication, SearchConditionApplicationProps } from "../../searchConditions/application";
+import { useBookmarkCapture } from "../../searchConditions/useBookmarkCapture";
+import { DISCOVERY_CATEGORY_PREFIX, questSearchOptions, RANK_COLUMN_ID, type QuestSearchOptions } from "../../searchConditions/tableState";
+import { useSearchTableState } from "../../searchConditions/useSearchTableState";
 import { MasterInfoButton, MasterInfoProvider } from "../MasterInfoPopover";
 import { getRequiredSkillRank } from "../../quests/requiredSkillRank";
 import { getMapOfferCities } from "../../quests/mapOfferCities";
 import {
-  buildOfferMethodOptions,
   isOfferMethodSelectionAvailable,
   matchesOfferMethod,
   offerMethodOptionValue,
 } from "../../quests/offerMethods";
 
-const RANK_COLUMN_ID = "selectedRequiredSkillRank";
 type CompletionFilter = "all" | "completed" | "incomplete";
 type PrerequisiteFilter = "all" | "satisfied" | "unsatisfied" | "unknown" | "none";
-const DISCOVERY_CATEGORY_PREFIX = "category:";
 const tableFeatureSet = tableFeatures({
   columnFilteringFeature,
   columnVisibilityFeature,
@@ -56,6 +54,9 @@ const columnHelper = createColumnHelper<
 const collator = new Intl.Collator("ja", { numeric: true });
 
 interface QuestTableProps {
+  onBookmarkCapture?: SearchConditionApplicationProps["onBookmarkCapture"];
+  searchCondition?: SearchConditionApplication;
+  searchOptions?: QuestSearchOptions;
   prerequisiteDetails?: {
     data: PrerequisiteDetailsData;
     masterGeneration: number;
@@ -72,11 +73,12 @@ interface QuestTableProps {
   onToggleCompletion(questId: number, completed: boolean): Promise<void>;
 }
 
-export function QuestTable({ rows, successorFilterReady = false, paginationResetKey, onToggleCompletion, reportHold, progressReview, onReloadReview, reviewCompletion, prerequisiteDetails }: QuestTableProps) {
+export function QuestTable({ rows, successorFilterReady = false, paginationResetKey, onToggleCompletion, reportHold, progressReview, onReloadReview, reviewCompletion, prerequisiteDetails, searchCondition, searchOptions, onBookmarkCapture }: QuestTableProps) {
   const controlsVisible = useWorkspaceView()?.controlsVisible ?? true;
   const reportHoldRef = useRef(reportHold);
   reportHoldRef.current = reportHold;
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const { columnFilters, sorting, pagination, setColumnFilters, setSorting, setPagination } = useSearchTableState(() => [], searchCondition?.applied);
+  const protectedSearch = Boolean(searchCondition?.applied || searchCondition?.suspended);
   const successorFilterSuspended = !successorFilterReady && columnFilters.some(filter => filter.id === "successorStatus");
   const [reviewExpanded, setReviewExpanded] = useState(false);
   const reviewId = useId();
@@ -172,11 +174,6 @@ export function QuestTable({ rows, successorFilterReady = false, paginationReset
     if (onlyCandidates && progressReview?.status === "ready" && lastTableFocus.current && !lastTableFocus.current.isConnected
       && document.activeElement === document.body) reviewButtonRef.current?.focus({ preventScroll: true });
   }, [progressReview, onlyCandidates]);
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 50,
-  });
   const selectedSkill = String(columnFilters.find((filter) => filter.id === "requiredSkills")?.value ?? "");
   const hasRank = useMemo(
     () => selectedSkill !== "" && rows.some((row) =>
@@ -188,12 +185,12 @@ export function QuestTable({ rows, successorFilterReady = false, paginationReset
     : "none";
 
   useEffect(() => {
-    if (!hasRank) {
+    if (!hasRank && !protectedSearch) {
       setSorting((current) => current.some((item) => item.id === RANK_COLUMN_ID)
         ? current.filter((item) => item.id !== RANK_COLUMN_ID)
         : current);
     }
-  }, [hasRank]);
+  }, [hasRank, protectedSearch, setSorting]);
 
   const columns = useMemo(
     () =>
@@ -397,8 +394,12 @@ export function QuestTable({ rows, successorFilterReady = false, paginationReset
         progressReview: false,
         [RANK_COLUMN_ID]: false,
       } },
-      onColumnFiltersChange: setColumnFilters,
+      onColumnFiltersChange: (updater) => {
+        searchCondition?.forgetApplied();
+        setColumnFilters(updater);
+      },
       onSortingChange: (updater) => {
+        searchCondition?.forgetApplied();
         setSorting((current) => {
           const next = typeof updater === "function" ? updater(current) : updater;
           return next.some((item) => item.id !== RANK_COLUMN_ID)
@@ -418,54 +419,30 @@ export function QuestTable({ rows, successorFilterReady = false, paginationReset
     }),
   );
 
-  const offerMethodOptions = useMemo(
-    () => buildOfferMethodOptions(rows.map((row) => row.offerMethod)),
-    [rows],
-  );
+  const captureScope = useMemo(() => ({ page: "quests" as const, options: searchOptions ?? questSearchOptions(rows) }), [rows, searchOptions]);
+  useBookmarkCapture(onBookmarkCapture, captureScope, { columnFilters, sorting }, !searchCondition?.suspended);
+  const { offerMethods: offerMethodOptions, cities: offerCities, skills: requiredSkills, categories: discoveryCategories } = captureScope.options;
   const selectedOfferMethod = String(table.getColumn("offerMethod")?.getFilterValue() ?? "all");
   useEffect(() => {
-    if (isOfferMethodSelectionAvailable(selectedOfferMethod, offerMethodOptions)) return;
+    if (protectedSearch || isOfferMethodSelectionAvailable(selectedOfferMethod, offerMethodOptions)) return;
     table.getColumn("offerMethod")?.setFilterValue(undefined);
     table.setPageIndex(0);
-  }, [offerMethodOptions, selectedOfferMethod, table]);
-  const offerCities = useMemo(
-    () => uniqueValues(rows.flatMap((row) => validOfferCities(row.offerCities))),
-    [rows],
-  );
+  }, [offerMethodOptions, selectedOfferMethod, table, protectedSearch]);
   const selectedOfferCity = String(table.getColumn("offerCity")?.getFilterValue() ?? "");
   useEffect(() => {
-    if (selectedOfferCity === "" || selectedOfferCity === "unset"
+    if (protectedSearch || selectedOfferCity === "" || selectedOfferCity === "unset"
       || offerCities.some(city => offerCityFilterValue(city) === selectedOfferCity)) return;
     table.getColumn("offerCity")?.setFilterValue(undefined);
     table.setPageIndex(0);
-  }, [offerCities, selectedOfferCity, table]);
-  const requiredSkills = useMemo(
-    () => uniqueValues(rows.flatMap((row) => row.requiredSkillNames)),
-    [rows],
-  );
-  const discoveryCategories = useMemo(() => {
-    const categories = new Map<number, { id: number; name: string; sortOrder: number }>();
-    for (const row of rows) {
-      for (const discovery of row.discoveries) {
-        if (discovery.categoryId !== null && discovery.categoryName !== null) {
-          categories.set(discovery.categoryId, {
-            id: discovery.categoryId,
-            name: discovery.categoryName,
-            sortOrder: discovery.categorySortOrder ?? Number.MAX_SAFE_INTEGER,
-          });
-        }
-      }
-    }
-    return [...categories.values()].sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
-  }, [rows]);
+  }, [offerCities, selectedOfferCity, table, protectedSearch]);
   const selectedDiscoveryFilter = String(table.getColumn("discoveries")?.getFilterValue() ?? "all");
   useEffect(() => {
-    if (!selectedDiscoveryFilter.startsWith(DISCOVERY_CATEGORY_PREFIX)) return;
+    if (protectedSearch || !selectedDiscoveryFilter.startsWith(DISCOVERY_CATEGORY_PREFIX)) return;
     const categoryId = Number(selectedDiscoveryFilter.slice(DISCOVERY_CATEGORY_PREFIX.length));
     if (discoveryCategories.some((category) => category.id === categoryId)) return;
     table.getColumn("discoveries")?.setFilterValue(undefined);
     table.setPageIndex(0);
-  }, [discoveryCategories, selectedDiscoveryFilter, table]);
+  }, [discoveryCategories, selectedDiscoveryFilter, table, protectedSearch]);
   const filteredRows = table.getPrePaginatedRowModel().rows;
   const matchingReviewCount = filteredRows.filter(row => candidateIds.has(row.original.id)).length;
   const filteredCompletedCount = filteredRows.filter(
@@ -482,14 +459,14 @@ export function QuestTable({ rows, successorFilterReady = false, paginationReset
   }, [paginationResetKey]);
 
   useEffect(() => {
-    if (successorFilterSuspended) return;
+    if (successorFilterSuspended || searchCondition?.suspended) return;
     const lastValidPage = pageCount === 0 ? 0 : pageCount - 1;
     setPagination((current) =>
       current.pageIndex > lastValidPage
         ? { ...current, pageIndex: lastValidPage }
         : current,
     );
-  }, [pageCount, successorFilterSuspended]);
+  }, [pageCount, successorFilterSuspended, searchCondition?.suspended]);
 
   function setFilter(columnId: string, value: unknown) {
     table.getColumn(columnId)?.setFilterValue(value);
@@ -524,7 +501,7 @@ export function QuestTable({ rows, successorFilterReady = false, paginationReset
       resetKey={JSON.stringify([paginationResetKey, columnFilters, sorting, pagination])}
       hint="備考を表示"
     >
-    <div className="workspace-table" ref={workspaceRef} onFocusCapture={event => {
+    <div className="workspace-table" hidden={searchCondition?.suspended} ref={workspaceRef} onFocusCapture={event => {
       detailHadFocus.current = detailsOpen && !!reviewPanelRef.current?.contains(event.target);
       lastTableFocus.current = event.target instanceof HTMLElement && event.target.closest("table") ? event.target : null;
     }}>
@@ -831,10 +808,6 @@ function FilterSelect({ label, value, options, onChange }: FilterSelectProps) {
       </select>
     </label>
   );
-}
-
-function uniqueValues(values: string[]): string[] {
-  return [...new Set(values)].sort((left, right) => collator.compare(left, right));
 }
 
 function completionFilterValue(value: unknown): CompletionFilter {
