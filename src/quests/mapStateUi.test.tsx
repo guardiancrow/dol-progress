@@ -21,7 +21,13 @@ it("filters map states alongside existing filters and keeps multi-related maps a
   const service={get:vi.fn<()=>Promise<DiscoveryState>>(),update:vi.fn<()=>Promise<DiscoveryState>>()};
   const deps={reader,service};
   const update=vi.fn(async()=>undefined);
-  function Harness(){const controller=useReportHold(1,()=>undefined,deps);return <QuestTable reportHold={controller} rows={[row(1,"通常未報告地図",[1]),row(2,"維持中地図",[2]),row(3,"通常依頼",[1],"冒険クエスト"),row(4,"関連なし地図",[]),row(5,"混在地図",[1,2])]} paginationResetKey={1} onToggleCompletion={update} />;}
+  function Harness() {
+    const controller = useReportHold(1, () => undefined, deps);
+    return <QuestTable reportHold={controller} rows={[
+      row(1, "通常未報告地図", [1]), row(2, "維持中地図", [2]), row(3, "通常依頼", [1], "冒険クエスト"),
+      row(4, "関連なし地図", []), row(5, "混在地図", [1, 2]), row(6, "再調査報酬の例", [1], "陸地再調査時の報酬"),
+    ]} paginationResetKey={1} onToggleCompletion={update} />;
+  }
   const user=userEvent.setup();render(<Harness/>);
   expect(await screen.findByRole("combobox",{name:"維持中地図の発見・報告状態"})).toHaveValue("unreported");
   expect(screen.getByRole("columnheader",{name:"地図の状態"})).toBeInTheDocument();
@@ -29,6 +35,15 @@ it("filters map states alongside existing filters and keeps multi-related maps a
   expect(normal.querySelector('[data-column="mapState"]')).toHaveTextContent(/^—$/);
   expect(within(normal).getByLabelText("地図の状態の操作はありません")).toHaveTextContent("—");
   expect(normal.querySelector('[data-column="mapState"] select, [data-column="mapState"] button')).toBeNull();
+  const resurvey = screen.getByText("再調査報酬の例").closest("tr")!;
+  expect(within(resurvey).getByLabelText("地図の状態の操作はありません")).toHaveTextContent("—");
+  expect(resurvey.querySelector('[data-column="mapState"] select, [data-column="mapState"] button')).toBeNull();
+  const offerMethod = screen.getByRole("combobox", { name: "オファー方法" });
+  await user.selectOptions(offerMethod, "group:map");
+  expect(screen.queryByText("再調査報酬の例")).not.toBeInTheDocument();
+  await user.selectOptions(offerMethod, "method:陸地再調査時の報酬");
+  expect(screen.getByText("再調査報酬の例")).toBeInTheDocument();
+  await user.selectOptions(offerMethod, "all");
   expect(screen.getByText("関連なし地図").closest("tr")!.querySelector('[data-column="mapState"]')).toHaveTextContent("要確認");
   expect(document.querySelector('th[data-column="completed"]')).toHaveTextContent(/^達成(?:\s|$)/);
   expect(Array.from(screen.getByLabelText("地図の入手").querySelectorAll("option")).map(o=>[o.value,o.textContent])).toEqual([
@@ -44,6 +59,7 @@ it("filters map states alongside existing filters and keeps multi-related maps a
   await user.selectOptions(screen.getByLabelText("地図の入手"),"suppressed");
   expect(screen.getByText("通常未報告地図")).toBeInTheDocument();
   expect(screen.getByText("維持中地図")).toBeInTheDocument();
+  expect(screen.queryByText("再調査報酬の例")).not.toBeInTheDocument();
   await user.type(screen.getByLabelText("クエスト名／地図名を検索"),"維持中");
   await user.selectOptions(screen.getByLabelText("達成状態"),"incomplete");
   expect(screen.getByText("条件に一致するクエストがありません")).toBeInTheDocument();

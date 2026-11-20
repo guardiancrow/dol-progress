@@ -30,6 +30,7 @@ export interface AdventureMeritStats {
 
 export interface DiscoveryCategoryProgressStats {
   unreportedBreakdown?: UnreportedBreakdown;
+  mapDiscoveries: { total: number; undiscovered: number };
   categoryId: number;
   categoryName: string;
   sortOrder: number;

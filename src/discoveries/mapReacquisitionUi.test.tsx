@@ -13,7 +13,7 @@ import type { DiscoveryRowViewModel } from "./types";
 afterEach(cleanup);
 function row(id:number, discovered:boolean, reported=false, mapRelated=true):DiscoveryRowViewModel {
   return {id,name:`発見${id}`,description:null,notes:null,category:{id:1,name:"史跡",sortOrder:1},rank:1,era:null,points:1,difficulty:1,experience:100,
-    relatedQuests:[],mapRelated,canReport:true,hasCard:true,automaticReporting:false,effectiveReported:reported,
+    relatedQuests:[],mapTarget:mapRelated,mapRelated,canReport:true,hasCard:true,automaticReporting:false,effectiveReported:reported,
     status:!discovered?"undiscovered":reported?"reported":"unreported",updating:false,
     progress:discovered?{profileId:1,discoveryId:id,reported,cardOwned:true,memo:"keep",updatedAt:"p"}:null};
 }
@@ -51,21 +51,28 @@ it("lists unreported map discoveries, combines existing filters and adds no colu
 it("filters unrelated discoveries and excludes every map status without changing progress", async () => {
   const user = userEvent.setup();
   const rows = [row(1,true), row(2,true,true), {...row(3,false),mapNeedsReview:true},
-    row(4,true,false,false), {...row(5,false,false,false),canReport:false,hasCard:false}];
+    row(4,true,false,false), {...row(5,false,false,false),canReport:false,hasCard:false},
+    {...row(6,true,false,false),mapTarget:true}];
   const before = structuredClone(rows);
   const handlers = {onToggleDiscovered:vi.fn(),onSetReported:vi.fn(),onSetCardOwned:vi.fn()};
   render(<DiscoveryTable rows={rows} paginationResetKey={1} {...handlers}/>);
-  expect(screen.getByLabelText("地図").closest("label")).toHaveAttribute("title", expect.stringContaining("すべてのマスター関係"));
+  expect(screen.getByLabelText("地図")).toHaveAccessibleDescription(/7学問の地図と陸地再調査時の報酬.*再入手候補・抑止・判定保留は、7学問の地図/);
   await user.selectOptions(screen.getByLabelText("地図"), "unrelated");
-  expect(screen.getByText("5件中 2件表示")).toBeInTheDocument();
-  for (const id of [1,2,3]) expect(screen.queryByText(`発見${id}`)).not.toBeInTheDocument();
+  expect(screen.getByText("6件中 2件表示")).toBeInTheDocument();
+  for (const id of [1,2,3,6]) expect(screen.queryByText(`発見${id}`)).not.toBeInTheDocument();
   for (const id of [4,5]) expect(screen.getByText(`発見${id}`)).toBeInTheDocument();
   await user.selectOptions(screen.getByLabelText("地図"), "related");
-  expect(screen.getByText("5件中 3件表示")).toBeInTheDocument();
-  for (const id of [1,2,3]) expect(screen.getByText(`発見${id}`)).toBeInTheDocument();
+  expect(screen.getByText("6件中 4件表示")).toBeInTheDocument();
+  for (const id of [1,2,3,6]) expect(screen.getByText(`発見${id}`)).toBeInTheDocument();
   for (const id of [4,5]) expect(screen.queryByText(`発見${id}`)).not.toBeInTheDocument();
+  for (const [value, id] of [["suppressed", 1], ["candidate", 2], ["review", 3]] as const) {
+    await user.selectOptions(screen.getByLabelText("地図"), value);
+    expect(screen.getByText("6件中 1件表示")).toBeInTheDocument();
+    expect(screen.getByText(`発見${id}`)).toBeInTheDocument();
+    expect(screen.queryByText("発見6")).not.toBeInTheDocument();
+  }
   await user.selectOptions(screen.getByLabelText("地図"), "all");
-  expect(screen.getByText("5件中 5件表示")).toBeInTheDocument();
+  expect(screen.getByText("6件中 6件表示")).toBeInTheDocument();
   expect(rows).toEqual(before);
   for (const handler of Object.values(handlers)) expect(handler).not.toHaveBeenCalled();
 });
@@ -97,7 +104,7 @@ it("combines unrelated with search, category, status and card filters", async ()
 
 it("resets pages and counts when switching unrelated and related, preserving sorting and page size", async () => {
   const user = userEvent.setup();
-  const rows = Array.from({length:120}, (_,i) => row(i+1,true,false,i<60));
+  const rows = Array.from({length:120}, (_,i) => ({...row(i+1,true,false,i<59),mapTarget:i<60}));
   render(<DiscoveryTable rows={rows} paginationResetKey={1} {...actions}/>);
   await user.click(screen.getByRole("button", {name:"次ページ"}));
   expect(screen.getByText("2 / 3ページ")).toBeInTheDocument();

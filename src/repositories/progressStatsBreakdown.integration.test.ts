@@ -6,6 +6,7 @@ import history from "../../src-tauri/migrations/004_map_report_hold.sql?raw";
 import type { DatabaseClient } from "../db/client";
 import type { ProgressStats } from "../overview/types";
 import { ProgressStatsRepository } from "./progressStatsRepository";
+import { DiscoveryRepository } from "./discoveryRepository";
 import { DiscoveryStateReader } from "../discoveries/stateReader";
 import { currentUnreportedHistory } from "../discoveries/unreportedBreakdown";
 import { mapDiscoveryReviewReason, mapDiscoveryStatus } from "../discoveries/mapReacquisition";
@@ -64,7 +65,7 @@ function fixture(seed = true) {
     return JSON.stringify(["profiles", "discovery_progress", "discovery_reporting_history", "quest_progress"]
       .map((table) => db.prepare(`SELECT * FROM ${table} ORDER BY 1,2`).all({})));
   }
-  return { db, read, calls, snapshot, reader: new DiscoveryStateReader(async () => client) };
+  return { db, read, calls, snapshot, reader: new DiscoveryStateReader(async () => client), master: new DiscoveryRepository(async () => client) };
 }
 
 function partition(stats: ProgressStats, expected: [number, number, number, number]) {
@@ -297,6 +298,137 @@ describe.skipIf(sqlite === null)("current-unreported history groups with actual 
     } finally { f.db.close(); }
   });
 
+  it("counts eligible map discoveries by unique ID and category without changing the existing aggregates", async () => {
+    const f = fixture();
+    try {
+      f.db.exec(`
+        INSERT INTO discovery_categories(id,name) VALUES(3,'地理');
+        UPDATE discoveries SET category_id=3 WHERE id=14;
+        INSERT INTO quests(id,gvdb_id,title,offer_method,is_active,raw_row_json) VALUES
+          (6,6,'inactive map','天文学',0,'{}'),(7,7,'unlinked map','天文学',1,'{}'),
+          (8,8,'non-matching method','地理学 ',1,'{}');
+        INSERT INTO quest_discoveries VALUES(6,1),(8,6);
+      `);
+      const before = await f.read();
+      expect(before.categories.find(category => category.categoryId === 1)?.mapDiscoveries).toEqual({ total: 1, undiscovered: 0 });
+      expect(before.categories.find(category => category.categoryId === 3)?.mapDiscoveries).toEqual({ total: 0, undiscovered: 0 });
+
+      // Map 1 relates to discoveries in several categories, including inactive and uncategorized discoveries.
+      f.db.exec("INSERT INTO quest_discoveries VALUES(1,7),(1,8),(1,9),(1,13),(1,14);");
+      const snapshot = f.snapshot();
+      const after = await f.read();
+      const byCategory = (stats: ProgressStats) => new Map(stats.categories.map(category => [category.categoryId, category.mapDiscoveries]));
+      expect(byCategory(after)).toEqual(new Map([
+        [1, { total: 2, undiscovered: 1 }], [2, { total: 1, undiscovered: 0 }], [3, { total: 1, undiscovered: 1 }],
+      ]));
+      expect(byCategory(await f.read(2))).toEqual(new Map([
+        [1, { total: 2, undiscovered: 2 }], [2, { total: 1, undiscovered: 1 }], [3, { total: 1, undiscovered: 1 }],
+      ]));
+      expect(after.discoveries).toEqual(before.discoveries);
+      expect(after.quests).toEqual(before.quests);
+      expect(after.adventureMerit).toEqual(before.adventureMerit);
+      const existingCategoryCounts = (stats: ProgressStats) => stats.categories.map(({ total, discovered, unreported, unreportedBreakdown, cardOwned }) => ({
+        total, discovered, unreported, unreportedBreakdown, cardOwned,
+      }));
+      expect(existingCategoryCounts(after)).toEqual(existingCategoryCounts(before));
+
+      f.db.exec("DELETE FROM quest_discoveries WHERE quest_id=2 AND discovery_id=11;");
+      expect(await f.read()).toEqual(after);
+      expect(f.snapshot()).toBe(snapshot);
+    } finally { f.db.close(); }
+  });
+
+  it("shares land resurvey membership between the Overview and discovery filters without changing operation summaries", async () => {
+    const f = fixture();
+    try {
+      f.db.exec(`
+        INSERT INTO discovery_categories(id,name) VALUES(3,'地理');
+        UPDATE discoveries SET category_id=3 WHERE id=14;
+        INSERT INTO quests(id,gvdb_id,title,offer_method,offer_city,is_active,raw_row_json) VALUES
+          (6,6,'resurvey map','冒険クエスト',NULL,1,'{}'),
+          (7,7,'inactive resurvey','陸地再調査時の報酬',NULL,0,'{}'),
+          (8,8,'unlinked resurvey','陸地再調査時の報酬',NULL,1,'{}'),
+          (9,9,'other map','収奪・陸戦地図',NULL,1,'{}'),
+          (10,10,'non-matching method','陸地再調査時の報酬（合成別方式）',NULL,1,'{}');
+        INSERT INTO quest_discoveries VALUES(6,7),(6,8),(6,9),(6,11),(6,12),(6,13),(6,14),(7,1),(9,6),(10,2);
+        INSERT INTO discovery_progress(profile_id,discovery_id,reported) VALUES(2,7,1);
+      `);
+      const before = await f.read();
+      const beforeListStates = await f.reader.list(1);
+      const beforeMaster = await f.master.listWithRelations();
+      const beforeProgress = f.snapshot();
+      const byCategory = (stats: ProgressStats) => new Map(stats.categories.map(({ categoryId, mapDiscoveries }) => [categoryId, mapDiscoveries]));
+      expect(byCategory(before)).toEqual(new Map([
+        [1, { total: 1, undiscovered: 0 }], [2, { total: 0, undiscovered: 0 }], [3, { total: 0, undiscovered: 0 }],
+      ]));
+
+      f.db.exec("UPDATE quests SET offer_method='陸地再調査時の報酬' WHERE id=6;");
+      const after = await f.read();
+      expect(byCategory(after)).toEqual(new Map([
+        [1, { total: 3, undiscovered: 1 }], [2, { total: 1, undiscovered: 0 }], [3, { total: 1, undiscovered: 1 }],
+      ]));
+      expect(byCategory(await f.read(2))).toEqual(new Map([
+        [1, { total: 3, undiscovered: 2 }], [2, { total: 1, undiscovered: 1 }], [3, { total: 1, undiscovered: 1 }],
+      ]));
+      const withoutMapCounts = ({ categories, ...stats }: ProgressStats) => ({
+        ...stats, categories: categories.map(({ mapDiscoveries, ...category }) => category),
+      });
+      expect(withoutMapCounts(after)).toEqual(withoutMapCounts(before));
+      const afterListStates = await f.reader.list(1);
+      expect(afterListStates).toEqual(beforeListStates);
+      expect(afterListStates.find(row => row.id === 7)).toMatchObject({ mapRelated: 0, mapNeedsReview: 0, discovered: 0 });
+      expect((await f.reader.list(2)).find(row => row.id === 7)).toMatchObject({ mapRelated: 0, mapNeedsReview: 0, discovered: 1 });
+      expect(afterListStates.find(row => row.id === 11)).toMatchObject({ mapRelated: 1, mapNeedsReview: 0 });
+      const callsBeforeMaster = f.calls.length;
+      const afterMaster = await f.master.listWithRelations();
+      expect(f.calls).toHaveLength(callsBeforeMaster + 1);
+      const targets = (rows: typeof afterMaster) => rows.filter(row => row.discovery.isActive && row.mapTarget);
+      expect(targets(beforeMaster).map(row => row.discovery.id)).toEqual([11]);
+      expect(targets(afterMaster).map(row => row.discovery.id)).toEqual([7, 8, 11, 12, 13, 14]);
+      expect(targets(afterMaster).find(row => row.discovery.id === 13)?.category).toBeNull();
+      expect(targets(afterMaster).find(row => row.discovery.id === 7)?.relatedQuests).toEqual([
+        { id: 6, title: "resurvey map", notes: null, offerCity: null },
+      ]);
+      expect(targets(afterMaster).find(row => row.discovery.id === 11)?.relatedQuests.map(quest => quest.id)).toEqual([1, 2, 6]);
+      const withoutTarget = (rows: typeof afterMaster) => rows.map(({ mapTarget, ...row }) => row);
+      expect(withoutTarget(afterMaster)).toEqual(withoutTarget(beforeMaster));
+      for (const [categoryId, counts] of byCategory(after)) {
+        expect(targets(afterMaster).filter(row => row.category?.id === categoryId)).toHaveLength(counts.total);
+      }
+      expect(f.snapshot()).toBe(beforeProgress);
+    } finally { f.db.close(); }
+  });
+
+  it("uses only current discovery rows to update land resurvey progress for the selected profile", async () => {
+    const f = fixture();
+    try {
+      f.db.exec(`
+        INSERT INTO quests(id,gvdb_id,title,offer_method,raw_row_json) VALUES(6,6,'resurvey map','陸地再調査時の報酬','{}');
+        INSERT INTO quest_discoveries VALUES(6,7);
+      `);
+      const counts = async (profileId: number) => (await f.read(profileId)).categories.find(category => category.categoryId === 1)?.mapDiscoveries;
+      expect(await counts(1)).toEqual({ total: 2, undiscovered: 1 });
+      expect(await counts(2)).toEqual({ total: 2, undiscovered: 2 });
+
+      f.db.exec("INSERT INTO discovery_progress(profile_id,discovery_id,reported) VALUES(1,7,0);");
+      expect(await counts(1)).toEqual({ total: 2, undiscovered: 0 });
+      for (const change of [
+        "UPDATE discovery_progress SET reported=1 WHERE profile_id=1 AND discovery_id=7;",
+        "UPDATE discovery_progress SET reported=0 WHERE profile_id=1 AND discovery_id=7;",
+        "UPDATE discovery_reporting_history SET first_report_status='unknown' WHERE profile_id=1 AND discovery_id=7;",
+        "UPDATE discovery_progress SET card_owned=1 WHERE profile_id=1 AND discovery_id=7;",
+        "INSERT INTO quest_progress(profile_id,quest_id) VALUES(1,6);",
+      ]) {
+        f.db.exec(change);
+        expect(await counts(1)).toEqual({ total: 2, undiscovered: 0 });
+      }
+
+      f.db.exec("DELETE FROM discovery_progress WHERE profile_id=1 AND discovery_id=7;");
+      expect(await counts(1)).toEqual({ total: 2, undiscovered: 1 });
+      expect(await counts(2)).toEqual({ total: 2, undiscovered: 2 });
+    } finally { f.db.close(); }
+  });
+
   it("tracks first report, rediscovery, re-report, history corrections and profile switching", async () => {
     const f = fixture();
     try {
@@ -335,14 +467,36 @@ describe.skipIf(sqlite === null)("current-unreported history groups with actual 
     const f = fixture();
     try {
       const before = await f.read();
+      expect(before.categories.find(category => category.categoryId === 1)?.mapDiscoveries).toEqual({ total: 1, undiscovered: 0 });
       f.db.exec("DELETE FROM discovery_progress WHERE profile_id=1 AND discovery_id=11;");
       const removed = await f.read();
       partition(removed, [8, 3, 2, 3]);
       expect(removed.adventureMerit).toEqual(before.adventureMerit);
+      expect(removed.categories.find(category => category.categoryId === 1)?.mapDiscoveries).toEqual({ total: 1, undiscovered: 1 });
       f.db.exec("INSERT INTO discovery_progress(profile_id,discovery_id,reported) VALUES(1,11,0);");
       const registered = await f.read();
       partition(registered, [9, 3, 3, 3]);
       expect(registered.adventureMerit).toEqual(before.adventureMerit);
+      expect(registered.categories.find(category => category.categoryId === 1)?.mapDiscoveries).toEqual({ total: 1, undiscovered: 0 });
+    } finally { f.db.close(); }
+  });
+
+  it("keeps the map count independent of reporting, repeat reporting, history and other progress flags", async () => {
+    const f = fixture();
+    try {
+      const mapCount = (stats: ProgressStats) => stats.categories.find(category => category.categoryId === 1)?.mapDiscoveries;
+      const before = await f.read();
+      expect(mapCount(before)).toEqual({ total: 1, undiscovered: 0 });
+      for (const change of [
+        "UPDATE discovery_progress SET reported=1 WHERE profile_id=1 AND discovery_id=11;",
+        "UPDATE discovery_progress SET reported=0 WHERE profile_id=1 AND discovery_id=11;",
+        "UPDATE discovery_reporting_history SET first_report_status='unknown' WHERE profile_id=1 AND discovery_id=11;",
+        "UPDATE discovery_progress SET card_owned=1 WHERE profile_id=1 AND discovery_id=11;",
+        "INSERT INTO quest_progress(profile_id,quest_id) VALUES(1,1),(1,2);",
+      ]) {
+        f.db.exec(change);
+        expect(mapCount(await f.read())).toEqual(mapCount(before));
+      }
     } finally { f.db.close(); }
   });
 

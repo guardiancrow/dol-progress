@@ -254,7 +254,7 @@ export function DiscoveriesPage({
 
   const rows = useMemo<DiscoveryRowViewModel[]>(
     () =>
-      discoveries.filter(({ discovery }) => discovery.isActive).map(({ discovery, category, relatedQuests, automaticReporting }) => {
+      discoveries.filter(({ discovery }) => discovery.isActive).map(({ discovery, category, relatedQuests, automaticReporting, mapTarget }) => {
         const progress = progressById.get(discovery.id) ?? null;
         const capabilities = discoveryCapabilities(category);
         const effectiveReported = capabilities.canReport && progress !== null && (automaticReporting || progress.reported);
@@ -264,6 +264,7 @@ export function DiscoveriesPage({
           firstReportStatus: reporting?.firstReportStatus,
           historyPresent: reporting ? reporting.historyUpdatedAt !== null : undefined,
           legacyMeritCredit: Boolean(reporting?.legacyMeritCredit),
+          mapTarget,
           mapRelated: Boolean(reportHold.summaries.get(discovery.id)?.mapRelated),
           mapNeedsReview: Boolean(reportHold.summaries.get(discovery.id)?.mapNeedsReview),
           automaticReporting: capabilities.canReport && automaticReporting,

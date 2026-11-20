@@ -4,6 +4,7 @@ import { handleDatabaseErrors } from "../db/errors";
 import type { Discovery, DiscoveryWithRelations } from "../domain/models";
 import { mapDiscovery, type DiscoveryRow } from "./mappers";
 import { automaticReportingDiscoveriesSql } from "../discoveries/automaticReporting";
+import { MAP_TARGET_OFFER_METHODS, mapTargetDiscoveriesSql } from "../discoveries/mapTargets";
 
 const DISCOVERY_SELECT = `
   SELECT id,
@@ -62,8 +63,12 @@ export class DiscoveryRepository {
     return handleDatabaseErrors("discovery.listWithRelations", async () => {
       const database = await this.databaseProvider();
       const rows = await database.select<DiscoveryWithRelationsRow[]>(`
+        WITH map_discoveries AS (
+          ${mapTargetDiscoveriesSql(1)}
+        )
         SELECT d.id,
                d.id IN (${automaticReportingDiscoveriesSql}) AS automaticReporting,
+               md.discovery_id IS NOT NULL AS mapTarget,
                d.gvdb_id AS gvdbId,
                d.category_id AS categoryId,
                d.name,
@@ -89,15 +94,18 @@ export class DiscoveryRepository {
         LEFT JOIN discovery_categories c ON c.id = d.category_id
         LEFT JOIN quest_discoveries qd ON qd.discovery_id = d.id
         LEFT JOIN quests q ON q.id = qd.quest_id AND q.is_active = 1
-        ORDER BY d.source_order IS NULL, d.source_order, d.id, q.id`);
+        LEFT JOIN map_discoveries md ON md.discovery_id = d.id
+        ORDER BY d.source_order IS NULL, d.source_order, d.id, q.id`, [...MAP_TARGET_OFFER_METHODS]);
 
       const grouped = new Map<number, DiscoveryWithRelations>();
       for (const row of rows) {
         let item = grouped.get(row.id);
         if (!item) {
+          const { mapTarget, ...discoveryRow } = row;
           item = {
             automaticReporting: row.automaticReporting === 1,
-            discovery: mapDiscovery(row),
+            mapTarget: mapTarget === 1,
+            discovery: mapDiscovery(discoveryRow),
             category:
               row.categoryId === null || row.categoryName === null
                 ? null
@@ -151,6 +159,7 @@ export class DiscoveryRepository {
 
 interface DiscoveryWithRelationsRow extends DiscoveryRow {
   automaticReporting: number;
+  mapTarget: number;
   categoryName: string | null;
   categorySortOrder: number | null;
   relatedQuestId: number | null;

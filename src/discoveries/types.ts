@@ -36,6 +36,7 @@ export interface DiscoveryRowViewModel {
   firstReportStatus?: import("./stateService").FirstReportStatus;
   historyPresent?: boolean;
   legacyMeritCredit?: boolean;
+  readonly mapTarget: boolean;
   mapRelated?: boolean;
   mapNeedsReview?: boolean;
   automaticReporting: boolean;
