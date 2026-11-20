@@ -192,6 +192,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   background: var(--workspace-sheet-surface);
 }
 .bookmark-page-slot { min-width: 0; min-height: 0; flex: 1 1 auto; }
+.workspace-overview-panel { overflow: auto; padding: .35rem .25rem .75rem; }
 .workspace-tabs { flex: 0 0 auto; min-width: 0; }
 .workspace-tabs-line {
   position: relative;
@@ -242,7 +243,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .workspace-tab-editor input { width: 100%; min-width: 0; }
 .workspace-tab-editor [role="alert"] { color: #942323; }
 @media (max-width: 44rem) { .bookmarked-workspace { --workspace-tab-max: 9rem; } }
-.workspace-overview-undo { margin-bottom: .6rem; }
+.workspace-empty-undo { margin-bottom: .6rem; }
 .bookmark-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem .7rem; flex: 0 0 auto; margin-bottom: .55rem; min-width: 0; }
 .bookmark-panel { flex-basis: 100%; min-width: 0; max-height: min(23rem, 45vh); overflow: auto; padding: .65rem; border: 1px solid #dce5ed; border-radius: .5rem; background: #fff; }
 .bookmark-controls, .bookmark-actions { display: flex; align-items: end; flex-wrap: wrap; gap: .45rem; min-width: 0; }

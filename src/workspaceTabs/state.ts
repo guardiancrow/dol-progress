@@ -23,15 +23,24 @@ export function firstPage(view: SearchTableView): SearchTableView {
 
 export type UpdateSearchTableView = (update: (current: SearchTableView) => SearchTableView) => void;
 
-export interface WorkspaceTabInfo {
+interface SearchTabInfo {
   id: WorkspaceTabId;
   page: WorkspacePage;
   name: string;
 }
 
-interface WorkspaceTab extends WorkspaceTabInfo {
+interface OverviewTabInfo {
+  id: WorkspaceTabId;
+  page: "overview";
+  name: "概要";
+}
+
+interface SearchTab extends SearchTabInfo {
   view: SearchTableView;
 }
+
+export type WorkspaceTabInfo = SearchTabInfo | OverviewTabInfo;
+type WorkspaceTab = SearchTab | OverviewTabInfo;
 
 // Owned by one App instance. IDs are never reused, so a delayed update cannot address a replacement tab.
 export class WorkspaceTabs {
@@ -46,18 +55,26 @@ export class WorkspaceTabs {
   get closedName() { return this.closed?.tab.name; }
 
   open(page: WorkspacePage, name = workspacePageNames[page], staged = false): WorkspaceTabId | undefined {
-    if (this.tabs.size >= MAX_WORKSPACE_TABS) return undefined;
+    if (!this.hasSearchCapacity()) return undefined;
     const id = this.nextId++;
     this.tabs.set(id, { id, page, name, view: createSearchTableView() });
     if (!staged) this.publishTab(id);
     return id;
   }
 
+  openOverview(): WorkspaceTabId {
+    const existing = this.overviewId();
+    if (existing !== undefined) return existing;
+    const id = this.nextId++;
+    this.tabs.set(id, { id, page: "overview", name: "概要" });
+    this.publishTab(id);
+    return id;
+  }
+
   publishTab(id: WorkspaceTabId) {
     const tab = this.tabs.get(id);
     if (!tab || this.openTabs.some(item => item.id === id)) return;
-    const { page, name } = tab;
-    this.openTabs = [...this.openTabs, { id, page, name }];
+    this.openTabs = [...this.openTabs, this.tabInfo(tab)];
     this.notify();
   }
 
@@ -68,14 +85,19 @@ export class WorkspaceTabs {
   rename(id: WorkspaceTabId, name: string) {
     const normalized = name.trim();
     const tab = this.tabs.get(id);
-    if (!tab || !normalized || tab.name === normalized) return;
+    if (!tab || tab.page === "overview" || !normalized || tab.name === normalized) return;
     this.tabs.set(id, { ...tab, name: normalized });
-    this.openTabs = this.openTabs.map(item => item.id === id ? { ...item, name: normalized } : item);
+    this.openTabs = this.openTabs.map(item => item.id === id && item.page !== "overview" ? { ...item, name: normalized } : item);
     this.notify();
   }
 
   get(id: WorkspaceTabId): Readonly<WorkspaceTab> | undefined {
     return this.tabs.get(id);
+  }
+
+  getSearchView(id: WorkspaceTabId): SearchTableView | undefined {
+    const tab = this.tabs.get(id);
+    return tab?.page === "overview" ? undefined : tab?.view;
   }
 
   subscribe = (listener: () => void) => {
@@ -85,7 +107,7 @@ export class WorkspaceTabs {
 
   updateView(id: WorkspaceTabId, update: Parameters<UpdateSearchTableView>[0]) {
     const tab = this.tabs.get(id);
-    if (!tab) return;
+    if (!tab || tab.page === "overview") return;
     const view = update(tab.view);
     if (view === tab.view) return;
     this.tabs.set(id, { ...tab, view });
@@ -94,7 +116,9 @@ export class WorkspaceTabs {
 
   resetPagination() {
     for (const id of this.tabs.keys()) this.updateView(id, firstPage);
-    if (this.closed) this.closed.tab = { ...this.closed.tab, view: firstPage(this.closed.tab.view) };
+    if (this.closed && this.closed.tab.page !== "overview") {
+      this.closed.tab = { ...this.closed.tab, view: firstPage(this.closed.tab.view) };
+    }
   }
 
   close(id: WorkspaceTabId) {
@@ -109,14 +133,33 @@ export class WorkspaceTabs {
   }
 
   restore(): WorkspaceTabId | undefined {
-    if (!this.closed || this.tabs.size >= MAX_WORKSPACE_TABS) return undefined;
+    if (!this.closed) return undefined;
     const { tab, index } = this.closed;
-    const id = this.nextId++;
-    this.tabs.set(id, { ...tab, id });
-    this.openTabs = [...this.openTabs.slice(0, index), { id, page: tab.page, name: tab.name }, ...this.openTabs.slice(index)];
+    if (tab.page !== "overview" && !this.hasSearchCapacity()) return undefined;
+    const existing = tab.page === "overview" ? this.overviewId() : undefined;
     this.closed = undefined;
+    if (existing !== undefined) {
+      this.notify();
+      return existing;
+    }
+    const id = this.nextId++;
+    const restored = { ...tab, id };
+    this.tabs.set(id, restored);
+    this.openTabs = [...this.openTabs.slice(0, index), this.tabInfo(restored), ...this.openTabs.slice(index)];
     this.notify();
     return id;
+  }
+
+  private overviewId() {
+    return this.openTabs.find(tab => tab.page === "overview")?.id;
+  }
+
+  private hasSearchCapacity() {
+    return this.tabs.size - (this.overviewId() === undefined ? 0 : 1) < MAX_WORKSPACE_TABS;
+  }
+
+  private tabInfo(tab: WorkspaceTab): WorkspaceTabInfo {
+    return tab.page === "overview" ? tab : { id: tab.id, page: tab.page, name: tab.name };
   }
 
   private notify() {

@@ -216,7 +216,10 @@ describe("Profile UI", () => {
     expect(
       screen.getByRole("heading", { name: "進捗を表示するプロフィールを選択してください" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("main")).not.toHaveClass("main-content--workspace");
+    expect(screen.getByRole("tabpanel", { name: "概要" })).toContainElement(
+      screen.getByRole("heading", { name: "進捗を表示するプロフィールを選択してください" }),
+    );
+    expect(screen.queryByRole("button", { name: /検索・フィルター/ })).not.toBeInTheDocument();
   });
 });
 

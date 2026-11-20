@@ -14,13 +14,14 @@ describe("workspace tab state", () => {
     tabs.updateView(middle, view => ({ ...view, columnFilters: [{ id: "status", value: "unreported" }],
       sorting: [{ id: "name", desc: true }], pagination: { pageIndex: 2, pageSize: 100 } }));
     const before = tabs.get(middle);
+    const beforeView = tabs.getSearchView(middle);
     expect(tabs.close(middle)).toBe(last);
     const restored = tabs.restore()!;
     expect(restored).not.toBe(middle);
     expect(tabs.get(restored)).toEqual({ ...before, id: restored, name: "復元対象" });
     expect(tabs.getOpenTabs().map(tab => tab.id)).toEqual([first, restored, last]);
-    tabs.updateView(middle, () => tabs.get(first)!.view);
-    expect(tabs.get(restored)?.view).toEqual(before?.view);
+    tabs.updateView(middle, () => tabs.getSearchView(first)!);
+    expect(tabs.getSearchView(restored)).toEqual(beforeView);
     expect(tabs.restore()).toBeUndefined();
   });
 
@@ -46,16 +47,16 @@ describe("workspace tab state", () => {
 
     expect(first).not.toBe(second);
     expect(tabs.get(first)).toMatchObject({ id: first, page: "quests", name: "初期タブ", view: { columnFilters: draft } });
-    expect(tabs.get(second)?.view.columnFilters).toEqual([]);
-    expect(captureSearchCondition({ page: "quests", options: questSearchOptions([]) }, tabs.get(first)!.view).status).toBe("blocked");
-    expect(tabs.get(first)?.view.columnFilters).toEqual(draft);
+    expect(tabs.getSearchView(second)?.columnFilters).toEqual([]);
+    expect(captureSearchCondition({ page: "quests", options: questSearchOptions([]) }, tabs.getSearchView(first)!).status).toBe("blocked");
+    expect(tabs.getSearchView(first)?.columnFilters).toEqual(draft);
     tabs.close(first);
     const replacement = tabs.open("quests", "新規")!;
     expect(replacement).not.toBe(first);
     tabs.updateView(first, view => ({ ...view, columnFilters: draft }));
     expect(tabs.get(first)).toBeUndefined();
-    expect(tabs.get(second)?.view.columnFilters).toEqual([]);
-    expect(tabs.get(replacement)?.view.columnFilters).toEqual([]);
+    expect(tabs.getSearchView(second)?.columnFilters).toEqual([]);
+    expect(tabs.getSearchView(replacement)?.columnFilters).toEqual([]);
   });
 
   it("publishes one replacement for a validated condition and preserves page size", () => {
@@ -66,7 +67,7 @@ describe("workspace tab state", () => {
     tabs.updateView(id, view => ({ ...view, columnFilters: [{ id: "offerCity", value: "city:旧" }],
       sorting: [{ id: "title", desc: false }], pagination: { pageIndex: 4, pageSize: 100 } }));
     const published: unknown[] = [];
-    const unsubscribe = tabs.subscribe(() => published.push(tabs.get(id)?.view));
+    const unsubscribe = tabs.subscribe(() => published.push(tabs.getSearchView(id)));
     const resolved = { columnFilters: [{ id: "title", value: "合成" }, { id: "completed", value: true }],
       sorting: [{ id: "difficulty", desc: true }] };
 
@@ -82,10 +83,43 @@ describe("workspace tab state", () => {
     tabs.updateView(quest, view => ({ ...view, pagination: { pageIndex: 3, pageSize: 100 } }));
     tabs.updateView(discovery, view => ({ ...view, columnFilters: [{ id: "status", value: "unreported" }],
       sorting: [{ id: "name", desc: true }], pagination: { pageIndex: 5, pageSize: 50 } }));
-    const before = tabs.get(discovery)!.view;
+    const before = tabs.getSearchView(discovery)!;
 
     tabs.resetPagination();
-    expect(tabs.get(quest)?.view.pagination).toEqual({ pageIndex: 0, pageSize: 100 });
-    expect(tabs.get(discovery)?.view).toEqual({ ...before, pagination: { pageIndex: 0, pageSize: 50 } });
+    expect(tabs.getSearchView(quest)?.pagination).toEqual({ pageIndex: 0, pageSize: 100 });
+    expect(tabs.getSearchView(discovery)).toEqual({ ...before, pagination: { pageIndex: 0, pageSize: 50 } });
+  });
+
+  it("allows one fixed overview independently of six search slots including a staged one", () => {
+    const tabs = new WorkspaceTabs();
+    for (let i = 0; i < 5; i++) tabs.open("quests");
+    const staged = tabs.open("discoveries", "検証中", true)!;
+    const overview = tabs.openOverview();
+    expect(tabs.openOverview()).toBe(overview);
+    expect(tabs.open("quests")).toBeUndefined();
+    expect(tabs.getOpenTabs()).toHaveLength(6);
+    tabs.publishTab(staged);
+    expect(tabs.getOpenTabs()).toHaveLength(7);
+    tabs.rename(overview, "変更なし");
+    tabs.updateView(overview, () => { throw new Error("overview has no search view"); });
+    expect(tabs.get(overview)).toEqual({ id: overview, page: "overview", name: "概要" });
+    expect(tabs.getSearchView(overview)).toBeUndefined();
+    tabs.close(overview);
+    const restored = tabs.restore();
+    expect(restored).toBeDefined();
+    expect(restored).not.toBe(overview);
+    expect(tabs.getOpenTabs()).toHaveLength(7);
+  });
+
+  it("restores an overview to its existing tab when reopened before undo", () => {
+    const tabs = new WorkspaceTabs();
+    const first = tabs.openOverview();
+    tabs.close(first);
+    expect(tabs.getOpenTabs()).toHaveLength(0);
+    const next = tabs.openOverview();
+    expect(next).not.toBe(first);
+    expect(tabs.restore()).toBe(next);
+    expect(tabs.getOpenTabs()).toEqual([{ id: next, page: "overview", name: "概要" }]);
+    expect(tabs.closedName).toBeUndefined();
   });
 });

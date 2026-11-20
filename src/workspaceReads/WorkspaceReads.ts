@@ -1,5 +1,5 @@
-export type WorkspaceReadKind = "questMaster" | "discoveryMaster" | "questProgress" | "discoveryProgress" | "report";
-export type ProgressReadKind = Exclude<WorkspaceReadKind, "questMaster" | "discoveryMaster">;
+export type ProgressReadKind = "questProgress" | "discoveryProgress" | "report";
+export type WorkspaceReadKind = "questMaster" | "discoveryMaster" | "overview" | ProgressReadKind;
 
 export interface WorkspaceRead<T> {
   promise: Promise<T>;
@@ -29,6 +29,10 @@ const MAX_READY_PER_KIND = 4;
 
 export class SupersededWorkspaceRead extends Error {}
 
+function affectedByWrite(kind: WorkspaceReadKind, kinds: readonly ProgressReadKind[]) {
+  return kind === "overview" || kinds.some(value => value === kind);
+}
+
 /** The lifetime belongs to the app, independently of the open search tabs. */
 export class WorkspaceReads {
   private readonly sources = new WeakMap<object, number>();
@@ -45,7 +49,7 @@ export class WorkspaceReads {
   read<T>(kind: WorkspaceReadKind, source: object, profileId: number | null, load: () => Promise<T>,
     { fresh = false, active = () => true, masterRevision = 0 }: { fresh?: boolean; active?: () => boolean; masterRevision?: number } = {},
   ): WorkspaceRead<T> {
-    const barriers = [...this.writes].filter(write => write.profileId === profileId && write.kinds.some(value => value === kind));
+    const barriers = [...this.writes].filter(write => write.profileId === profileId && affectedByWrite(kind, write.kinds));
     if (barriers.length) {
       let next: WorkspaceRead<T> | undefined;
       const promise = Promise.all(barriers.map(write => write.done)).then(() => {
@@ -89,7 +93,7 @@ export class WorkspaceReads {
   }
 
   invalidateMaster() {
-    this.invalidate(entry => entry.kind === "questMaster" || entry.kind === "discoveryMaster" || entry.kind === "report");
+    this.invalidate(entry => entry.kind === "questMaster" || entry.kind === "discoveryMaster" || entry.kind === "report" || entry.kind === "overview");
   }
 
   invalidateProfile(profileId: number) {
@@ -102,7 +106,7 @@ export class WorkspaceReads {
   }
 
   async write<T>(owner: object, profileId: number, kinds: readonly ProgressReadKind[], operation: () => Promise<T>): Promise<T> {
-    const matches = (entry: CacheEntry) => entry.profileId === profileId && kinds.some(kind => kind === entry.kind);
+    const matches = (entry: CacheEntry) => entry.profileId === profileId && affectedByWrite(entry.kind, kinds);
     let release!: () => void;
     const done = new Promise<void>(resolve => { release = resolve; });
     const write = { owner, profileId, kinds, done };

@@ -8,23 +8,23 @@ function deferred<T>() {
 }
 
 describe("workspace shared reads", () => {
-  it("shares in-flight and ready reads for the same source, profile and generation", async () => {
+  it.each(["overview", "report"] as const)("shares %s reads for the same source, profile and generation", async kind => {
     const reads = new WorkspaceReads();
     const source = {}, other = {};
     const pending = deferred<number[]>();
     const load = vi.fn(() => pending.promise);
-    const first = reads.read("report", source, 1, load, { masterRevision: 1 });
-    const joined = reads.read("report", source, 1, load, { masterRevision: 1 });
+    const first = reads.read(kind, source, 1, load, { masterRevision: 1 });
+    const joined = reads.read(kind, source, 1, load, { masterRevision: 1 });
     expect(joined.promise).toBe(first.promise);
     expect(load).toHaveBeenCalledTimes(1);
     const otherScope = vi.fn(async () => [2]);
     for (const [reader, profileId, masterRevision] of [[source, 2, 1], [other, 1, 1], [source, 1, 2]] as const) {
-      expect(await reads.read("report", reader, profileId, otherScope, { masterRevision }).promise).toEqual([2]);
+      expect(await reads.read(kind, reader, profileId, otherScope, { masterRevision }).promise).toEqual([2]);
     }
     expect(otherScope).toHaveBeenCalledTimes(3);
     pending.resolve([1]);
     expect(await joined.promise).toEqual([1]);
-    expect(reads.read("report", source, 1, load, { masterRevision: 1 }).promise).toBe(first.promise);
+    expect(reads.read(kind, source, 1, load, { masterRevision: 1 }).promise).toBe(first.promise);
   });
 
   it.each(["saved", "uncertain"] as const)("discards an earlier result and reloads after a %s write", async outcome => {
@@ -84,6 +84,7 @@ describe("workspace shared reads", () => {
     const pending = deferred<number[]>();
     const old = reads.read("questMaster", source, null, () => pending.promise);
     const report = reads.read("report", source, 1, async () => [1]);
+    const overview = reads.read("overview", source, 1, async () => [1]);
     const progress = reads.read("questProgress", source, 1, async () => [2]);
     reads.invalidateMaster();
     const current = reads.read("questMaster", source, null, async () => [3], { masterRevision: 1 });
@@ -92,7 +93,26 @@ describe("workspace shared reads", () => {
     await old.promise;
     expect(old.isCurrent()).toBe(false);
     expect(report.isCurrent()).toBe(false);
+    expect(overview.isCurrent()).toBe(false);
     expect(progress.isCurrent()).toBe(true);
+  });
+
+  it.each(["questProgress", "discoveryProgress", "report"] as const)("waits to refresh overview for only the profile with a %s write", async kind => {
+    const reads = new WorkspaceReads();
+    const source = {};
+    const old = reads.read("overview", source, 1, async () => 0);
+    const other = reads.read("overview", source, 2, async () => 5);
+    const finish = deferred<void>();
+    const saving = reads.write({}, 1, [kind], () => finish.promise);
+    const reload = vi.fn(async () => 1);
+    const waiting = reads.read("overview", source, 1, reload);
+    expect(old.isCurrent()).toBe(false);
+    expect(other.isCurrent()).toBe(true);
+    expect(reload).not.toHaveBeenCalled();
+    finish.resolve();
+    await saving;
+    expect(await waiting.promise).toBe(1);
+    expect(waiting.isCurrent()).toBe(true);
   });
 
   it("gives an explicit retry a new read generation even if the old request has not completed", async () => {

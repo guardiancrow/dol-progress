@@ -266,10 +266,27 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     expect(await screen.findByLabelText("分類")).toHaveValue("3");
     expect(search("発見物名を検索")).toHaveValue("");
     expect(activeTab().id).not.toBe(firstId);
-    expect(tabList().getAllByRole("tab")).toHaveLength(2);
+    expect(tabList().getAllByRole("tab")).toHaveLength(3);
     await user.click(tabList().getAllByRole("tab").find(tab => tab.id === firstId)!);
     expect(await screen.findByRole("searchbox", { name: "発見物名を検索" })).toHaveValue("合成遺跡");
     expect(screen.getByLabelText("分類")).toHaveValue("all");
+  });
+
+  it("keeps overview and existing search state when a drill-down category is unavailable", async () => {
+    const { props } = fixtures(repository);
+    const { user, navigate } = await show({ ...props, progressStatsRepository: overviewStats });
+    await user.type(await screen.findByRole("searchbox"), "対象A");
+    await navigate("概要");
+    const overview = activeTab();
+    props.discoveryRepository.listWithRelations.mockResolvedValue([{
+      ...discovery(1, "別分類の発見物"), category: { id: 4, name: "地理", sortOrder: 2 },
+    }]);
+    await user.click(await screen.findByRole("button", { name: "史跡の発見物一覧を開く" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("史跡");
+    expect(activeTab()).toBe(overview);
+    expect(tabList().getAllByRole("tab")).toHaveLength(2);
+    await user.click(tabList().getByRole("tab", { name: "クエスト" }));
+    expect(await screen.findByRole("searchbox")).toHaveValue("対象A");
   });
 
   it.each([[800, 600], [600, 480]])("supports keyboard selection, IME-safe rename and undo at %dx%d", async (width, height) => {
@@ -308,19 +325,53 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     await user.keyboard("{Delete}");
     expect(questTab).toHaveFocus();
     await user.keyboard("{Delete}");
-    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(activeTab()).toHaveAccessibleName("概要");
+    expect(activeTab()).toHaveFocus();
     const restore = screen.getByRole("button", { name: "元に戻す" });
-    expect(restore).toHaveFocus();
     await screen.findByRole("heading", { name: "概要" });
     await user.click(restore);
     expect(activeTab()).toHaveAccessibleName(title);
     expect(activeTab()).toHaveFocus();
     expect(activeTab().id).not.toBe(questTab.id);
     expect(await screen.findByRole("searchbox")).toHaveValue("対象");
-    expect(tabList().getAllByRole("tab")).toHaveLength(1);
+    expect(tabList().getAllByRole("tab")).toHaveLength(2);
   });
 
-  it("blocks a seventh tab from creation, sidebar, overview, bookmarks and undo without losing existing tabs", async () => {
+  it.each([[800, 600], [600, 480]])("restores an overview from zero tabs and avoids duplicates at %dx%d", async (width, height) => {
+    const resize = mockWorkspaceMedia(1280, 800);
+    const { user, navigate } = await show({ ...fixtures(repository).props, progressStatsRepository: overviewStats }, "概要");
+    const first = activeTab();
+    await navigate("概要");
+    expect(activeTab()).toBe(first);
+    expect(tabList().getAllByRole("tab")).toHaveLength(1);
+    act(() => resize(width, height));
+    expect(screen.getByRole("tabpanel", { name: "概要" }).id).toBe(first.getAttribute("aria-controls"));
+    expect(screen.queryByRole("button", { name: /検索・フィルター/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "ブックマーク" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "タブ名を変更" })).not.toBeInTheDocument();
+    act(() => first.focus());
+    await user.keyboard("{F2}");
+    expect(screen.queryByRole("textbox", { name: "タブ名" })).not.toBeInTheDocument();
+    await user.keyboard("{Delete}");
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "プロフィール" })).toBeInTheDocument();
+    const undo = screen.getByRole("button", { name: "元に戻す" });
+    expect(undo).toHaveFocus();
+    await user.keyboard("{Enter}");
+    const restored = activeTab();
+    expect(restored.id).not.toBe(first.id);
+    expect(restored).toHaveFocus();
+    await user.keyboard("{Delete}");
+    act(() => resize(1280, 800));
+    await navigate("概要");
+    const reopened = activeTab();
+    await user.click(screen.getByRole("button", { name: "元に戻す" }));
+    expect(activeTab()).toBe(reopened);
+    expect(tabList().getAllByRole("tab")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "元に戻す" })).not.toBeInTheDocument();
+  });
+
+  it("allows an overview alongside six search tabs and blocks a seventh search tab through every entry point", async () => {
     await repository.create("同種の保存条件", { ...questCondition, search: "対象" });
     await repository.create("別種の保存条件", discoveryCondition);
     const { user, navigate } = await show({ ...fixtures(repository).props, progressStatsRepository: overviewStats });
@@ -339,9 +390,13 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     limit();
     expect(activeTab().id).toBe(current);
     await navigate("概要");
+    const overview = activeTab();
     await user.click(await screen.findByRole("button", { name: "史跡の発見物一覧を開く" }));
     limit();
-    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(activeTab()).toBe(overview);
+    expect(ids()).toEqual([...six, overview.id]);
+    await user.click(tabList().getByRole("button", { name: "概要を閉じる" }));
+    expect(ids()).toEqual(six);
     await navigate("クエスト");
     expect(ids()).toEqual(six);
     await open(user);
@@ -412,6 +467,38 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     expect(props.discoveryRepository.listWithRelations).toHaveBeenCalledTimes(1);
   });
 
+  it.each(["saved", "uncertain"] as const)("waits for a %s quest write after its source tab closes and discards a late overview read", async outcome => {
+    const { props } = fixtures(repository);
+    const before = await overviewStats.getForProfile();
+    const after = { ...before, quests: { total: 3, completed: 2, incomplete: 1 },
+      discoveries: { ...before.discoveries, discovered: 2, undiscovered: 0 } };
+    let finishOldRead!: (stats: typeof before) => void;
+    let finishWrite!: () => void;
+    const getForProfile = vi.fn(async (_id: number) => after)
+      .mockImplementationOnce(() => new Promise(resolve => { finishOldRead = resolve; }));
+    const completeQuestWithLinkedDiscoveries = vi.fn(async (_profileId: number, _questId: number) => {
+      await new Promise<void>(resolve => { finishWrite = resolve; });
+      if (outcome === "uncertain") throw new Error("synthetic uncertain response");
+      return { questChanged: true, discoveriesCreated: 1, discoveriesAlreadyPresent: 0 };
+    });
+    const { user, navigate } = await show({ ...props, progressStatsRepository: { getForProfile },
+      progressLinkService: { completeQuestWithLinkedDiscoveries, discoverWithLinkedQuest: vi.fn() } }, "概要");
+    expect(getForProfile).toHaveBeenCalledExactlyOnceWith(1);
+    await navigate("クエスト");
+    await user.click(await screen.findByRole("checkbox", { name: "対象Bの達成状態" }));
+    expect(completeQuestWithLinkedDiscoveries).toHaveBeenCalledExactlyOnceWith(1, 2);
+    await user.click(tabList().getByRole("button", { name: "クエストを閉じる" }));
+    expect(activeTab()).toHaveAccessibleName("概要");
+    expect(screen.getByText("進捗を集計しています…")).toBeInTheDocument();
+    expect(getForProfile).toHaveBeenCalledTimes(1);
+    await act(async () => finishWrite());
+    expect(await screen.findByText("達成 2 / 3")).toBeInTheDocument();
+    expect(screen.getByText("発見済み 2 / 2")).toBeInTheDocument();
+    await act(async () => finishOldRead(before));
+    expect(screen.queryByText("達成 1 / 3")).not.toBeInTheDocument();
+    expect(getForProfile).toHaveBeenCalledTimes(2);
+  });
+
   it("reloads linked quest progress after discovery and retains the quest master", async () => {
     const { props } = fixtures(repository);
     const items = [discovery(1, "合成遺跡")];
@@ -479,7 +566,7 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     expect(screen.queryByRole("heading", { name: "クエスト" })).not.toBeInTheDocument();
     expect((await repository.getById(waiting.id))?.lastUsedAt).toBeNull();
     if (reason === "newer") expect(search("発見物名を検索")).toHaveValue("合成遺跡");
-    if (reason === "close") expect(tabList().getAllByRole("tab")).toHaveLength(1);
+    if (reason === "close") expect(tabList().getAllByRole("tab")).toHaveLength(2);
   });
 
   it("reports a failed usage write while retaining a successful zero-result application", async () => {

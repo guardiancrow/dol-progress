@@ -38,6 +38,7 @@ export function WorkspaceTabBar({ tabs, activeId, closedName, focusRequest, onCr
   const createId = useId();
   const nameErrorId = useId();
   const editingId = editor?.id;
+  const renamableTab = tabs.find(tab => tab.id === activeId && tab.page !== "overview");
   const lastRevealedSelection = useRef<WorkspaceTabId | undefined>(undefined);
 
   function focusTab(id: WorkspaceTabId) {
@@ -127,7 +128,7 @@ export function WorkspaceTabBar({ tabs, activeId, closedName, focusRequest, onCr
     } else if (key === "Delete") {
       event.preventDefault();
       onClose(tab.id);
-    } else if (key === "F2") {
+    } else if (key === "F2" && tab.page !== "overview") {
       event.preventDefault();
       startRename(tab);
     }
@@ -145,7 +146,7 @@ export function WorkspaceTabBar({ tabs, activeId, closedName, focusRequest, onCr
         {tabs.map((tab, index) => <div className="workspace-tab" role="presentation" key={tab.id} data-selected={tab.id === activeId}
           onFocus={event => revealTab(tabList.current, event.currentTarget)}>
           <button className="workspace-tab-label" type="button" role="tab" id={workspaceTabId(tab.id)}
-            aria-selected={tab.id === activeId} aria-controls={workspacePanelId(tab.id)} title={`${tab.name}（${workspacePageNames[tab.page]}）`}
+            aria-selected={tab.id === activeId} aria-controls={workspacePanelId(tab.id)} title={tab.page === "overview" ? tab.name : `${tab.name}（${workspacePageNames[tab.page]}）`}
             tabIndex={tab.id === rovingId ? 0 : -1} onFocus={() => setRovingId(tab.id)}
             onClick={() => onSelect(tab.id)} onKeyDown={event => tabKey(event, tab, index)}>{tab.name}</button>
           <button className="workspace-tab-close" type="button" aria-label={`${tab.name}を閉じる`}
@@ -160,8 +161,9 @@ export function WorkspaceTabBar({ tabs, activeId, closedName, focusRequest, onCr
           <button className="button secondary" ref={firstChoice} type="button" onClick={() => { closeCreate(); onCreate("quests"); }}>クエストを開く</button>
           <button className="button secondary" type="button" onClick={() => { closeCreate(); onCreate("discoveries"); }}>発見物を開く</button>
         </div>
-        <button className="button secondary" type="button" aria-label="タブ名を変更" title="タブ名を変更 (F2)"
-          onClick={() => { const tab = tabs.find(item => item.id === activeId); if (tab) startRename(tab); }}>改名</button>
+        {renamableTab &&
+          <button className="button secondary" type="button" aria-label="タブ名を変更" title="タブ名を変更 (F2)"
+            onClick={() => startRename(renamableTab)}>改名</button>}
         {closedName !== undefined && <button className="button secondary" type="button" title={`「${closedName}」を復元`}
           onClick={onRestore}>元に戻す</button>}
       </div>

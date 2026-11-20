@@ -688,13 +688,13 @@ describe("Discovery UI", () => {
     expect(bodyRows()[0]).toHaveTextContent("発見物2");
   });
 
-  it("falls back to all when an Overview category no longer exists in the loaded master", async () => {
-    const repositories = setup([profile(1)], [discovery(2, "天体", { category: { id: 2, name: "天文", sortOrder: 2 } })]);
+  it("keeps the overview when its category ID no longer exists in the loaded master", async () => {
+    const repositories = setup([profile(1)], [discovery(2, "別IDの発見物", { category: { id: 2, name: "史跡", sortOrder: 2 } })]);
     const user = await openDrilldown(repositories, categoryStats([{ id: 1, name: "史跡", sortOrder: 1 }]));
     await user.click(await screen.findByRole("button", { name: "史跡の発見物一覧を開く" }));
-    await screen.findByRole("table");
-    expect(screen.getByLabelText("分類")).toHaveValue("all");
-    expect(screen.getByText("天体")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("史跡");
+    expect(screen.getByRole("tab", { name: "概要" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("tab", { name: "発見物" })).not.toBeInTheDocument();
     expect(repositories.master.listWithRelations).toHaveBeenCalledTimes(1);
   });
 

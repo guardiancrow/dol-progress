@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 
 import type {
   DiscoveryCategoryProgressStats,
@@ -6,41 +6,51 @@ import type {
   ProgressStatsRepositoryPort,
 } from "../overview/types";
 import { useProfiles } from "../profiles/ProfileContext";
-import type { DiscoveryInitialFilter } from "../discoveries/types";
 import { RELIC_CATEGORY_NAME } from "../discoveries/capabilities";
+import type { DiscoverySearchFilters } from "../searchConditions/definition";
+import type { WorkspaceRead, WorkspaceReads } from "../workspaceReads/WorkspaceReads";
 
 interface OverviewPageProps {
   statsRepository: ProgressStatsRepositoryPort;
-  onOpenDiscoveries(filter: DiscoveryInitialFilter): void;
+  workspaceReads: WorkspaceReads;
+  masterRevision: number;
+  masterImporting: boolean;
+  onOpenDiscoveries(filters: DiscoverySearchFilters, categoryId?: number): void;
 }
 
-type StatsResult = { profileId: number } & (
+type StatsResult = { profileId: number; read: WorkspaceRead<ProgressStats> } & (
   | { status: "ready"; stats: ProgressStats }
   | { status: "error" }
 );
 
-export function OverviewPage({ statsRepository, onOpenDiscoveries }: OverviewPageProps) {
+export function OverviewPage({ statsRepository, workspaceReads, masterRevision, masterImporting, onOpenDiscoveries }: OverviewPageProps) {
   const { selectedProfileId, isLoading: isProfileLoading } = useProfiles();
   const [result, setResult] = useState<StatsResult | null>(null);
   const [reload, setReload] = useState(0);
-  const currentResult = result?.profileId === selectedProfileId ? result : null;
+  const currentResult = !masterImporting && result?.profileId === selectedProfileId && result.read.isCurrent() ? result : null;
+
+  useLayoutEffect(() => workspaceReads.subscribe(change => {
+    if (change.profileId === selectedProfileId) setReload(value => value + 1);
+  }), [workspaceReads, selectedProfileId]);
 
   useEffect(() => {
     setResult(null);
-    if (selectedProfileId === null) return;
+    if (selectedProfileId === null || isProfileLoading || masterImporting) return;
 
     let active = true;
-    void statsRepository
-      .getForProfile(selectedProfileId)
+    const read = workspaceReads.read("overview", statsRepository, selectedProfileId, () => statsRepository.getForProfile(selectedProfileId),
+      { active: () => active, masterRevision });
+    void read.promise
       .then((stats) => {
-        if (active) setResult({ profileId: selectedProfileId, status: "ready", stats });
+        if (active && read.isCurrent()) setResult({ profileId: selectedProfileId, read, status: "ready", stats });
       })
       .catch((caught: unknown) => {
+        if (!active || !read.isCurrent()) return;
         console.error("Progress stats load failed", caught);
-        if (active) setResult({ profileId: selectedProfileId, status: "error" });
+        setResult({ profileId: selectedProfileId, read, status: "error" });
       });
     return () => { active = false; };
-  }, [reload, selectedProfileId, statsRepository]);
+  }, [reload, selectedProfileId, isProfileLoading, statsRepository, workspaceReads, masterRevision, masterImporting]);
 
   if (isProfileLoading) {
     return <div className="state-panel" role="status">プロフィールを読み込んでいます…</div>;
@@ -78,7 +88,7 @@ export function OverviewPage({ statsRepository, onOpenDiscoveries }: OverviewPag
   );
 }
 
-function OverviewContent({ stats, onOpenDiscoveries }: { stats: ProgressStats; onOpenDiscoveries(filter: DiscoveryInitialFilter): void }) {
+function OverviewContent({ stats, onOpenDiscoveries }: { stats: ProgressStats; onOpenDiscoveries: OverviewPageProps["onOpenDiscoveries"] }) {
   const questRate = percentage(stats.quests.completed, stats.quests.total);
   const relic = stats.categories.find((category) => category.categoryName === RELIC_CATEGORY_NAME);
   const relicTotal = relic?.total ?? 0;
@@ -119,7 +129,7 @@ function OverviewContent({ stats, onOpenDiscoveries }: { stats: ProgressStats; o
         <AdventureMeritCard merit={stats.adventureMerit} />
         <MetricCard title="現在未報告" value={`${formatNumber(stats.discoveries.unreported)}件`} description="発見済み・現在未報告"
           supplement={<UnreportedBreakdown discoveries={stats.discoveries} />}
-          action={<DiscoveryCardAction label="未報告の発見物一覧を開く" onOpen={() => onOpenDiscoveries({ kind: "unreported" })} />} />
+          action={<DiscoveryCardAction label="未報告の発見物一覧を開く" onOpen={() => onOpenDiscoveries({ status: "unreported" })} />} />
         <ProgressCard
           title="カード所有"
           label="所有"
@@ -127,7 +137,7 @@ function OverviewContent({ stats, onOpenDiscoveries }: { stats: ProgressStats; o
           total={cardCapableDiscovered}
           rate={cardRate}
           details="カード対象の発見済み発見物を分母に集計"
-          action={<DiscoveryCardAction label="カード未所有の発見物一覧を開く" onOpen={() => onOpenDiscoveries({ kind: "card-not-owned" })} />}
+          action={<DiscoveryCardAction label="カード未所有の発見物一覧を開く" onOpen={() => onOpenDiscoveries({ cardOwned: false })} />}
         />
       </div>
 
@@ -141,7 +151,8 @@ function OverviewContent({ stats, onOpenDiscoveries }: { stats: ProgressStats; o
         ) : (
           <div className="category-list" role="list">
             {stats.categories.map((category) => (
-              <CategoryProgress key={category.categoryId} category={category} onOpen={(categoryId) => onOpenDiscoveries({ kind: "category", categoryId })} />
+              <CategoryProgress key={category.categoryId} category={category}
+                onOpen={() => onOpenDiscoveries({ category: { kind: "named", name: category.categoryName } }, category.categoryId)} />
             ))}
           </div>
         )}
@@ -239,7 +250,7 @@ function DiscoveryCardAction({ label, onOpen }: { label: string; onOpen(): void 
   return <button type="button" className="category-drilldown" aria-label={label} onClick={onOpen} />;
 }
 
-function CategoryProgress({ category, onOpen }: { category: DiscoveryCategoryProgressStats; onOpen(categoryId: number): void }) {
+function CategoryProgress({ category, onOpen }: { category: DiscoveryCategoryProgressStats; onOpen(): void }) {
   const rate = percentage(category.discovered, category.total);
   const rateLabel = `${rate.toFixed(1)}%`;
   const repeatNotApplicable = category.categoryName === "港・集落" || category.categoryName === "伝承";
@@ -269,7 +280,7 @@ function CategoryProgress({ category, onOpen }: { category: DiscoveryCategoryPro
         type="button"
         className="category-drilldown"
         aria-label={`${category.categoryName}の発見物一覧を開く`}
-        onClick={() => onOpen(category.categoryId)}
+        onClick={onOpen}
       />
     </article>
   );

@@ -22,6 +22,7 @@ export function AppShell({
 }: AppShellProps) {
   const { isLoading, profiles, selectedProfileId, selectProfile } = useProfiles();
   const isWorkspace = currentPage === "quests" || currentPage === "discoveries";
+  const hasTabSheet = isWorkspace || currentPage === "overview";
   const [version, setVersion] = useState<string | null>(null);
   const versionRequest = useRef<Promise<string> | null>(null);
   const menu = useResponsiveDisclosure<HTMLElement>(NARROW_WORKSPACE_QUERY);
@@ -83,7 +84,7 @@ export function AppShell({
       </header>
       <Sidebar currentPage={currentPage} onNavigate={onNavigate} id={menu.id} expanded={menu.expanded} panelRef={menu.panelRef} />
       <WorkspaceViewContext.Provider value={workspaceView}>
-        <main className={`main-content${isWorkspace ? " main-content--workspace" : ""}${isWorkspace && !controlsVisible ? " main-content--table-priority" : ""}`}>
+        <main className={`main-content${hasTabSheet ? " main-content--workspace" : ""}${isWorkspace && !controlsVisible ? " main-content--table-priority" : ""}`}>
           {children}
         </main>
       </WorkspaceViewContext.Provider>

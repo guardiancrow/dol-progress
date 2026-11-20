@@ -36,17 +36,16 @@ import type {
 import type {
   DiscoveryProgressRepositoryPort,
   DiscoveryRepositoryPort,
-  DiscoveryInitialFilter,
 } from "./discoveries/types";
 import { BackupRestoreService, type BackupRestoreServicePort } from "./backupRestore";
 import { ProgressLinkService, type ProgressLinkServicePort } from "./progressLink";
-import { decodeSearchCondition, type ConditionResult, type SearchConditionDefinition } from "./searchConditions/definition";
+import { decodeSearchCondition, SEARCH_CONDITION_VERSION, type ConditionResult, type DiscoverySearchFilters, type SearchConditionDefinition } from "./searchConditions/definition";
 import { applySearchCondition, type SearchConditionRequest } from "./searchConditions/application";
 import type { SearchTableState } from "./searchConditions/tableState";
 import { searchConditionIssueMessage } from "./searchConditions/SearchConditionFeedback";
 import { SearchBookmarkRepository, type SearchBookmark } from "./repositories/searchBookmarkRepository";
 import { useBookmarkLibrary, type BookmarkRepository } from "./searchConditions/useBookmarkLibrary";
-import { MAX_WORKSPACE_TABS, WorkspaceTabs, type WorkspacePage, type WorkspaceTabId } from "./workspaceTabs/state";
+import { firstPage, MAX_WORKSPACE_TABS, WorkspaceTabs, type WorkspacePage, type WorkspaceTabId } from "./workspaceTabs/state";
 import { WorkspaceReads } from "./workspaceReads/WorkspaceReads";
 
 interface AppProps {
@@ -82,10 +81,10 @@ function isSearchPage(page: AppPage): page is WorkspacePage {
   return page === "quests" || page === "discoveries";
 }
 
-function SearchPageSlot({ tabId, visible, children }: { tabId: WorkspaceTabId; visible: boolean; children?: ReactNode }) {
+function WorkspacePageSlot({ tabId, visible, overview, children }: { tabId: WorkspaceTabId; visible: boolean; overview?: boolean; children?: ReactNode }) {
   const workspace = useWorkspaceView();
   // A staged page can read data and validate its request before it owns the visible workspace.
-  return <div hidden={!visible} className="bookmark-page-slot" role="tabpanel" id={workspacePanelId(tabId)}
+  return <div hidden={!visible} className={overview ? "bookmark-page-slot workspace-overview-panel" : "bookmark-page-slot"} role="tabpanel" id={workspacePanelId(tabId)}
     aria-labelledby={workspaceTabId(tabId)} tabIndex={visible ? 0 : undefined}>
     <WorkspaceViewContext.Provider value={visible ? workspace : null}>{children}</WorkspaceViewContext.Provider>
   </div>;
@@ -126,9 +125,8 @@ function AppContent({
   const [activeTabId, setActiveTabId] = useState<WorkspaceTabId>();
   const recentTabs = useRef<WorkspaceTabId[]>([]);
   const [focusRequest, setFocusRequest] = useState<WorkspaceFocus>();
-  const overviewUndo = useRef<HTMLButtonElement>(null);
+  const emptyWorkspaceUndo = useRef<HTMLButtonElement>(null);
   const [workspaceReads] = useState(() => new WorkspaceReads());
-  const [discoveryNavigation, setDiscoveryNavigation] = useState(() => new Map<WorkspaceTabId, DiscoveryInitialFilter>());
   const [searchApplication, setSearchApplication] = useState<PendingSearchApplication>();
   const pendingRequest = useRef<SearchConditionRequest>(undefined);
   const [searchMessage, setSearchMessage] = useState<string>();
@@ -141,30 +139,24 @@ function AppContent({
   const { mutate: mutateBookmark } = bookmarkLibrary;
   const currentRequest = searchApplication?.request.profileId === selectedProfileId && !isProfileLoading
     && (searchApplication.source === undefined || searchApplication.source === searchConditionRequest) ? searchApplication.request : undefined;
-  const visibleTabId = isSearchPage(page) ? activeTabId : undefined;
+  const visibleTabId = isSearchPage(page) || page === "overview" ? activeTabId : undefined;
   const stagedTabId = currentRequest && currentRequest.tabId !== visibleTabId
     && !openTabs.some(tab => tab.id === currentRequest.tabId) ? currentRequest.tabId : undefined;
   const captureVisibleTab = useCallback((condition: ConditionResult<SearchConditionDefinition> | undefined) => {
     if (visibleTabId === undefined) return;
     setCaptured(current => condition ? { tabId: visibleTabId, condition } : current?.tabId === visibleTabId ? undefined : current);
   }, [visibleTabId]);
-  const clearDiscoveryNavigation = useCallback((tabId: WorkspaceTabId) => {
-    setDiscoveryNavigation(current => {
-      if (!current.has(tabId)) return current;
-      const next = new Map(current);
-      next.delete(tabId);
-      return next;
-    });
-  }, []);
-
   const activateTab = useCallback((id: WorkspaceTabId, focus = false) => {
     const tab = tabs.get(id);
     if (!tab) return;
+    if (tab.page === "overview" && page !== "overview" && selectedProfileId !== null) {
+      workspaceReads.invalidateRead("overview", progressStatsRepository, selectedProfileId);
+    }
     recentTabs.current = [id, ...recentTabs.current.filter(previous => previous !== id)];
     setActiveTabId(id);
     setPage(tab.page);
     setFocusRequest(focus ? { tabId: id } : undefined);
-  }, [tabs]);
+  }, [tabs, page, progressStatsRepository, selectedProfileId, workspaceReads]);
 
   const discardApplication = useCallback(() => {
     const request = pendingRequest.current;
@@ -228,7 +220,7 @@ function AppContent({
   }, [selectedProfileId, tabs, workspaceReads]);
 
   useLayoutEffect(() => {
-    if (focusRequest && "undo" in focusRequest) overviewUndo.current?.focus();
+    if (focusRequest && "undo" in focusRequest) emptyWorkspaceUndo.current?.focus();
   }, [focusRequest]);
 
   const settleSearchCondition = useCallback((request: SearchConditionRequest, result: ConditionResult<SearchTableState>) => {
@@ -240,20 +232,21 @@ function AppContent({
       setSearchMessage(searchConditionIssueMessage(result.issue));
       return;
     }
-    tabs.updateView(request.tabId, view => applySearchCondition(view, request.definition, result.value));
+    tabs.updateView(request.tabId, view => request.discoveryDrilldown
+      ? firstPage({ ...view, ...result.value }) : applySearchCondition(view, request.definition, result.value));
     tabs.publishTab(request.tabId);
     setSearchMessage(undefined);
+    if (request.discoveryDrilldown) activateTab(request.tabId, true);
     if (!searchApplication?.bookmark) return;
 
     const { bookmark } = searchApplication;
-    clearDiscoveryNavigation(request.tabId);
     activateTab(request.tabId);
     setSearchNotice(`「${bookmark.name}」を適用しました。`);
     const version = noticeVersion.current;
     void mutateBookmark(repo => repo.markUsed(bookmark.id)).catch(() => {
       if (version === noticeVersion.current) setSearchMessage("検索条件は適用されましたが、最終使用日時を保存できませんでした。");
     });
-  }, [currentRequest, searchApplication, mutateBookmark, tabs, clearDiscoveryNavigation, activateTab]);
+  }, [currentRequest, searchApplication, mutateBookmark, tabs, activateTab]);
 
   function cancelSearchApplication() {
     noticeVersion.current++;
@@ -287,6 +280,10 @@ function AppContent({
 
   function navigate(nextPage: AppPage) {
     cancelSearchApplication();
+    if (nextPage === "overview") {
+      activateTab(tabs.openOverview());
+      return;
+    }
     if (!isSearchPage(nextPage)) {
       setFocusRequest(undefined);
       setPage(nextPage);
@@ -312,15 +309,16 @@ function AppContent({
   }
 
   function closeTab(id: WorkspaceTabId) {
-    if (!tabs.getOpenTabs().some(tab => tab.id === id)) return;
+    const closing = tabs.getOpenTabs().find(tab => tab.id === id);
+    if (!closing) return;
     cancelSearchApplication();
     recentTabs.current = recentTabs.current.filter(previous => previous !== id);
-    clearDiscoveryNavigation(id);
     const adjacent = tabs.close(id);
     if (adjacent !== undefined) activateTab(adjacent, true);
+    else if (closing.page !== "overview") activateTab(tabs.openOverview(), true);
     else {
       setActiveTabId(undefined);
-      setPage("overview");
+      setPage("profiles");
       setFocusRequest({ undo: true });
     }
   }
@@ -330,18 +328,27 @@ function AppContent({
     openTab(tabs.restore(), true);
   }
 
-  function openDiscoveries(filter: DiscoveryInitialFilter) {
+  function openDiscoveries(filters: DiscoverySearchFilters, categoryId?: number) {
     cancelSearchApplication();
-    const tabId = tabs.open("discoveries");
-    if (tabId !== undefined) setDiscoveryNavigation(current => new Map(current).set(tabId, filter));
-    openTab(tabId, true);
+    if (selectedProfileId === null || isProfileLoading) return;
+    const tabId = tabs.open("discoveries", undefined, true);
+    if (tabId === undefined) {
+      setSearchMessage(tabLimitMessage);
+      return;
+    }
+    const definition = { schemaVersion: SEARCH_CONDITION_VERSION, page: "discoveries", search: "", filters, sorting: [] } as const;
+    beginApplication({ request: { definition, profileId: selectedProfileId, tabId, discoveryDrilldown: { categoryId } } });
   }
 
-  function searchPage(tabId: WorkspaceTabId) {
+  function workspacePage(tabId: WorkspaceTabId) {
     const tab = tabs.get(tabId);
     if (!tab) return null;
     const visible = tabId === visibleTabId;
-    if (!visible && tabId !== stagedTabId) return <SearchPageSlot key={tabId} tabId={tabId} visible={false} />;
+    if (!visible && tabId !== stagedTabId) return <WorkspacePageSlot key={tabId} tabId={tabId} visible={false} />;
+    if (tab.page === "overview") return <WorkspacePageSlot key={tabId} tabId={tabId} visible={visible} overview>
+      <OverviewPage statsRepository={progressStatsRepository} workspaceReads={workspaceReads}
+        masterRevision={masterImport.revision} masterImporting={masterImport.pending > 0} onOpenDiscoveries={openDiscoveries} />
+    </WorkspacePageSlot>;
     const shared = {
       onOpenMasterData: () => navigate("master-data"),
       progressLinkService,
@@ -354,35 +361,30 @@ function AppContent({
       masterRevision: masterImport.revision,
       masterImporting: masterImport.pending > 0,
     };
-    return <SearchPageSlot key={tabId} tabId={tabId} visible={visible}>
+    return <WorkspacePageSlot key={tabId} tabId={tabId} visible={visible}>
       {tab.page === "quests" ? <QuestsPage {...shared} questRepository={questRepository} questProgressRepository={questProgressRepository} />
-        : <DiscoveriesPage {...shared} discoveryRepository={discoveryRepository} discoveryProgressRepository={discoveryProgressRepository}
-          initialFilter={discoveryNavigation.get(tabId)} onNavigationConsumed={() => clearDiscoveryNavigation(tabId)} />}
-    </SearchPageSlot>;
+        : <DiscoveriesPage {...shared} discoveryRepository={discoveryRepository} discoveryProgressRepository={discoveryProgressRepository} />}
+    </WorkspacePageSlot>;
   }
 
   return (
     <AppShell currentPage={page} onNavigate={navigate}>
         {searchMessage && <div className="error-banner" role="alert">{searchMessage}</div>}
-        {page === "overview" ? (
-          <>
-            {openTabs.length === 0 && tabs.closedName !== undefined && <button className="button secondary workspace-overview-undo"
-              ref={overviewUndo} type="button" title={`「${tabs.closedName}」を復元`} onClick={restoreTab}>元に戻す</button>}
-            <OverviewPage statsRepository={progressStatsRepository} onOpenDiscoveries={openDiscoveries} />
-          </>
-        ) : page === "profiles" ? (
-          <ProfilesPage />
-        ) : isSearchPage(page) && visibleTabId !== undefined ? (
+        {openTabs.length === 0 && tabs.closedName !== undefined && <button className="button secondary workspace-empty-undo"
+          ref={emptyWorkspaceUndo} type="button" title={`「${tabs.closedName}」を復元`} onClick={restoreTab}>元に戻す</button>}
+        {visibleTabId !== undefined ? (
           <div className="bookmarked-workspace">
             <WorkspaceTabBar tabs={openTabs} activeId={visibleTabId} closedName={tabs.closedName} focusRequest={focusRequest}
               onSelect={selectTab} onCreate={createTab} onRename={(id, name) => tabs.rename(id, name)} onClose={closeTab} onRestore={restoreTab} />
             <div className="workspace-sheet">
-              <BookmarkPanel page={page} tabId={visibleTabId} captured={captured?.tabId === visibleTabId ? captured.condition : undefined} library={bookmarkLibrary} apply={openBookmark} />
+              {isSearchPage(page) && <BookmarkPanel page={page} tabId={visibleTabId} captured={captured?.tabId === visibleTabId ? captured.condition : undefined} library={bookmarkLibrary} apply={openBookmark} />}
               {searchNotice && <div className="bookmark-application-status" role="status">{searchNotice}</div>}
               {stagedTabId !== undefined && <div className="bookmark-application-status" role="status">適用先の一覧を読み込んでいます…</div>}
-              {openTabs.map(tab => tab.id).concat(stagedTabId === undefined ? [] : [stagedTabId]).map(searchPage)}
+              {openTabs.map(tab => tab.id).concat(stagedTabId === undefined ? [] : [stagedTabId]).map(workspacePage)}
             </div>
           </div>
+        ) : page === "profiles" ? (
+          <ProfilesPage />
         ) : page === "master-data" ? (
           <MasterDataPage
             statusRepository={masterDataStatusRepository}

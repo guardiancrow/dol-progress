@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import type { Profile } from "./domain/models";
 import type { ProgressStats, ProgressStatsRepositoryPort } from "./overview/types";
+import type { ImportResult } from "./importer";
 import type { ProfileRepositoryPort } from "./profiles/ProfileContext";
 import type { UpdateProfileInput } from "./repositories/profileRepository";
 import * as databaseConnection from "./db/connection";
@@ -454,10 +455,49 @@ describe("Overview UI", () => {
   it("shows a safe repository error with retry", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const repositories = setup([profile(1)], zeroStats());
-    repositories.stats.getForProfile = vi.fn().mockRejectedValue(new Error("SELECT failed"));
-    await openOverviewWithoutContent(repositories);
+    repositories.stats.getForProfile.mockRejectedValueOnce(new Error("SELECT failed"));
+    const user = await openOverviewWithoutContent(repositories);
     expect(await screen.findByRole("alert")).toHaveTextContent("進捗集計を読み込めませんでした");
-    expect(screen.getByRole("button", { name: "再読み込み" })).toBeInTheDocument();
+    expect(screen.queryByText("達成 0 / 0")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "再読み込み" }));
+    expect(await screen.findByText("達成 0 / 0")).toBeInTheDocument();
+    expect(screen.queryByText("進捗集計を読み込めませんでした。")).not.toBeInTheDocument();
+    expect(repositories.stats.getForProfile).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits for a master import from another page and ignores a delayed overview from before the import", async () => {
+    const before = stats({ questTotal: 10, questCompleted: 1 });
+    const repositories = setup([profile(1)], stats({ questTotal: 12, questCompleted: 1 }));
+    let finishOldRead!: (value: ProgressStats) => void;
+    repositories.stats.getForProfile.mockImplementationOnce(() => new Promise(resolve => { finishOldRead = resolve; }));
+    const dataset = "quests" as const;
+    const fileName = "synthetic-quests.csv", sha256 = "a".repeat(64);
+    const selection = { dataset, fileName, sha256, rowCount: 0, warningCount: 0,
+      request: { dataset, fileName, sha256, quests: [], discoveries: [], warnings: [] } };
+    let finishImport!: (value: ImportResult) => void;
+    const importPrepared = vi.fn(() => new Promise<ImportResult>(resolve => { finishImport = resolve; }));
+    render(<App profileRepository={repositories.profiles} progressStatsRepository={repositories.stats}
+      masterDataStatusRepository={{ getStatus: async () => ({ datasets: {
+        quests: { dataset: "quests", activeCount: 10, latestImport: null },
+        discoveries: { dataset: "discoveries", activeCount: 0, latestImport: null },
+      }, recentHistory: [] }) }} masterImportService={{ selectFile: async () => selection, importPrepared }} />);
+    const user = userEvent.setup();
+    await screen.findByRole("heading", { name: "プロフィール" });
+    await user.click(screen.getByRole("button", { name: "概要" }));
+    await waitFor(() => expect(repositories.stats.getForProfile).toHaveBeenCalledExactlyOnceWith(1));
+    await user.click(screen.getByRole("button", { name: "マスターデータ" }));
+    await user.click(await screen.findByRole("button", { name: "quests.csv を選択" }));
+    await user.click(await screen.findByRole("button", { name: "クエスト情報を更新" }));
+    expect(importPrepared).toHaveBeenCalledExactlyOnceWith(selection);
+    await user.click(screen.getByRole("button", { name: "概要" }));
+    expect(screen.getByText("進捗を集計しています…")).toBeInTheDocument();
+    expect(repositories.stats.getForProfile).toHaveBeenCalledTimes(1);
+    await act(async () => finishImport({ dataset, fileName, sha256, importedRowCount: 2, insertedCount: 2,
+      updatedCount: 0, inactiveCount: 0, relationCount: 0, warningCount: 0, warnings: [] }));
+    expect(await screen.findByText("達成 1 / 12")).toBeInTheDocument();
+    await act(async () => finishOldRead(before));
+    expect(screen.queryByText("達成 1 / 10")).not.toBeInTheDocument();
+    expect(repositories.stats.getForProfile).toHaveBeenCalledTimes(2);
   });
 
   it("uses one repository aggregation call per Overview display", async () => {

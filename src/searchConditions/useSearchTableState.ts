@@ -14,7 +14,7 @@ const subscribeLocally = () => () => {};
 export function useSearchTableState(binding?: WorkspaceTabBinding): SearchTableController {
   const { tabs, id } = binding ?? {};
   const [local, setLocal] = useState(createSearchTableView);
-  const getView = useCallback(() => id === undefined ? undefined : tabs?.get(id)?.view, [tabs, id]);
+  const getView = useCallback(() => id === undefined ? undefined : tabs?.getSearchView(id), [tabs, id]);
   const tabView = useSyncExternalStore(tabs?.subscribe ?? subscribeLocally, getView);
   const updateView = useCallback<UpdateSearchTableView>(update => {
     if (tabs && id !== undefined) tabs.updateView(id, update);

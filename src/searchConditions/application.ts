@@ -8,6 +8,8 @@ export interface SearchConditionRequest {
   definition: SearchConditionDefinition;
   profileId: number;
   tabId: WorkspaceTabId;
+  // An overview link refers to a category in this master, independently of saved names.
+  discoveryDrilldown?: { categoryId?: number };
 }
 
 export interface SearchConditionApplicationProps {
@@ -46,7 +48,7 @@ function sameTableState(left: SearchTableState, right: SearchTableState): boolea
 export function useSearchConditionApplication(
   profileId: number | null,
   { workspaceTab, staged, searchConditionRequest, onSearchConditionSettled }: SearchConditionApplicationProps,
-  resolve: (condition: SearchConditionDefinition) => Resolution,
+  resolve: (condition: SearchConditionDefinition, drilldown?: SearchConditionRequest["discoveryDrilldown"]) => Resolution,
   { view, updateView }: SearchTableController,
 ) {
   const [resetKey, setResetKey] = useState(0);
@@ -54,7 +56,7 @@ export function useSearchConditionApplication(
   const pending = searchConditionRequest?.profileId === profileId && searchConditionRequest.tabId === workspaceTab?.id
     ? searchConditionRequest : undefined;
   const ready = useMemo(() => current ? resolve(current) : undefined, [current, resolve]);
-  const attempted = useMemo(() => pending ? resolve(pending.definition) : undefined, [pending, resolve]);
+  const attempted = useMemo(() => pending ? resolve(pending.definition, pending.discoveryDrilldown) : undefined, [pending, resolve]);
 
   useLayoutEffect(() => {
     if (!current || ready?.status !== "ready") return;

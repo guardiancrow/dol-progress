@@ -1,7 +1,6 @@
 import { useReportHold } from "../discoveries/useReportHold";
 import { ReportHoldDialogs, ReportHoldFeedback } from "../components/discoveries/ReportHoldControls";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { ColumnFiltersState } from "@tanstack/react-table";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DiscoveryTable } from "../components/discoveries/DiscoveryTable";
 import { RelatedQuestDialog } from "../components/discoveries/RelatedQuestDialog";
@@ -10,7 +9,6 @@ import type {
   DiscoveryProgressRepositoryPort,
   DiscoveryRepositoryPort,
   DiscoveryRowViewModel,
-  DiscoveryInitialFilter,
 } from "../discoveries/types";
 import type { DiscoveryProgress, DiscoveryWithRelations } from "../domain/models";
 import { useProfiles } from "../profiles/ProfileContext";
@@ -19,12 +17,11 @@ import type {
   ProgressLinkServicePort,
 } from "../progressLink";
 
-import { useSearchConditionApplication, whenSearchDataReady, type ReadState, type SearchConditionApplicationProps } from "../searchConditions/application";
+import { useSearchConditionApplication, whenSearchDataReady, type ReadState, type SearchConditionApplicationProps, type SearchConditionRequest } from "../searchConditions/application";
 import { blocked, type SearchConditionDefinition } from "../searchConditions/definition";
 import { SearchConditionFeedback } from "../searchConditions/SearchConditionFeedback";
 import { discoverySearchOptions, resolveDiscoverySearch } from "../searchConditions/tableState";
 import { useSearchTableState } from "../searchConditions/useSearchTableState";
-import { createSearchTableView } from "../workspaceTabs/state";
 import type { ProgressReadKind, WorkspaceReads } from "../workspaceReads/WorkspaceReads";
 import { useWorkspaceReadScope } from "../workspaceReads/useWorkspaceReadScope";
 
@@ -34,8 +31,6 @@ interface DiscoveriesPageProps extends SearchConditionApplicationProps {
   discoveryRepository: DiscoveryRepositoryPort;
   discoveryProgressRepository: DiscoveryProgressRepositoryPort;
   progressLinkService: ProgressLinkServicePort;
-  initialFilter?: DiscoveryInitialFilter;
-  onNavigationConsumed?(): void;
 }
 
 export function DiscoveriesPage({
@@ -43,8 +38,6 @@ export function DiscoveriesPage({
   discoveryRepository,
   discoveryProgressRepository,
   progressLinkService,
-  initialFilter,
-  onNavigationConsumed,
   searchConditionRequest,
   workspaceTab,
   workspaceReads,
@@ -372,7 +365,7 @@ export function DiscoveriesPage({
   const searchProgressRead = !isProfileLoading && progressRead?.profileId === selectedProfileId
     && progressRead.repository === discoveryProgressRepository && progressRead.reload === progressReload
     ? progressRead.state : "loading";
-  const resolveSearch = useCallback((condition: SearchConditionDefinition) => {
+  const resolveSearch = useCallback((condition: SearchConditionDefinition, drilldown?: SearchConditionRequest["discoveryDrilldown"]) => {
     if (condition.page !== "discoveries") return blocked("invalid", "page");
     const map = condition.filters.mapReacquisition;
     const needsMapState = map === "candidate" || map === "suppressed" || map === "review";
@@ -381,26 +374,17 @@ export function DiscoveriesPage({
       ["progress", searchProgressRead],
       ["unreportedBreakdown", condition.filters.unreportedBreakdown ? reportHold.summaryReadState : "ready"],
       ["mapReacquisition", needsMapState ? reportHold.summaryReadState : "ready"],
-    ], () => rows.length ? resolveDiscoverySearch(condition, searchOptions) : blocked("unavailable", "master"));
+    ], () => {
+      if (!rows.length && !drilldown) return blocked("unavailable", "master");
+      const options = drilldown?.categoryId === undefined ? searchOptions : {
+        ...searchOptions, categories: searchOptions.categories.filter(category => category.id === drilldown.categoryId),
+      };
+      return resolveDiscoverySearch(condition, options);
+    });
   }, [rows.length, searchMasterRead, searchProgressRead, reportHold.summaryReadState, searchOptions]);
   const tableState = useSearchTableState(workspaceTab);
-  const { updateView } = tableState;
   const searchCondition = useSearchConditionApplication(selectedProfileId,
     { workspaceTab, staged, searchConditionRequest, onSearchConditionSettled }, resolveSearch, tableState);
-  const consumedNavigation = useRef<DiscoveryInitialFilter>(undefined);
-  useLayoutEffect(() => {
-    if (staged || !initialFilter || consumedNavigation.current === initialFilter || !rows.length
-      || searchMasterRead !== "ready" || searchProgressRead !== "ready" || progressError) return;
-    consumedNavigation.current = initialFilter;
-    const filters: ColumnFiltersState = [];
-    if (initialFilter.kind === "category" && rows.some(row => row.category?.id === initialFilter.categoryId)) {
-      filters.push({ id: "category", value: initialFilter.categoryId });
-    }
-    if (initialFilter.kind === "unreported") filters.push({ id: "status", value: "unreported" });
-    if (initialFilter.kind === "card-not-owned") filters.push({ id: "cardOwned", value: false });
-    updateView(() => createSearchTableView(filters));
-    onNavigationConsumed?.();
-  }, [staged, initialFilter, rows, searchMasterRead, searchProgressRead, progressError, updateView, onNavigationConsumed]);
 
   if (staged) return null;
   if (isProfileLoading) return <div className="state-panel" role="status">プロフィールを読み込んでいます…</div>;

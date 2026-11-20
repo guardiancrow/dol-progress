@@ -26,11 +26,6 @@ export interface DiscoveryProgressRepositoryPort {
 
 export type DiscoveryStatus = "undiscovered" | "unreported" | "reported";
 
-export type DiscoveryInitialFilter =
-  | { kind: "category"; categoryId: number }
-  | { kind: "unreported" }
-  | { kind: "card-not-owned" };
-
 export interface DiscoveryRowViewModel {
   unreportedHistoryReady?: boolean;
   firstReportStatus?: import("./stateService").FirstReportStatus;

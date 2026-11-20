@@ -11,13 +11,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("reveals the complete selected or focused tab without scrolling the surrounding page", async () => {
+it.each([false, true])("reveals the selected or focused tab without scrolling the surrounding page (overview=%s)", async withOverview => {
   const user = userEvent.setup();
   const tabs: WorkspaceTabInfo[] = Array.from({ length: 6 }, (_, index) => ({
     id: index + 1,
     page: index % 2 === 0 ? "quests" : "discoveries",
     name: `検索条件を識別できる長いタブ名 ${index + 1}`,
   }));
+  if (withOverview) tabs.unshift({ id: 7, page: "overview", name: "概要" });
   const actions = { onCreate: vi.fn(), onSelect: vi.fn(), onRename: vi.fn(), onClose: vi.fn(), onRestore: vi.fn() };
   let onResize: (() => void) | undefined;
   vi.stubGlobal("ResizeObserver", class {
@@ -28,7 +29,7 @@ it("reveals the complete selected or focused tab without scrolling the surroundi
   const workspace = (activeId: number) => <div data-testid="workspace-scroll">
     <WorkspaceTabBar {...actions} tabs={tabs} activeId={activeId} />
   </div>;
-  const view = render(workspace(1));
+  const view = render(workspace(tabs[0]!.id));
   const outer = screen.getByTestId("workspace-scroll");
   const list = screen.getByRole("tablist");
   const buttons = screen.getAllByRole("tab");
@@ -43,10 +44,11 @@ it("reveals the complete selected or focused tab without scrolling the surroundi
   });
   outer.scrollTop = 73;
 
-  const last = buttons[5]!;
-  view.rerender(workspace(6));
+  const last = buttons[buttons.length - 1]!;
+  const lastTab = tabs[tabs.length - 1]!;
+  view.rerender(workspace(lastTab.id));
   expect(last).toHaveAttribute("aria-selected", "true");
-  expect(last).toHaveAttribute("title", `${tabs[5]!.name}（発見物）`);
+  expect(last).toHaveAttribute("title", `${lastTab.name}（発見物）`);
   expect(last.parentElement!.getBoundingClientRect().right).toBe(listLeft + listWidth);
 
   listWidth = 200;
