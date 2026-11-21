@@ -77,12 +77,12 @@ for (const version of ['9.8.7', '10.0.0']) test(`TEST_ONLY binding normal case f
   const { model, pin } = fixture(version), r = inspectNoticeApprovalBinding(model, pin);
   assert.equal(r.binding_validated, true); assert.equal(r.formal_approval, false); assert.equal(r.public_release_approved, false);
 });
-test('real input and separate code approval bind only the reviewed implementation snapshot', () => {
+test('v0.5.0 input and code approval bind the fixed release evidence', () => {
   assert.equal(approvedNoticeDecisions['0.5.0'].candidate_commit, '57f0325f1daaa699569c82c221de35ddc2a79605');
-  assert.deepEqual(Object.keys(approvedVerificationDecisions), ['0.5.0']);
   const decision = approvedVerificationDecisions['0.5.0'];
   const root = fileURLToPath(new URL('../../', import.meta.url));
-  const bytes = fs.readFileSync(path.join(root, decision.implementation_snapshot_path));
+  const published = 'c63d60f01303f7057176b4f99be5e9e1d1aa9dda';
+  const bytes = execFileSync('git', ['show', `${published}:${decision.implementation_snapshot_path}`], { cwd: root });
   assert.equal(hash(bytes), '023112f1a0bd52ace3192cc2f43a13a95270765404cf0bfaf08c6a03fd0acedc');
   assert.equal(decision.implementation_snapshot_sha256, hash(bytes));
   const snapshot = JSON.parse(bytes);

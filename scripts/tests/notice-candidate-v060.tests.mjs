@@ -88,7 +88,7 @@ test('a REVIEWED label or an invented approval has no effect', () => {
   replace('preparation.json', p => { p.final_review.approved = true; }, /candidate_bytes/);
 });
 
-test('the fixed candidate validates and formal input audit still rejects it without code approval', () => {
+test('the fixed technical candidate cannot stand in for the final signed source', () => {
   const script = 'scripts/notice-candidates/v0.6.0.mjs';
   const technical = cli('scripts/release-input-audit.mjs', '--version', '0.6.0', '--candidate');
   assert.equal(technical.status, 0, technical.stderr);
@@ -102,7 +102,7 @@ test('the fixed candidate validates and formal input audit still rejects it with
   }
   const formal = cli('scripts/release-input-audit.mjs', '--version', '0.6.0', '--formal', '--expected-source-head', fixed);
   assert.notEqual(formal.status, 0);
-  assert.match(formal.stderr, /implementation_review_pending/);
+  assert.equal(formal.stderr.trim(), 'Release input audit failed: source_identity');
 });
 
 test('the v0.6.0 input decision permits only the deterministic three-file transition', async t => {
