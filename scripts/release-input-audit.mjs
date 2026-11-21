@@ -212,9 +212,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
       if (Object.hasOwn(approvedNoticeDecisions, requested)) {
         const explicit = args[0] === '--version' && args[1] === requested;
         if (explicit && args.length === 3 && args[2] === '--candidate') {
-          const { auditCandidate } = await import('./release-candidate-audit.mjs');
-          console.log(JSON.stringify({ ...auditCandidate(root, { commit: approvedNoticeDecisions[requested].candidate_commit }),
-            scope: 'FIXED_CANDIDATE_ARCHIVE', candidate_commit: approvedNoticeDecisions[requested].candidate_commit }));
+          const { inspectRegisteredNoticeCandidate } = await import('./notice-approval-binding.mjs');
+          console.log(JSON.stringify(inspectRegisteredNoticeCandidate(root, requested)));
         } else if (explicit && args.length === 3 && args[2] === '--reviewed-inputs') {
           const { inspectRegisteredNoticeInputs } = await import('./notice-approval-binding.mjs');
           console.log(JSON.stringify(inspectRegisteredNoticeInputs(root, requested)));

@@ -1,19 +1,26 @@
 {
   "schema": 1,
   "version": "0.6.0",
-  "status": "PREPARED",
+  "status": "REVIEWED",
   "scope": "DISTRIBUTION",
   "target": "x86_64-pc-windows-msvc",
   "test_only": false,
   "source_head": "aefee8711628dda824590d4448ddf0103cde6906",
-  "unresolved": [
-    "Ownerによるv0.6.0候補入力の確認と明示承認"
-  ],
+  "unresolved": [],
   "inventory_sha256": "42a7163529412301956dd9389e0faa169d4019908588a841138f22b122ebfbf2",
-  "review_sha256": "3e461fc0767b1ff31d2e96ad10d7bd92d477aa01df3d1ce49e71b3b8bbd8c583",
-  "source_sha256": "0696ad8fc59e97e7ea80742212c43bb6f302d63074f735c5eb1245e6c0d4d109",
+  "review_sha256": "52ae013f9fc9ce0d689723f949e0b8194dc9c53e9ef3947e2b7f86a1c49791ca",
+  "source_sha256": "56a4d07c378a89a0c47e591bcf9c0eb860c62c92828f97d3a8690cd6b40ca0f9",
   "notices_sha256": "016ec4506b976aad2e33d0295983d557773ada3601f9cd1bb696f1cc3bd8b251",
   "cargo_lock_sha256": "48e7b57dbafc041da2bc0350fb01fa2a2e6a68437be955564e8781126307cdde",
   "npm_lock_sha256": "395238077b40fb83037e33b3e881e5ec90604f9bf14dd44c3236f423c0591b6e",
-  "toolchain_sha256": "39bdb50fedc616aec10d26e9c7d5dcf818932912fbc249bc69e0de517a053a49"
+  "toolchain_sha256": "39bdb50fedc616aec10d26e9c7d5dcf818932912fbc249bc69e0de517a053a49",
+  "owner_approval": {
+    "path": "release/notices/v0.6.0/approval.json",
+    "sha256": "a7e751895063df92b2d9703fd4411311766a9fe69a879a43c89e8404d6a672cb"
+  },
+  "approved_candidate": {
+    "commit": "de8e98616dffd216ead37c9b61dfb109cac963ea",
+    "path": "release/notices/v0.6.0/preparation.json",
+    "sha256": "a899643cc3f76ac8658731630d99dd3cee8d9402a46b6523a9a75c92b1524465"
+  }
 }

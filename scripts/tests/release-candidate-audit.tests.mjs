@@ -28,10 +28,16 @@ test('candidate CLI and formal CLI have different outcomes', () => {
   assert.equal(JSON.parse(candidate.stdout).formal_approval, false);
   assert.equal(JSON.parse(candidate.stdout).scope, 'FIXED_CANDIDATE_ARCHIVE');
   const reviewed = run(['--version', '0.5.0', '--reviewed-inputs']);
-  assert.equal(reviewed.status, 0, reviewed.stderr);
-  assert.equal(JSON.parse(reviewed.stdout).input_approval, true);
-  assert.equal(JSON.parse(reviewed.stdout).verification_registered, true);
-  assert.equal(JSON.parse(reviewed.stdout).formal_approval, false);
+  const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'))).version;
+  if (version === '0.5.0') {
+    assert.equal(reviewed.status, 0, reviewed.stderr);
+    assert.equal(JSON.parse(reviewed.stdout).input_approval, true);
+    assert.equal(JSON.parse(reviewed.stdout).verification_registered, true);
+    assert.equal(JSON.parse(reviewed.stdout).formal_approval, false);
+  } else {
+    assert.notEqual(reviewed.status, 0);
+    assert.match(reviewed.stderr, /current_input_hash/);
+  }
   for (const args of [[], ['--version', '0.5.0'], ['--candidate'], ['--version', '9.9.9']]) assert.notEqual(run(args).status, 0);
 });
 for (const p of versionPaths) {

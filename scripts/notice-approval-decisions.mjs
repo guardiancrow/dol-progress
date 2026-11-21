@@ -10,6 +10,40 @@ export const approvedNoticeDecisions = Object.freeze({
     approved_by: 'Owner', approved_on: null, approved_date_status: 'NOT_SPECIFIED_IN_OWNER_INSTRUCTION',
     toolchain_sha256: '39bdb50fedc616aec10d26e9c7d5dcf818932912fbc249bc69e0de517a053a49',
   }),
+  '0.6.0': Object.freeze({
+    version: '0.6.0', candidate_commit: 'de8e98616dffd216ead37c9b61dfb109cac963ea',
+    snapshot_path: 'release/notices/v0.6.0/preparation.json',
+    snapshot_sha256: 'a899643cc3f76ac8658731630d99dd3cee8d9402a46b6523a9a75c92b1524465',
+    approval_path: 'release/notices/v0.6.0/approval.json',
+    approval_sha256: 'a7e751895063df92b2d9703fd4411311766a9fe69a879a43c89e8404d6a672cb',
+    approved_by: 'Owner', approved_on: null, approved_date_status: 'NOT_SPECIFIED_IN_OWNER_INSTRUCTION',
+    toolchain_sha256: '39bdb50fedc616aec10d26e9c7d5dcf818932912fbc249bc69e0de517a053a49',
+    notices_sha256: '016ec4506b976aad2e33d0295983d557773ada3601f9cd1bb696f1cc3bd8b251',
+    candidate_tooling_sha256: Object.freeze({
+      'scripts/notice-candidates/.gitattributes': '61d6cf26907e4f4a0f4b2e2665f02149e5d82d3382780b12abe68d54289ba8e9',
+      'scripts/notice-candidates/v0.6.0.mjs': '6331cdcfdbb758f3298e7b8fd66f81a8a0be634d2b1efed8528ef578667a2e4a',
+    }),
+    scope: Object.freeze([
+      'Fixed v0.6.0 candidate commit and preparation.json',
+      'Application version values and exact candidate input bytes',
+      'Notices and original texts inherited from v0.5.0',
+      '201 included notices, 6 exclusions, 149 original texts and 358 references',
+      'Inherited component coverage and exclusion reasons',
+      'Both lockfiles unchanged except for the application version',
+      'Inherited approved toolchain fingerprint',
+      'Transition of the three fixed candidate metadata files from PREPARED to REVIEWED',
+    ]),
+    excludes: Object.freeze([
+      'Approval or registration of new or changed verification implementation',
+      'Formal Compile, Package or independent Verifier results',
+      'Final EXE or ZIP acceptance',
+      'GitHub Release publication',
+      'New Microsoft contract determinations',
+      'Expansion of existing use or redistribution permissions',
+      'Production database or real CSV operations',
+      'New migrations',
+    ]),
+  }),
 });
 // Separate explicit Owner code approval; neither input approval nor metadata can populate this.
 // Keeping decision data separate avoids a verifier/own-hash dependency cycle.

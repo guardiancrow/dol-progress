@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { approvedNoticeDecisions, approvedVerificationDecisions } from './notice-approval-decisions.mjs';
 import { readCandidateModel, validateCandidate } from './release-candidate-audit.mjs';
+import { prepareCandidate as prepareV060Candidate, validateCandidate as validateV060Candidate } from './notice-candidates/v0.6.0.mjs';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const encode = value => Buffer.from(JSON.stringify(value, null, 2) + '\n');
@@ -72,12 +73,13 @@ function validateInputDecision(model, pin) {
     check(isHash(hash) && sha256(readMap(model.candidateFiles, name)) === hash, 'candidate_input_hash');
   }
   check(sha256(model.approvalBytes) === pin.approval_sha256, 'approval_hash');
+  const hasExplicitScope = pin.version === '0.6.0';
   const expectedApproval = {
     schema: 2, purpose: 'NOTICE_OWNER_INPUT_APPROVAL', version: pin.version, state: 'APPROVED',
     approved_by: pin.approved_by, approved_on: pin.approved_on, approved_date_status: pin.approved_date_status,
     basis: 'OWNER_EXPLICIT_FIXED_SNAPSHOT_APPROVAL',
     candidate_commit: pin.candidate_commit, snapshot_path: pin.snapshot_path, snapshot_sha256: pin.snapshot_sha256,
-    scope: snapshot.approval_scope, excludes: [...snapshot.excluded_scope,
+    scope: hasExplicitScope ? pin.scope : snapshot.approval_scope, excludes: hasExplicitScope ? pin.excludes : [...snapshot.excluded_scope,
       'Unconditional approval of additional or changed verification code', 'Final ZIP acceptance'],
     toolchain_sha256: pin.toolchain_sha256, verification_review: 'SEPARATE_OWNER_REVIEW_REQUIRED',
     public_release_approved: false,
@@ -125,6 +127,12 @@ export function inspectNoticeInputApproval(model, pin) {
     } else check(sha256(readMap(model.currentFiles, name)) === hash, 'current_input_hash');
   }
   check(prepared === 3 && promoted === 0 || prepared === 0 && promoted === 3, 'partial_transition');
+  if (pin.version === '0.6.0') {
+    check(model.inheritedFiles instanceof Map, 'current_inherited_inputs_missing');
+    for (const [name, hash] of inheritedHashes(snapshot, model.candidateFiles)) {
+      check(sha256(readMap(model.inheritedFiles, name)) === hash, 'current_inherited_input_hash');
+    }
+  }
   return { version: pin.version, status: promoted === 3 ? 'REVIEWED' : 'PREPARED', input_approval: true,
     verification_approval: false, formal_approval: false, public_release_approved: false };
 }
@@ -167,12 +175,57 @@ function readCurrentInput(root, name) {
   return fs.readFileSync(current);
 }
 
-export function readRegisteredNoticeInput(root, version) {
+function registeredInputDecision(version) {
   const pin = Object.hasOwn(approvedNoticeDecisions, version) ? approvedNoticeDecisions[version] : undefined;
   check(pin, 'owner_approval_not_registered');
   validatePin(pin, false);
+  return pin;
+}
+
+function readPinnedCandidate(root, pin) {
+  if (pin.version === '0.6.0') {
+    const files = new Map();
+    const read = name => {
+      relative(name);
+      if (!files.has(name)) files.set(name, execFileSync('git', ['--no-optional-locks', '-C', root, 'show', `${pin.candidate_commit}:${name}`], {
+        maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'],
+      }));
+      return files.get(name);
+    };
+    const snapshotBytes = read(pin.snapshot_path);
+    check(sha256(snapshotBytes) === pin.snapshot_sha256, 'snapshot_hash');
+    const snapshot = json(snapshotBytes);
+    same(snapshot.candidate_tooling_sha256, pin.candidate_tooling_sha256, 'candidate_tooling_set');
+    for (const [name, hash] of Object.entries(pin.candidate_tooling_sha256)) {
+      check(sha256(read(name)) === hash, 'candidate_tooling_hash');
+    }
+    check(sha256(read('release/notices/v0.6.0/THIRD-PARTY-NOTICES.txt')) === pin.notices_sha256, 'candidate_notice_hash');
+    const result = validateV060Candidate(prepareV060Candidate(read), read);
+    return { files, result };
+  }
   const archived = readCandidateModel(root, { commit: pin.candidate_commit });
-  validateCandidate(archived);
+  return { files: archived.files, result: validateCandidate(archived) };
+}
+
+export function inspectRegisteredNoticeCandidate(root, version) {
+  const pin = registeredInputDecision(version);
+  return { ...readPinnedCandidate(root, pin).result, scope: 'FIXED_CANDIDATE_ARCHIVE', candidate_commit: pin.candidate_commit };
+}
+
+function inheritedHashes(snapshot, candidateFiles) {
+  const hashes = new Map(Object.entries(snapshot.inheritance.inputs));
+  const review = json(readMap(candidateFiles, 'release/notices/v0.6.0/review.json'));
+  for (const record of review.coverage) {
+    for (const evidence of [...(record.required_texts ?? []), ...(record.copyright_review?.source_evidence ?? [])]) {
+      hashes.set(evidence.path, evidence.sha256);
+    }
+  }
+  return hashes;
+}
+
+export function readRegisteredNoticeInput(root, version) {
+  const pin = registeredInputDecision(version);
+  const archived = readPinnedCandidate(root, pin);
   const snapshotBytes = readMap(archived.files, pin.snapshot_path);
   const snapshot = json(snapshotBytes);
   const candidateFiles = new Map(Object.keys(snapshot.candidate_input_sha256).map(name => [name, readMap(archived.files, name)]));
@@ -181,6 +234,9 @@ export function readRegisteredNoticeInput(root, version) {
   const model = { version, candidateCommit: pin.candidate_commit, snapshotBytes, candidateFiles,
     currentFiles, approvalBytes: currentFiles.get(pin.approval_path) };
   validateInputDecision(model, pin);
+  if (version === '0.6.0') {
+    model.inheritedFiles = new Map([...inheritedHashes(snapshot, candidateFiles).keys()].map(name => [name, readCurrentInput(root, name)]));
+  }
   return { model, pin };
 }
 

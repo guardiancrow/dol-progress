@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "version": "0.6.0",
-  "status": "PREPARED",
+  "status": "REVIEWED",
   "test_only": false,
   "inheritance": {
     "version": "0.5.0",
@@ -5543,7 +5543,14 @@
       "review_state": "REVIEWED"
     }
   ],
-  "unresolved": [
-    "Ownerによるv0.6.0候補入力の確認と明示承認"
-  ]
+  "unresolved": [],
+  "owner_approval": {
+    "path": "release/notices/v0.6.0/approval.json",
+    "sha256": "a7e751895063df92b2d9703fd4411311766a9fe69a879a43c89e8404d6a672cb"
+  },
+  "approved_candidate": {
+    "commit": "de8e98616dffd216ead37c9b61dfb109cac963ea",
+    "path": "release/notices/v0.6.0/preparation.json",
+    "sha256": "a899643cc3f76ac8658731630d99dd3cee8d9402a46b6523a9a75c92b1524465"
+  }
 }

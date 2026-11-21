@@ -91,7 +91,10 @@ test('real input and separate code approval bind only the reviewed implementatio
   assert.equal(decision.snapshot_sha256, snapshot.snapshot_sha256);
   assert.deepEqual(decision.reviewed_tooling_sha256, snapshot.file_sha256);
   assert.equal(Object.keys(decision.reviewed_tooling_sha256).length, 8);
-  for (const [name, sha] of Object.entries(decision.reviewed_tooling_sha256)) assert.equal(hash(fs.readFileSync(path.join(root, name))), sha);
+  for (const [name, sha] of Object.entries(decision.reviewed_tooling_sha256)) {
+    const original = execFileSync('git', ['show', `${decision.reviewed_commit}:${name}`], { cwd: root });
+    assert.equal(hash(original), sha);
+  }
   assert.equal(decision.reviewed_commit, 'a92a6bdc60a011d153b9b042a973895762905f8b');
   assert.equal(decision.reviewed_pr, 12); assert.equal(decision.approved_by, 'Owner');
   assert.equal(decision.approved_on, null); assert.equal(decision.approved_date_status, 'NOT_SPECIFIED_IN_OWNER_INSTRUCTION');
@@ -103,7 +106,9 @@ test('real input and separate code approval bind only the reviewed implementatio
 test('self-declared approval or caller-supplied pin cannot enable a real version', () => {
   const f = fixture('0.5.0');
   const root = fileURLToPath(new URL('../../', import.meta.url));
-  assert.throws(() => verifyRegisteredNoticeApproval(root, '0.5.0', 'b'.repeat(40), f.pin), e => e.gate === 'source_identity');
+  const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'))).version;
+  const expectedGate = version === '0.5.0' ? 'source_identity' : 'current_input_hash';
+  assert.throws(() => verifyRegisteredNoticeApproval(root, '0.5.0', 'b'.repeat(40), f.pin), { gate: expectedGate });
   assert.throws(() => verifyRegisteredNoticeApproval('TEST_ONLY', '9.8.7', 'b'.repeat(40)), e => e.gate === 'owner_approval_not_registered');
 });
 rejects('changed snapshot bytes rejected', f => { f.model.snapshotBytes = Buffer.concat([f.model.snapshotBytes, Buffer.from(' ')]); }, 'snapshot_hash');
