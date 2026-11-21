@@ -10,29 +10,37 @@
 
 ## 通知正本とWindows x64配布物
 
-[THIRD-PARTY-NOTICES.txt](../THIRD-PARTY-NOTICES.txt)は現行Windows x64 Release向けの第三者原文・表示の正本である。利用者がEXEと同じ配布経路で取得できるよう、Portable ZIPに同梱する。通知正本を再生成したり、承認済みの原文を要約・省略したりしない。
+[THIRD-PARTY-NOTICES.txt](../THIRD-PARTY-NOTICES.txt)は、公開済みのv0.5.0 Windows x64版に同梱した第三者原文・表示の正本である。利用者がEXEと同じ配布経路で取得できるよう、Portable ZIPに同梱する。通知正本を再生成したり、承認済みの原文を要約・省略したりしない。
 
 固定ZIPにはEXE、README.txt、LICENSE.txt、THIRD-PARTY-NOTICES.txt、SHA256SUMS.txtの5ファイルを入れ、ZIP外に.sha256を置く。SQLite bundledとWebView2 LoaderはEXEに組み込む。VC++ Redistributable、WebView2 Runtime、Windows OS DLL本体やinstaller、開発・テストtool本体、DB／config／backup／取得CSVは含めない。Runtimeは外部導入要件であり、アプリが自動取得・導入する構成にはしない。
 
 Noticesは保守的な包含候補と提供元通知も含む。通知に載る全componentが最適化後のEXEへ残ると認定したものではない。WebView2 SDKのpackage全体NOTICEを添付したことだけで、そこに列挙される全componentのnative Loader包含や追加source義務を認定しない。
 
-## 現在の候補と正式レビューの状態
+## v0.6.0の準備と過去の承認記録
 
-v0.4.0は[GitHub Release](https://github.com/guardiancrow/dol-progress/releases/tag/v0.4.0)で公開済みである。既存の承認記録と当時の検証結果は、その対象範囲の履歴として保持する。
+v0.6.0は準備中で、対象版のNotices入力承認と正式Compile・Package・独立Verifierは未完了である。アプリ自身の版番号を更新すると、依存バージョンが同じでもnpmとCargoのlockfileのhashが変わる。対象版の承認に必要な範囲は[Release手順](release-build.md#v060の準備状況)を参照する。
+
+### v0.5.0の承認と公開
+
+[v0.5.0](https://github.com/guardiancrow/dol-progress/releases/tag/v0.5.0)は2026年11月15日に正式公開された。正式Compile・Package・独立Verifierおよび最終ZIPの受入は、公開版の対象commitで確認済みである。
 
 v0.5.0のmetadataは`release/notices/v0.5.0/`へ分離している。Ownerが固定した候補commitとsnapshotのhash、16入力、201通知・6除外・149原文・358参照の継承、toolchainを限定承認したため、manifest・review・sourceをREVIEWEDへ昇格した。原文・coverage・inventoryは変更していない。実際の承認内容は`approval.json`に記録し、日時の指定がないためapproved_onはnullと明示している。
 
-`preparation.json`は候補作成時のPREPARED原本として保持し、hashを変更しない。入力承認は新しい検証コードの承認を含まない。PR #12の検証コードは、実装snapshot（SHA-256 `023112f1a0bd52ace3192cc2f43a13a95270765404cf0bfaf08c6a03fd0acedc`）の8ファイルへの別のOwner承認を受け、コード用の信頼設定へ固定hashを登録した。承認登録の差分レビューと署名付きclean sourceの確定は別に必要であり、正式3工程は未実施である。`--candidate`は固定commitの候補原本を検証し、`--reviewed-inputs`は現在の限定承認と昇格状態を検証する。正式検証はこれらとは別に、登録されたコード承認と署名付きclean source、ExpectedSourceHead、承認済み実装bytesの一致を要求する。[承認・昇格方式](notice-approval.md)を参照する。
+`preparation.json`は候補作成時のPREPARED原本として保持し、hashを変更しない。入力承認は新しい検証コードの承認を含まない。PR #12の検証コードは、実装snapshot（SHA-256 `023112f1a0bd52ace3192cc2f43a13a95270765404cf0bfaf08c6a03fd0acedc`）の8ファイルへの別のOwner承認を受け、コード用の信頼設定へ固定hashを登録した。準備時の手順では、承認登録後に差分をレビューし、署名付きclean sourceを確定する。`--candidate`は固定commitの候補原本を検証し、`--reviewed-inputs`はv0.5.0の限定承認と昇格状態を検証する。正式検証はこれらとは別に、登録されたコード承認と署名付きclean source、ExpectedSourceHead、承認済み実装bytesの一致を要求する。[承認・昇格方式](notice-approval.md)を参照する。
 
-旧版のmanifest・inventory・review・source・approval・reviewed・PREPARED snapshot・mapping・原文は変更しない。`--archive-v0.4.0`で固定した公開commitと当時の承認hashを照合できる。これは過去の入力の検証であり、v0.5.0を自動承認する処理ではない。
+旧版のmanifest・inventory・review・source・approval・reviewed・PREPARED snapshot・mapping・原文は変更しない。`--archive-v0.4.0`で固定した公開commitと当時の承認hashを照合できる。これは固定したv0.4.0の履歴入力を対象とする検査である。
+
+### 旧版の検証記録
 
 v0.3.0の通知対象201件・除外6件、原文148種類・357参照は正式レビュー済みで、当時のmanifest／review／sourceはREVIEWEDだった。依存版はnpm／Cargoのlockfileで固定する。原文、著作権表示、出典、除外根拠、lockとtoolchainを対応付けた既存結果を保持し、文書整理のために再監査・再承認しない。v0.4.0の準備・承認履歴は次項で区別する。
 
-正式レビューは通知に関する確認範囲の判断であり、全原文の逐語確認、包括的な法的保証、Microsoft契約の受入、一般公開の承認を意味しない。v0.4.0の正式Compile・Package・独立Verifierは成功済みだが、v0.5.0の検証結果へ流用しない。
+正式レビューは通知に関する確認範囲の判断であり、全原文の逐語確認、包括的な法的保証、Microsoft契約の受入、一般公開の承認を意味しない。v0.4.0とv0.5.0の正式Compile・Package・独立Verifierの結果は、それぞれの公開版の対象commitに適用する。
 
 source.jsonのformal_package_gate=NOT_COMPLETEDなどは登録時のmetadataである。後続Packageの成功はrun/resultで記録し、その表示を更新するためにREVIEWED metadataや通知の由来commit・レビュー基点を改変しない。新しい依存・toolchain・配布構成へ旧レビューを無条件で一般化しない。
 
 ### v0.4.0正式レビューの状態（Map-C12F-4）
+
+[v0.4.0](https://github.com/guardiancrow/dol-progress/releases/tag/v0.4.0)は2026年11月8日に正式公開された。
 
 Ownerは2026年11月8日にMap-C12F-3の通知本文・metadata・参照hash・限定検証結果を承認した。`release/notices/manifest.json`と`review.json`のstatus、`source.json`のformal_review_stateはREVIEWEDである。承認範囲と対象のPREPARED入力hashを`v0.4.0-approval.json`へ記録し、`v0.4.0-reviewed.json`で現行の承認済み対応を示す。Microsoft関連の法的残件やバイナリ公開は承認対象外である。
 
@@ -54,9 +62,9 @@ v0.4.0の正式`Read-PortableNotices`は新しいOwner承認証拠と検査modul
 
 | 入力 | 必須の状態・対応 |
 | --- | --- |
-| release/notices/manifest.json | schema 1、REVIEWED、scope=DISTRIBUTION、boolean test_only=false、アプリversion、unresolved空配列。inventory／review／source／通知・Cargo／npm lock・compile toolchainのSHA-256。v0.4.0はowner_approvalの固定pathとhashも必須 |
+| manifest.json（対象版のNoticesディレクトリ内） | schema 1、REVIEWED、scope=DISTRIBUTION、boolean test_only=false、アプリversion、unresolved空配列。inventory／review／source／通知・Cargo／npm lock・compile toolchainのSHA-256。v0.4.0はowner_approvalの固定pathとhashも必須 |
 | inventory.json | schema 1、version、target=x86_64-pc-windows-msvc。一意のcomponent ID、version、boolean included、rust／frontend／native／toolchain／assets各group |
-| review.json | schema 1、REVIEWED、version、boolean test_only=false、reviewer／reviewed_at、unresolved空配列。全componentへ一意に対応するcoverage、included一致、obligations_completedとprovenance_completed=true、非空の署名対象evidence |
+| review.json | schema 1、REVIEWED、version、boolean test_only=false、unresolved空配列。reviewer／reviewed_atはv0.5.0以外の対応版で必須。v0.5.0は登録済みの承認記録を照合する。全componentへ一意に対応するcoverage、included一致、obligations_completedとprovenance_completed=true、非空の署名対象evidence |
 | source.json | schema 1、purpose=PACKAGE_NOTICE_SOURCE、canonical_file=THIRD-PARTY-NOTICES.txt、version／target、40桁source_commit、formal_review_state=REVIEWED。通知正本とCargo／npm lockのhash |
 | mapping.json | component／原文／出典、除外根拠、toolchain等を記録する署名対象のreview evidence |
 | v0.4.0-approval.json／v0.4.0-reviewed.json | 2026-11-08のOwner限定承認、対象PREPARED commit・各入力hash・範囲・除外、現行のREVIEWED証拠。旧snapshotと新metadataのhash参照を循環させない |
@@ -85,7 +93,7 @@ source_evidenceは`release/notices/evidence/`または`release/notices/texts/`�
 
 ## Microsoft関連の確認範囲と残件
 
-v0.5.0準備では使用主体、ソース上のSDK／MSVCの選択設定、リンク方式、同意本文、Runtime同梱方針を変更していない。同一構成についての既存Owner判断を継承し、古い未完了表記だけを理由に再審査しない。実際に選択されるnative toolchainは正式Compile時に照合する。新しい技術検証と、Ownerの新しい入力・公開承認は別に扱う。
+v0.5.0準備では使用主体、ソース上のSDK／MSVCの選択設定、リンク方式、同意本文、Runtime同梱方針を変更していない。同一構成についての既存Owner判断を継承し、古い未完了表記だけを理由に再審査しない。実際に選択されるnative toolchainは対象版の正式Compile時に照合する。新しい技術検証と、Ownerの新しい入力・公開承認は別に扱う。
 
 以下の表と留保は、過去の監査記録時点の状況である。その後の判断を公開Releaseの存在から推測して補わず、既存の決定記録を優先する。この準備で新しい契約上の承認や許諾を付与した事実はない。
 

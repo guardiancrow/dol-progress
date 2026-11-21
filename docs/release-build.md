@@ -50,7 +50,7 @@ npm run tauri -- build --no-bundle -- --locked --offline
 
 不一致、署名検証失敗、staged変更、未知のuntracked source、application／依存／schemaへの許可外変更は停止する。任意のdirty-tree許可、skip、公開entryのtest modeはない。
 
-CompileとPackageは`release-safety.ps1`の共通`Assert-PortableVersions`で5ファイルを照合する。npm lockはtop-levelと空keyのroot packageを両方確認し、Cargo.tomlは`[package]`、Cargo.lockはアプリ名のrecordだけを対象にする。Compile結果のversionは照合済みのpackage.jsonから記録し、特定のリリース番号へ固定しない。v0.4.0準備では6か所の値を`0.4.0`に揃えた。
+CompileとPackageは`release-safety.ps1`の共通`Assert-PortableVersions`で5ファイルを照合する。npm lockはtop-levelと空keyのroot packageを両方確認し、Cargo.tomlは`[package]`、Cargo.lockはアプリ名のrecordだけを対象にする。Compile結果のversionは照合済みのpackage.jsonから記録し、特定のリリース番号へ固定しない。
 
 compile runnerには限定的なツール検証用として、次の6pathだけの未commit変更を記録する既存処理がある。これは正式配布のclean要件の代替ではなく、そのrunはPackage入力として使えない。
 
@@ -180,25 +180,25 @@ npm run typecheck
 
 ## 現在の確認結果と公開前の残件
 
-### 公開済みv0.4.0とv0.5.0候補
+### v0.6.0の準備状況
 
-[v0.4.0](https://github.com/guardiancrow/dol-progress/releases/tag/v0.4.0)は2026年11月8日に公開済みで、Releaseページに正式Compile・Package・独立VerifierとOwnerの最終ZIP確認の完了が記録されている。対象tagのcommitは`e14ba29c877805043c5f40ec103a3f733d5598e9`である。以下の古い確認状況は、その記録時点の履歴として区別する。
+mainにはUI-R7A（検索条件のブックマーク）とUI-R7B（複数タブと概要タブ）が統合済みである。Release-0.6Aでは文書と5ファイルの版番号6か所を0.6.0へ更新する。v0.6.0の正式配布物は未公開で、正式Compile・Package・独立Verifierは未実施である。
 
-v0.5.0はUI-R5Cまでを対象とし、進行ナビゲーションは次版以降とする。5ファイル・6値を0.5.0へ揃え、metadataを`release/notices/v0.5.0/`へ分離している。Ownerは候補commit `57f0325f1daaa699569c82c221de35ddc2a79605`とsnapshotのSHA-256 `5cafbfda822c9471f9b4061135c90ec93fdf9493f9ae21f11dd3848a834bf794`、16入力とtoolchainを限定承認した。manifest・review・sourceはREVIEWEDである。PR #12の検証コードについても実装snapshotと8ファイルのhashへのOwner承認を受け、固定値を信頼設定へ登録した。正式配布工程は未実施である。
+現行の正式入力検査はv0.6.0を未対応版として拒否する。正式3工程の前に、v0.6.0に対応する検査と、版情報・lockfileの実bytes、Notices、toolchainを照合できる入力を用意し、Ownerが入力を承認する。検証実装の変更も承認し、承認登録を含む署名済みのclean sourceを確定する。その同じSHAから新しいrunで正式3工程を実行する。[承認・昇格方式](notice-approval.md)を参照する。
 
-`node scripts/release-input-audit.mjs --version 0.5.0 --candidate`は固定commitのPREPARED原本を検証する。現在の入力承認と昇格状態は`--reviewed-inputs`で確認する。この検査はinput_approval=trueでもformal_approval=falseを返す。正式検査は`--formal --expected-source-head <SHA>`を要求し、検証コードの承認登録、署名、clean source、候補の祖先関係、実bytesも照合する。承認登録後も、未コミットの登録を含む作業ツリーや署名・HEAD・bytesの不一致は拒否する。
+正式入力は改行や文字コードを含む実bytesで照合する。版情報とlockfile、候補hashに含まれる検証コード、承認参照文書に対するLF指定を維持する。
 
-採用されたtoolchainはWindows PowerShell 5.1.26100.9818、Node v26.13.1、npm 11.20.0、Rust/Cargo 1.99.1、Tauri CLI 2.11.4である。Windows標準のWindowsPowerShell/v1.0/powershell.exeを明示する方式を推奨する。PowerShell 7の実行結果をこのfingerprintへ読み替えない。正式Compile時の実測と採用値の一致は別途確認する。
+### 公開済みのRelease
 
-lockfileと版情報、候補hashに含まれる検証コード、承認参照文書に限定してLFを指定する。旧版で承認したCRLF lock表現は、固定した公開commitのLF blobから当時の表現だけを復元し、元の承認hashで検査する。これは`--archive-v0.4.0`による履歴検証であり、現行の配布bytesや未承認候補を認める処理ではない。歴史的な参照文書も承認commitのblobを読む。現行入力は実bytesを厳密に照合し、改行差を自動的に許容しない。
+[v0.5.0](https://github.com/guardiancrow/dol-progress/releases/tag/v0.5.0)は2026年11月15日に正式公開された。対象commitは `c63d60f01303f7057176b4f99be5e9e1d1aa9dda` である。Releaseページには正式Compile・Package・独立Verifier、配布物のプライバシー検査、Ownerによる最終ZIP確認と受入が記録されている。[v0.5.0準備時の承認と検査](release-build-history.md#v050準備時の承認と検査)に当時の記録を残す。
 
-この準備段階では正式3工程と最終EXE・ZIPを確定しない。入力承認、昇格記録、検証コード承認の登録は作成済みである。登録差分のレビューと署名付きclean sourceの確定が残る。その後、同じSHAから新しいrunで実施する。v0.4.0の承認ファイルや過去のrunは改変・流用しない。
+[v0.4.0](https://github.com/guardiancrow/dol-progress/releases/tag/v0.4.0)は2026年11月8日に公開された。Releaseページに正式Compile・Package・独立VerifierとOwnerの最終ZIP確認の完了が記録されている。対象tagのcommitは `e14ba29c877805043c5f40ec103a3f733d5598e9` である。
 
 ### 過去の確認状況
 
 既存の署名済みHEAD `482b9ae80f117946f6c36cc093b27f27666d044e` に対して正式Compile・Package・独立Verifierは成功済みである。これはそのHEADに限る検証結果で、文書変更後のHEADの成功とは扱わない。run識別子とhashを含む記録は[履歴の確認状況](release-build-history.md#現在の公開準備状況)に保持する。当時のNoticesはREVIEWEDであり、201通知・6除外、148原文・357参照のレビュー事実を保全する。
 
-上記はv0.3.0の過去の確認結果である。v0.4.0の入力はMap-C12FでPREPAREDへ分離し、F-3で新しいprovider原文とmetadataを準備した。F-4では2026-11-08のOwner限定承認を記録し、NoticesをREVIEWEDへ移行した。F-4記録時点では正式3工程は未実行だった。その後の正式Release完了は本節冒頭で区別する。[Map-C12F-4の検証報告](map-c12f-4-verification.md)と[Noticesの承認状態](third-party-licenses.md)を参照する。Notices読取関数の成功は、署名付きclean source、Compile provenance、Package、Privacy検査、バイナリ公開の承認を代替しない。
+上記はv0.3.0の過去の確認結果である。v0.4.0の入力はMap-C12FでPREPAREDへ分離し、F-3で新しいprovider原文とmetadataを準備した。F-4では2026-11-08のOwner限定承認を記録し、NoticesをREVIEWEDへ移行した。F-4記録時点では正式3工程は未実行だった。その後に正式Releaseを完了した。[Map-C12F-4の検証報告](map-c12f-4-verification.md)と[Noticesの承認状態](third-party-licenses.md)を参照する。Notices読取関数の成功は、署名付きclean source、Compile provenance、Package、Privacy検査、バイナリ公開の承認を代替しない。
 
 SDK受領者条件はREADMEとConsent v2へ実装している。過去の監査時点の留保と、その後のOwner判断を区別し、同一構成の承認済み判断を継承する。[Microsoft関連の区分](third-party-licenses.md#microsoft関連の確認範囲と残件)を参照する。実装だけから新しい契約判断や公開承認を推定しない。
 
