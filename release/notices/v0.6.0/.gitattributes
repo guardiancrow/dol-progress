@@ -1,0 +1,2 @@
+.gitattributes text eol=lf
+THIRD-PARTY-NOTICES.txt -text whitespace=-blank-at-eol,-blank-at-eof
