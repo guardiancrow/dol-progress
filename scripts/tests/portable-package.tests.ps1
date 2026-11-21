@@ -586,6 +586,93 @@ Case 'Incomplete notice metadata fails closed' {
     $map=[ordered]@{}; foreach ($name in @('manifest.json','inventory.json','review.json','THIRD-PARTY-NOTICES.txt')) { $map['release/notices/'+$name]='0'*64 }
     Reject { Read-PortableNotices $root '0.3.0' $map }
 }
+function New-VersionedNoticeFixture([string]$ManifestVersion='0.6.0',[string]$ReviewVersion='0.6.0',
+    [string]$SourceVersion='0.6.0',[string]$HeaderVersion='0.6.0',[string]$CanonicalFile='release/notices/v0.6.0/THIRD-PARTY-NOTICES.txt',
+    [string]$Status='REVIEWED') {
+    $root=New-TestPath '.versioned-notices'
+    $layout=Get-PortableNoticeLayout '0.6.0'
+    $folder=Join-Path $root $layout.Prefix
+    New-Item -ItemType Directory -Path $folder,(Join-Path $root 'release/notices/texts') -Force | Out-Null
+    $original='Copyright (c) Example contributors. Permission and disclaimer.'
+    $originalPath='release/notices/texts/example.txt'
+    Write-ReleaseNewText (Join-Path $root $originalPath) $original
+    Write-ReleaseNewText (Join-Path $root 'THIRD-PARTY-NOTICES.txt') ("DOL Progress Manager 0.5.0 Example notice`n"+$original)
+    Write-ReleaseNewText (Join-Path $root $layout.Canonical) ("DOL Progress Manager $HeaderVersion Example notice`n"+$original)
+    $originalHash=Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $root $originalPath))
+    $textHash=Get-ReleaseSHA256 (Read-PortableBytes (Join-Path $root $layout.Canonical))
+    $components=@(); $coverage=@()
+    foreach ($group in @('rust','frontend','native','toolchain','assets')) {
+        $components+=@{id=$group;version='1.0.0';group=$group;included=$true}
+        $coverage+=@{id=$group;included=$true;obligations_completed=$true;provenance_completed=$true;evidence=@($originalPath);selected_license='MIT';required_texts=@(@{path=$originalPath;sha256=$originalHash});copyrights=@('Copyright (c) Example contributors.');source_provision='NOT_REQUIRED'}
+    }
+    $records=[ordered]@{
+        'source.json'=@{schema=1;purpose='PACKAGE_NOTICE_SOURCE';version=$SourceVersion;target='x86_64-pc-windows-msvc';canonical_file=$CanonicalFile;sha256=$textHash;source_commit=('a'*40);formal_review_state=$Status;cargo_lock_sha256=('b'*64);npm_lock_sha256=('c'*64)}
+        'review.json'=@{schema=1;status=$Status;version=$ReviewVersion;test_only=$false;unresolved=@();coverage=$coverage}
+        'inventory.json'=@{schema=1;version='0.6.0';target='x86_64-pc-windows-msvc';components=$components}
+    }
+    $manifest=@{schema=1;status=$Status;scope='DISTRIBUTION';target='x86_64-pc-windows-msvc';test_only=$false;version=$ManifestVersion;unresolved=@();cargo_lock_sha256=('b'*64);npm_lock_sha256=('c'*64);notices_sha256=$textHash}
+    $map=[ordered]@{'src-tauri/Cargo.lock'= ('b'*64);'package-lock.json'= ('c'*64)}
+    foreach ($name in $records.Keys) {
+        $file=Join-Path $folder $name
+        Write-ReleaseNewText $file (($records[$name] | ConvertTo-Json -Depth 12)+"`n")
+        $h=Get-ReleaseSHA256 (Read-PortableBytes $file)
+        $manifest[[IO.Path]::GetFileNameWithoutExtension($name)+'_sha256']=$h
+        $map[$layout.Prefix+$name]=$h
+    }
+    $file=Join-Path $folder 'manifest.json'
+    Write-ReleaseNewText $file (($manifest | ConvertTo-Json -Depth 12)+"`n")
+    $map[$layout.Prefix+'manifest.json']=Get-ReleaseSHA256 (Read-PortableBytes $file)
+    $map[$layout.Canonical]=$textHash; $map[$originalPath]=$originalHash
+    return [pscustomobject]@{Root=$root; Hashes=$map; Canonical=$layout.Canonical}
+}
+Case 'Fixed notice layout selects only supported paths' {
+    foreach ($v in @('0.3.0','0.4.0','0.5.0')) { Expect ((Get-PortableNoticeLayout $v).Canonical -ceq 'THIRD-PARTY-NOTICES.txt') }
+    Expect ((Get-PortableNoticeLayout '0.6.0').Canonical -ceq 'release/notices/v0.6.0/THIRD-PARTY-NOTICES.txt')
+    Reject { Get-PortableNoticeLayout '9.9.9' }
+    Reject { Get-PortableNoticeLayout '../0.6.0' }
+}
+Case 'Versioned reader rejects mixed metadata, substituted path and pending review TEST_ONLY' {
+    foreach ($f in @((New-VersionedNoticeFixture -ManifestVersion '0.5.0'),(New-VersionedNoticeFixture -ReviewVersion '0.5.0'),
+            (New-VersionedNoticeFixture -SourceVersion '0.5.0'),(New-VersionedNoticeFixture -CanonicalFile 'THIRD-PARTY-NOTICES.txt'),
+            (New-VersionedNoticeFixture -HeaderVersion '0.5.0'),(New-VersionedNoticeFixture -Status 'PREPARED'))) {
+        Reject { Read-PortableNoticeInputs $f.Root '0.6.0' $f.Hashes }
+    }
+    $f=New-VersionedNoticeFixture
+    $f.Hashes[$f.Canonical]='e'*64
+    Reject { Read-PortableNoticeInputs $f.Root '0.6.0' $f.Hashes }
+    $f.Hashes.Remove($f.Canonical)
+    Reject { Read-PortableNoticeInputs $f.Root '0.6.0' $f.Hashes }
+}
+Case 'Versioned notice bytes survive ZIP and independent source validation TEST_ONLY' {
+    $f=New-VersionedNoticeFixture
+    $packageNotices=(Read-PortableNoticeInputs $f.Root '0.6.0' $f.Hashes).Bytes
+    $verifierNotices=(Read-PortableNoticeInputs $f.Root '0.6.0' $f.Hashes).Bytes
+    Expect ((Get-ReleaseSHA256 $packageNotices) -ceq $f.Hashes[$f.Canonical])
+    Expect ((Get-ReleaseSHA256 $verifierNotices) -ceq $f.Hashes[$f.Canonical])
+    $pe=Fixture-Pe; Put32 $pe 816 6; Put32 $pe 824 6
+    $docs=ConvertTo-PortableReadme ([Text.Encoding]::UTF8.GetBytes($fixtureReadme)) '0.6.0'
+    $packagePayload=[ordered]@{'LICENSE.txt'=$payload['LICENSE.txt'];'README.txt'=$docs;'THIRD-PARTY-NOTICES.txt'=$packageNotices;'dol-progress-manager.exe'=$pe}
+    $expectedPayload=[ordered]@{'LICENSE.txt'=$payload['LICENSE.txt'];'README.txt'=$docs;'THIRD-PARTY-NOTICES.txt'=$verifierNotices;'dol-progress-manager.exe'=$pe}
+    $staged=New-TestPath '.versioned-staging'
+    $actualHashes=New-PortableStaging $staged $packagePayload
+    $zip=New-TestPath '.versioned.zip'
+    Write-PortableZip $staged $zip $committerTimestamp
+    Write-ReleaseNewText ($zip+'.sha256') ((Get-ReleaseSHA256 (Read-PortableBytes $zip))+'  '+[IO.Path]::GetFileName($zip)+"`n")
+    $manifest=Get-PortableText (Read-PortableBytes (Join-Path $staged 'SHA256SUMS.txt'))
+    Expect ($manifest.Contains($f.Hashes[$f.Canonical]+'  THIRD-PARTY-NOTICES.txt'))
+    $verified=Test-PortableArchive $zip ($zip+'.sha256') (New-TestPath '.versioned-verify') $actualHashes '0.6.0' $expectedPayload $prefixes $committerTimestamp
+    Expect ($verified.classification -ceq 'PACKAGE_VERIFIED')
+    # An internally consistent ZIP with the previous notice still fails independent source validation.
+    $packagePayload['THIRD-PARTY-NOTICES.txt']=Read-PortableBytes (Join-Path $f.Root 'THIRD-PARTY-NOTICES.txt')
+    $wrongStaging=New-TestPath '.wrong-notice-staging'
+    $wrongHashes=New-PortableStaging $wrongStaging $packagePayload
+    $wrongZip=New-TestPath '.wrong-notice.zip'
+    Write-PortableZip $wrongStaging $wrongZip $committerTimestamp
+    $reason=''
+    try { Test-PortableArchive $wrongZip '' (New-TestPath '.wrong-notice-verify') $wrongHashes '0.6.0' $expectedPayload $prefixes $committerTimestamp | Out-Null }
+    catch { $reason=$_.Exception.Message }
+    Expect ($reason -ceq 'Verification: source payload mismatch.')
+}
 Case 'Stale compile result rejects old uncommitted run without EXE access' {
     $state=Fixture-CompileState; $r=$state.Result; $o=$state.Owner
     Reject { Assert-PortableCompileState $r $o ('c'*40) '0.3.0' $r.run_id }

@@ -12,13 +12,15 @@
 
 [THIRD-PARTY-NOTICES.txt](../THIRD-PARTY-NOTICES.txt)は、公開済みのv0.5.0 Windows x64版に同梱した第三者原文・表示の正本である。利用者がEXEと同じ配布経路で取得できるよう、Portable ZIPに同梱する。通知正本を再生成したり、承認済みの原文を要約・省略したりしない。
 
+v0.6.0の正本は [release/notices/v0.6.0/THIRD-PARTY-NOTICES.txt](../release/notices/v0.6.0/THIRD-PARTY-NOTICES.txt) に保存する。Packageと独立Verifierはアプリの版から固定パスを選び、`source.json` の `canonical_file`、記録されたhash、署名対象の実bytesを照合する。ZIP内の名前は `THIRD-PARTY-NOTICES.txt` とする。
+
 固定ZIPにはEXE、README.txt、LICENSE.txt、THIRD-PARTY-NOTICES.txt、SHA256SUMS.txtの5ファイルを入れ、ZIP外に.sha256を置く。SQLite bundledとWebView2 LoaderはEXEに組み込む。VC++ Redistributable、WebView2 Runtime、Windows OS DLL本体やinstaller、開発・テストtool本体、DB／config／backup／取得CSVは含めない。Runtimeは外部導入要件であり、アプリが自動取得・導入する構成にはしない。
 
 Noticesは保守的な包含候補と提供元通知も含む。通知に載る全componentが最適化後のEXEへ残ると認定したものではない。WebView2 SDKのpackage全体NOTICEを添付したことだけで、そこに列挙される全componentのnative Loader包含や追加source義務を認定しない。
 
 ## v0.6.0の準備と過去の承認記録
 
-v0.6.0は準備中で、対象版のNotices入力承認と正式Compile・Package・独立Verifierは未完了である。アプリ自身の版番号を更新すると、依存バージョンが同じでもnpmとCargoのlockfileのhashが変わる。対象版の承認に必要な範囲は[Release手順](release-build.md#v060の準備状況)を参照する。
+v0.6.0のNotices入力はOwnerの限定承認を受け、`REVIEWED` へ昇格した。検証コードのOwner承認と正式Compile・Package・独立Verifierは未完了である。アプリ自身の版番号を更新すると、依存バージョンが同じでもnpmとCargoのlockfileのhashが変わる。[Release手順](release-build.md#v060の準備状況)
 
 ### v0.5.0の承認と公開
 
@@ -64,11 +66,11 @@ v0.4.0の正式`Read-PortableNotices`は新しいOwner承認証拠と検査modul
 | --- | --- |
 | manifest.json（対象版のNoticesディレクトリ内） | schema 1、REVIEWED、scope=DISTRIBUTION、boolean test_only=false、アプリversion、unresolved空配列。inventory／review／source／通知・Cargo／npm lock・compile toolchainのSHA-256。v0.4.0はowner_approvalの固定pathとhashも必須 |
 | inventory.json | schema 1、version、target=x86_64-pc-windows-msvc。一意のcomponent ID、version、boolean included、rust／frontend／native／toolchain／assets各group |
-| review.json | schema 1、REVIEWED、version、boolean test_only=false、unresolved空配列。reviewer／reviewed_atはv0.5.0以外の対応版で必須。v0.5.0は登録済みの承認記録を照合する。全componentへ一意に対応するcoverage、included一致、obligations_completedとprovenance_completed=true、非空の署名対象evidence |
-| source.json | schema 1、purpose=PACKAGE_NOTICE_SOURCE、canonical_file=THIRD-PARTY-NOTICES.txt、version／target、40桁source_commit、formal_review_state=REVIEWED。通知正本とCargo／npm lockのhash |
+| review.json | schema 1、REVIEWED、version、boolean test_only=false、unresolved空配列。v0.3.0とv0.4.0はreviewer／reviewed_atが必須。v0.5.0とv0.6.0は登録済みの承認記録を照合する。全componentへ一意に対応するcoverage、included一致、obligations_completedとprovenance_completed=true、非空の署名対象evidence |
+| source.json | schema 1、purpose=PACKAGE_NOTICE_SOURCE、版に対応する固定のcanonical_file、version／target、40桁source_commit、formal_review_state=REVIEWED。通知正本とCargo／npm lockのhash |
 | mapping.json | component／原文／出典、除外根拠、toolchain等を記録する署名対象のreview evidence |
 | v0.4.0-approval.json／v0.4.0-reviewed.json | 2026-11-08のOwner限定承認、対象PREPARED commit・各入力hash・範囲・除外、現行のREVIEWED証拠。旧snapshotと新metadataのhash参照を循環させない |
-| rootのTHIRD-PARTY-NOTICES.txt | manifestとsource.jsonが束縛する唯一の通知正本。空本文、DRAFT — NOT FOR DISTRIBUTION、LICENSE CLEARANCE INCOMPLETE、TEST_ONLY／SYNTHETIC／PLACEHOLDER／TODO／TBD／UNRESOLVEDのmarkerは拒否 |
+| 対象版のTHIRD-PARTY-NOTICES.txt | v0.5.0以前はroot、v0.6.0は版別ディレクトリ。manifestとsource.jsonが束縛する通知正本。空本文、DRAFT — NOT FOR DISTRIBUTION、LICENSE CLEARANCE INCOMPLETE、TEST_ONLY／SYNTHETIC／PLACEHOLDER／TODO／TBD／UNRESOLVEDのmarkerは拒否 |
 | texts/*.txt／evidence/*.txt | reviewが参照する原文・評価証拠。署名対象であること、固定相対path、記録hashと実bytesの一致 |
 
 metadataと通知の読取上限は16MiB。manifestのhash fieldはinventory_sha256、review_sha256、source_sha256、notices_sha256、cargo_lock_sha256、npm_lock_sha256、toolchain_sha256である。Cargo／npm lockは現在のsource入力hashと一致させる。compile toolchain hashの生成順と照合は[Release手順](release-build.md#正式3工程の実行)を参照する。

@@ -184,7 +184,7 @@ npm run typecheck
 
 mainにはUI-R7A（検索条件のブックマーク）とUI-R7B（複数タブと概要タブ）が統合済みである。Release-0.6Aでは文書と5ファイルの版番号6か所を0.6.0へ更新する。v0.6.0の正式配布物は未公開で、正式Compile・Package・独立Verifierは未実施である。
 
-現行の正式入力検査はv0.6.0を未対応版として拒否する。正式3工程の前に、v0.6.0に対応する検査と、版情報・lockfileの実bytes、Notices、toolchainを照合できる入力を用意し、Ownerが入力を承認する。検証実装の変更も承認し、承認登録を含む署名済みのclean sourceを確定する。その同じSHAから新しいrunで正式3工程を実行する。[承認・昇格方式](notice-approval.md)を参照する。
+v0.6.0のNotices入力はOwnerの限定承認を受け、`REVIEWED` へ昇格した。正式入力検査と版別の通知正本選択を実装し、検証コードのレビュー用snapshotを `PREPARED` として記録した。正式入力検査はコード承認の登録を要求する。Ownerのコード承認後に署名済みのclean sourceを確定し、そのSHAから新しいrunで正式3工程を実行する。[承認・昇格方式](notice-approval.md)
 
 正式入力は改行や文字コードを含む実bytesで照合する。版情報とlockfile、候補hashに含まれる検証コード、承認参照文書に対するLF指定を維持する。
 

@@ -5,3 +5,7 @@ notice-approval-decisions.mjs text eol=lf
 notice-input-promotion.mjs text eol=lf
 tests/notice-approval-binding.tests.mjs text eol=lf
 tests/notice-input-promotion.tests.mjs text eol=lf
+# v0.6.0 implementation review also binds the provenance and privacy helpers.
+build-release.ps1 text eol=lf
+check-release-privacy.ps1 text eol=lf
+release-safety.ps1 text eol=lf

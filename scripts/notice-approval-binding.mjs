@@ -24,23 +24,47 @@ function equalBytes(actual, expected, gate) { check(Buffer.isBuffer(actual) && a
 function readMap(files, name) { relative(name); const b = files.get(name); check(Buffer.isBuffer(b), 'input_missing'); return b; }
 const metadataNames = ['manifest.json', 'inventory.json', 'review.json', 'source.json'];
 const verifierPath = 'scripts/notice-approval-binding.mjs';
+const decisionRegistryPath = 'scripts/notice-approval-decisions.mjs';
+const v060ImplementationSnapshot = 'release/notices/v0.6.0/verification-preparation.json';
+export const v060ReviewedPaths = Object.freeze([
+  'scripts/.gitattributes',
+  'scripts/build-portable-package.ps1',
+  'scripts/build-release.ps1',
+  'scripts/check-release-privacy.ps1',
+  verifierPath,
+  'scripts/notice-candidates/.gitattributes',
+  'scripts/notice-candidates/v0.6.0.mjs',
+  'scripts/notice-input-promotion.mjs',
+  'scripts/portable-package-safety.ps1',
+  'scripts/release-candidate-audit.mjs',
+  'scripts/release-input-audit.mjs',
+  'scripts/release-safety.ps1',
+  'scripts/verify-portable-package.ps1',
+]);
+
+function ownerDecision(pin) {
+  const dated = pin.approved_date_status === 'EXPLICIT_DATE' && typeof pin.approved_on === 'string'
+    && /^\d{4}-\d{2}-\d{2}$/.test(pin.approved_on) && Number.isFinite(Date.parse(pin.approved_on))
+    && new Date(pin.approved_on).toISOString().slice(0, 10) === pin.approved_on;
+  return pin.approved_by === 'Owner' && (dated || pin.approved_on === null
+    && pin.approved_date_status === 'NOT_SPECIFIED_IN_OWNER_INSTRUCTION');
+}
 
 function validatePin(pin, requireTooling = true) {
   check(pin && /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(pin.version), 'pin_version');
   check(isCommit(pin.candidate_commit) && isHash(pin.snapshot_sha256) && isHash(pin.approval_sha256), 'pin_hash');
   check(pin.snapshot_path === `release/notices/v${pin.version}/preparation.json`
     && pin.approval_path === `release/notices/v${pin.version}/approval.json`, 'pin_path');
-  const dated = pin.approved_date_status === 'EXPLICIT_DATE' && typeof pin.approved_on === 'string'
-    && /^\d{4}-\d{2}-\d{2}$/.test(pin.approved_on) && Number.isFinite(Date.parse(pin.approved_on))
-    && new Date(pin.approved_on).toISOString().slice(0, 10) === pin.approved_on;
-  check(pin.approved_by === 'Owner' && (dated || pin.approved_on === null
-    && pin.approved_date_status === 'NOT_SPECIFIED_IN_OWNER_INSTRUCTION'), 'pin_decision');
+  check(ownerDecision(pin), 'pin_decision');
   check(isHash(pin.toolchain_sha256), 'pin_toolchain');
   if (!requireTooling) return;
   check(pin.reviewed_tooling_sha256
     && Object.keys(pin.reviewed_tooling_sha256).length > 0, 'pin_tooling');
   for (const [name, hash] of Object.entries(pin.reviewed_tooling_sha256)) {
-    relative(name); check((name === 'scripts/.gitattributes' || name.startsWith('scripts/') && /\.(?:mjs|ps1)$/.test(name)) && isHash(hash), 'pin_tooling');
+    relative(name);
+    const allowed = pin.version === '0.6.0' ? v060ReviewedPaths.includes(name)
+      : name === 'scripts/.gitattributes' || name.startsWith('scripts/') && /\.(?:mjs|ps1)$/.test(name);
+    check(allowed && isHash(hash), 'pin_tooling');
   }
 }
 
@@ -141,7 +165,7 @@ export function inspectNoticeApprovalBinding(model, pin) {
   validatePin(pin);
   const { snapshot } = validateInputDecision(model, pin);
   const inputs = snapshot.candidate_input_sha256;
-  const tooling = Object.keys(inputs).filter(p => p.startsWith('scripts/')).concat(verifierPath,
+  const tooling = pin.version === '0.6.0' ? v060ReviewedPaths : Object.keys(inputs).filter(p => p.startsWith('scripts/')).concat(verifierPath,
     'scripts/notice-input-promotion.mjs', 'scripts/.gitattributes');
   same(Object.keys(pin.reviewed_tooling_sha256).sort(), [...new Set(tooling)].sort(), 'tooling_scope');
   const reviewed = reviewedNoticeMetadata(model, pin);
@@ -245,6 +269,30 @@ export function inspectRegisteredNoticeInputs(root, version) {
   return { ...inspectNoticeInputApproval(model, pin), verification_registered: Object.hasOwn(approvedVerificationDecisions, version) };
 }
 
+// Snapshot inspection checks the exact reviewed bytes. It cannot register a decision.
+export function inspectV060VerificationPreparation(inputPin, implementation, snapshotBytes, reviewedFiles, registryBytes) {
+  check(inputPin.version === '0.6.0' && implementation.version === inputPin.version
+    && implementation.candidate_commit === inputPin.candidate_commit
+    && implementation.snapshot_sha256 === inputPin.snapshot_sha256, 'implementation_identity');
+  check(ownerDecision(implementation) && implementation.public_release_approved === false, 'implementation_decision');
+  check(isCommit(implementation.reviewed_commit) && implementation.reviewed_commit !== inputPin.candidate_commit
+    && implementation.implementation_snapshot_path === v060ImplementationSnapshot
+    && isHash(implementation.implementation_snapshot_sha256), 'implementation_snapshot_pin');
+  check(sha256(snapshotBytes) === implementation.implementation_snapshot_sha256, 'implementation_snapshot_hash');
+  const snapshot = json(snapshotBytes);
+  check(snapshot.schema === 1 && snapshot.purpose === 'VERIFICATION_IMPLEMENTATION_REVIEW_CANDIDATE'
+    && snapshot.version === inputPin.version && snapshot.state === 'PREPARED' && snapshot.approved === false
+    && snapshot.public_release_approved === false && snapshot.candidate_commit === inputPin.candidate_commit
+    && snapshot.snapshot_sha256 === inputPin.snapshot_sha256 && snapshot.input_approval_sha256 === inputPin.approval_sha256,
+    'implementation_snapshot_identity');
+  check(snapshot.decision_registry === decisionRegistryPath && snapshot.reviewed_registry_sha256 === sha256(registryBytes), 'implementation_registry_hash');
+  same(snapshot.file_sha256, implementation.reviewed_tooling_sha256, 'implementation_snapshot_tooling');
+  same(Object.keys(snapshot.file_sha256).sort(), [...v060ReviewedPaths].sort(), 'tooling_scope');
+  for (const [name, hash] of Object.entries(snapshot.file_sha256)) {
+    check(isHash(hash) && sha256(readMap(reviewedFiles, name)) === hash, 'implementation_reviewed_tooling_hash');
+  }
+}
+
 // Input approval alone cannot authorize implementation code or open the Package gate.
 // Both registries are fixed code, never caller-supplied metadata.
 export function verifyRegisteredNoticeApproval(root, version, expectedHead) {
@@ -262,11 +310,35 @@ export function verifyRegisteredNoticeApproval(root, version, expectedHead) {
   check(git('status', '--porcelain=v1', '--untracked-files=all').length === 0, 'source_clean');
   try { git('verify-commit', head); git('verify-commit', pin.candidate_commit); git('merge-base', '--is-ancestor', pin.candidate_commit, head); }
   catch { check(false, 'source_signature_or_ancestry'); }
+  const readSigned = name => {
+    const bytes = readCurrentInput(root, name);
+    equalBytes(bytes, git('show', head + ':' + name), 'source_input_bytes');
+    return bytes;
+  };
+  if (version === '0.6.0') {
+    const reviewed = implementation.reviewed_commit;
+    check(isCommit(reviewed) && reviewed !== head && reviewed !== pin.candidate_commit, 'implementation_reviewed_commit');
+    try {
+      git('verify-commit', reviewed);
+      git('merge-base', '--is-ancestor', pin.candidate_commit, reviewed);
+      git('merge-base', '--is-ancestor', reviewed, head);
+    } catch { check(false, 'implementation_signature_or_ancestry'); }
+    const snapshotBytes = readSigned(v060ImplementationSnapshot);
+    equalBytes(snapshotBytes, git('show', reviewed + ':' + v060ImplementationSnapshot), 'implementation_snapshot_bytes');
+    const reviewedFiles = new Map(v060ReviewedPaths.map(name => [name, git('show', reviewed + ':' + name)]));
+    inspectV060VerificationPreparation(inputPin, implementation, snapshotBytes, reviewedFiles, git('show', reviewed + ':' + decisionRegistryPath));
+    readSigned(decisionRegistryPath);
+    // Inherited inputs were verified against the historical hashes. They must also be in the signed HEAD.
+    for (const [name, bytes] of model.inheritedFiles) {
+      equalBytes(bytes, readSigned(name), 'source_input_changed');
+    }
+  }
   const names = [...model.currentFiles.keys(), ...Object.keys(pin.reviewed_tooling_sha256)];
-  const currentFiles = new Map([...new Set(names)].map(name => [name, readCurrentInput(root, name)]));
   // Reject uncommitted/filter-altered inputs instead of normalizing their EOLs.
-  for (const [name, bytes] of currentFiles) equalBytes(bytes, git('show', head + ':' + name), 'source_input_bytes');
+  const currentFiles = new Map([...new Set(names)].map(name => [name, readSigned(name)]));
   const inspected = inspectNoticeApprovalBinding({ ...model, currentFiles,
     source: { head, expectedHead, signatureVerified: true, clean: true, candidateIsAncestor: true } }, pin);
-  return { ...inspected, status: 'REVIEWED', input_approval: true, verification_approval: true, formal_approval: true };
+  const result = { ...inspected, status: 'REVIEWED', input_approval: true, verification_approval: true, formal_approval: true };
+  if (version === '0.6.0') return { ...result, source_head: head, notices_sha256: inputPin.notices_sha256 };
+  return result;
 }

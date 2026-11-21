@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "purpose": "VERIFICATION_IMPLEMENTATION_REVIEW_CANDIDATE",
+  "version": "0.6.0",
+  "state": "PREPARED",
+  "approved": false,
+  "candidate_commit": "de8e98616dffd216ead37c9b61dfb109cac963ea",
+  "snapshot_sha256": "a899643cc3f76ac8658731630d99dd3cee8d9402a46b6523a9a75c92b1524465",
+  "input_approval_sha256": "a7e751895063df92b2d9703fd4411311766a9fe69a879a43c89e8404d6a672cb",
+  "file_sha256": {
+    "scripts/.gitattributes": "56a79e31e5a80f80421fc263f22df7c341be17f1abb0802bc72feaaf20f41a44",
+    "scripts/build-portable-package.ps1": "e90e6a543edee87a7e5cc1ee053ea69060a84819cc3635ae0abd0a22fda578d7",
+    "scripts/build-release.ps1": "804320333e4fb20b37e85a56d1544171ca60ca930d83f809fb6ce795ddb5c9b2",
+    "scripts/check-release-privacy.ps1": "705c82678118f9288054096a0c29f84850d41c75796247e32270a8dfb16edc26",
+    "scripts/notice-approval-binding.mjs": "1bddd0eeeb86f41a13bf5044ce21990027709fff45e1b227ee3b91626ebc8a31",
+    "scripts/notice-candidates/.gitattributes": "61d6cf26907e4f4a0f4b2e2665f02149e5d82d3382780b12abe68d54289ba8e9",
+    "scripts/notice-candidates/v0.6.0.mjs": "6331cdcfdbb758f3298e7b8fd66f81a8a0be634d2b1efed8528ef578667a2e4a",
+    "scripts/notice-input-promotion.mjs": "650f01c3623f3a356264a6cbb96af0d108d026a05ca1b3d5a7f851edd7ec0744",
+    "scripts/portable-package-safety.ps1": "2941ad2e42e12e8303c403c9606287bb865377febc8c2026736eba5307dfd2e0",
+    "scripts/release-candidate-audit.mjs": "452a6532c54471f410bc8726ac3cff44062dd40763c56b16e99a7eeb2234be73",
+    "scripts/release-input-audit.mjs": "a44904373731cb6963f223bb45b8308c98d6bb71012e44f9b100b9163fdcc707",
+    "scripts/release-safety.ps1": "58310671588d871912e8ab516153018971b8718a6969ec51b5dc3590756ff966",
+    "scripts/verify-portable-package.ps1": "c59312fe220eb814605576f15fd3c0b2bcd59a42f92be8fb4718a21994af252f"
+  },
+  "decision_registry": "scripts/notice-approval-decisions.mjs",
+  "reviewed_registry_sha256": "30ac5e3b63d627d9555de1883ca7a931007cdf097377ace16f41efc0cfdf4fd9",
+  "registry_hash_policy": "Review the registry at the implementation checkpoint. Bind the working registry to the final signed source. Exclude it from file_sha256 so registering the approval does not create a self-hash cycle.",
+  "changes": [
+    "B-4A: register the fixed input decision, read the versioned PREPARED candidate from Git, verify its exact REVIEWED transition and inherited inputs.",
+    "B-4B: bind the implementation review snapshot, reviewed code and registry evidence to the signed review checkpoint and require its ancestry at the final signed HEAD.",
+    "B-4B: choose the canonical Notices path from the supported version, verify reviewed metadata and bytes against the formal audit result, and keep the ZIP member name fixed.",
+    "Existing Package, independent Verifier, Compile provenance and Privacy helpers are included in the reviewed scope; B-2 candidate tooling and relevant line-ending attributes are included."
+  ],
+  "excluded_scope": [
+    "Automatic implementation approval or registration",
+    "Formal Compile, Package or Independent Verifier results",
+    "Binary or ZIP acceptance",
+    "Release publication",
+    "New legal clearance"
+  ],
+  "public_release_approved": false
+}

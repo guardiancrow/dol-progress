@@ -45,6 +45,8 @@ Owner承認は、候補commit、preparation.jsonの相対pathとSHA-256、対象
 
 `verifyRegisteredNoticeApproval`は、入力とコードの両方の登録済み決定を要求し、最終sourceの署名・clean・HEAD・祖先関係と実ファイルを確認する。呼び出し側から信頼設定を渡す引数はない。コード承認の登録だけでは成功せず、ExpectedSourceHeadと実HEAD、署名、clean状態、実bytesの一致が必要である。未コミットの登録を含む作業ツリーは拒否する。
 
+v0.6.0では、入力候補、署名済みの実装レビュー対象commit、署名済みの正式HEADの順に祖先関係を確認する。実装レビュー対象commitの `verification-preparation.json` と固定のコード範囲を、コード承認に記録されたhashと照合する。同じsnapshotを正式HEADにも要求し、レビュー対象コードと継承入力の実bytesを正式HEADのGit blobと照合する。承認登録ファイルは、レビュー時点のhashをsnapshotに記録し、登録後の実bytesを正式HEADの署名で確認する。これにより承認登録ファイル自身のhashを登録に埋め込む循環を避ける。
+
 `promoteNoticeInputs`は、入力承認を検証して3件のmetadataだけを更新する。原本と現在値が一致することを全件確認してから書き込み、途中失敗では元のbytesへ戻す。既に正しく昇格済みなら書き込まない。snapshot自体や旧版の承認記録は変更しない。コードや合成fixtureの正常系を、Ownerの実際の承認証拠へ転用しない。
 
 ## 承認後の工程
