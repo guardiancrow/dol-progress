@@ -13,6 +13,7 @@ import { DiscoveryTable } from "../discoveries/DiscoveryTable";
 import type { QuestRowViewModel } from "../../quests/types";
 import type { DiscoveryRowViewModel } from "../../discoveries/types";
 import { mockWorkspaceMedia } from "./responsiveTestMedia";
+import { createSearchTableView } from "../../workspaceTabs/state";
 
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn() }));
 beforeEach(() => { vi.mocked(getVersion).mockResolvedValue("0.4.0"); });
@@ -38,11 +39,12 @@ const discoveries: DiscoveryRowViewModel[] = Array.from({ length: 205 }, (_, i) 
 
 function Harness({ initialPage = "quests", initialFilter = false, repository = profiles }: { initialPage?: AppPage; initialFilter?: boolean; repository?: ProfileRepositoryPort }) {
   const [page, setPage] = useState(initialPage);
+  const [discoveryView, updateDiscoveryView] = useState(() => createSearchTableView(initialFilter ? [{ id: "category", value: 1 }] : []));
   return <ProfileProvider repository={repository}><AppShell currentPage={page} onNavigate={setPage}>
     <section className="workspace-page"><div className="page-heading"><h2>{page}</h2></div>
       {page === "quests" ? <QuestTable rows={quests} paginationResetKey={1} onToggleCompletion={write} />
         : page === "discoveries" ? <DiscoveryTable rows={discoveries} paginationResetKey={1}
-          initialFilter={initialFilter ? { kind: "category", categoryId: 1 } : undefined}
+          tableState={{ view: discoveryView, updateView: updateDiscoveryView }}
           onToggleDiscovered={write} onSetReported={write} onSetCardOwned={write} /> : null}
     </section>
   </AppShell></ProfileProvider>;

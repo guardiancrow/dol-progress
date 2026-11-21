@@ -19,13 +19,13 @@ import {
   useTable,
 } from "@tanstack/react-table";
 
-import type { DiscoveryInitialFilter, DiscoveryRowViewModel } from "../../discoveries/types";
+import type { DiscoveryRowViewModel } from "../../discoveries/types";
 import { MasterInfoButton, MasterInfoProvider } from "../MasterInfoPopover";
 import { formatOfferCities } from "../../domain/offerCities";
 import type { SearchConditionApplication, SearchConditionApplicationProps } from "../../searchConditions/application";
 import { useBookmarkCapture } from "../../searchConditions/useBookmarkCapture";
 import { discoverySearchOptions, type DiscoverySearchOptions } from "../../searchConditions/tableState";
-import { useSearchTableState } from "../../searchConditions/useSearchTableState";
+import { useSearchTableControls, type SearchTableController } from "../../searchConditions/useSearchTableState";
 
 const featureSet = tableFeatures({
   columnFilteringFeature,
@@ -42,6 +42,7 @@ const STATUS_ORDER = { undiscovered: 0, unreported: 1, reported: 2 } as const;
 type CardOwnedFilter = "all" | "owned" | "not-owned";
 
 interface DiscoveryTableProps {
+  tableState?: SearchTableController;
   onBookmarkCapture?: SearchConditionApplicationProps["onBookmarkCapture"];
   searchCondition?: SearchConditionApplication;
   searchOptions?: DiscoverySearchOptions;
@@ -49,8 +50,6 @@ interface DiscoveryTableProps {
   reportHold?: ReportHoldController;
   rows: DiscoveryRowViewModel[];
   paginationResetKey: number;
-  initialFilter?: DiscoveryInitialFilter;
-  onNavigationConsumed?(): void;
   onToggleDiscovered(discoveryId: number, discovered: boolean): Promise<void>;
   onSetReported(discoveryId: number, reported: boolean): Promise<void>;
   onSetCardOwned(discoveryId: number, cardOwned: boolean): Promise<void>;
@@ -60,8 +59,7 @@ export function DiscoveryTable({
   historyReadState = "ready",
   rows,
   paginationResetKey,
-  initialFilter,
-  onNavigationConsumed,
+  tableState,
   reportHold,
   onToggleDiscovered,
   onSetReported,
@@ -74,19 +72,8 @@ export function DiscoveryTable({
   const mapFilterHelpId = useId();
   const reportHoldRef = useRef(reportHold);
   reportHoldRef.current = reportHold;
-  // Navigation initializes this mount only; consuming the intent must not reset later user filters.
-  const { columnFilters, sorting, pagination, setColumnFilters, setSorting, setPagination } = useSearchTableState(() => {
-    if (initialFilter?.kind === "category" && rows.some((row) => row.category?.id === initialFilter.categoryId)) {
-      return [{ id: "category", value: initialFilter.categoryId }];
-    }
-    if (initialFilter?.kind === "unreported") return [{ id: "status", value: "unreported" }];
-    if (initialFilter?.kind === "card-not-owned") return [{ id: "cardOwned", value: false }];
-    return [];
-  }, searchCondition?.applied);
-
-  useEffect(() => {
-    if (initialFilter !== undefined) onNavigationConsumed?.();
-  }, [initialFilter, onNavigationConsumed]);
+  const { columnFilters, sorting, pagination, setColumnFilters, setSorting, setPagination } =
+    useSearchTableControls(paginationResetKey, tableState);
 
   const columns = useMemo(
     () =>
@@ -224,12 +211,8 @@ export function DiscoveryTable({
       columns,
       data: rows,
       state: { columnFilters, sorting, pagination, columnVisibility: {mapReacquisition:false, unreportedBreakdown:false} },
-      onColumnFiltersChange: (updater) => {
-        searchCondition?.forgetApplied();
-        setColumnFilters(updater);
-      },
+      onColumnFiltersChange: setColumnFilters,
       onSortingChange: (updater) => {
-        searchCondition?.forgetApplied();
         setSorting(updater);
         setPagination((current) => ({ ...current, pageIndex: 0 }));
       },
@@ -250,24 +233,19 @@ export function DiscoveryTable({
   const cardOwnedCount = filteredRows.filter((row) => row.original.hasCard && row.original.progress?.cardOwned).length;
   const pageCount = table.getPageCount();
   const breakdownUnavailable = table.getColumn("unreportedBreakdown")?.getFilterValue() !== undefined && historyReadState !== "ready";
+  const mapFilter = table.getColumn("mapReacquisition")?.getFilterValue();
+  const pendingMapFilter = historyReadState !== "ready" && (mapFilter === "candidate" || mapFilter === "suppressed" || mapFilter === "review");
 
   useEffect(() => {
-    setPagination((current) =>
-      current.pageIndex === 0
-        ? current
-        : { ...current, pageIndex: 0 },
-    );
-  }, [paginationResetKey]);
-
-  useEffect(() => {
-    if (searchCondition?.suspended) return;
+    // A missing history read can temporarily produce no matches after remount.
+    if (searchCondition?.suspended || breakdownUnavailable || pendingMapFilter) return;
     const lastValidPage = pageCount === 0 ? 0 : pageCount - 1;
     setPagination((current) =>
       current.pageIndex > lastValidPage
         ? { ...current, pageIndex: lastValidPage }
         : current,
     );
-  }, [pageCount, searchCondition?.suspended]);
+  }, [pageCount, searchCondition?.suspended, breakdownUnavailable, pendingMapFilter, setPagination]);
 
   function setFilter(id: string, value: unknown) {
     table.getColumn(id)?.setFilterValue(value);

@@ -8,6 +8,8 @@ import { DiscoveryStateControl, ReportHoldDialogs, ReportHoldFeedback } from "..
 import { useReportHold, type ReportHoldDependencies } from "./useReportHold";
 import type { DiscoveryState } from "./stateService";
 import type { DiscoveryStateSummary } from "./stateReader";
+import { WorkspaceReads } from "../workspaceReads/WorkspaceReads";
+import { useWorkspaceReadScope } from "../workspaceReads/useWorkspaceReadScope";
 
 afterEach(cleanup);
 
@@ -40,6 +42,40 @@ function setup(initial: DiscoveryStateSummary, mode = false) {
 }
 
 describe("report hold controls and snapshot workflow",()=>{
+  it("refreshes a second reader's history and map state after a confirmed report with one shared query", async () => {
+    const workspace = new WorkspaceReads();
+    let current = summary();
+    const reader = { list: vi.fn(async () => [current]) };
+    const service = {
+      get: vi.fn(async () => snapshot(current)),
+      update: vi.fn<ReportHoldDependencies["service"]["update"]>(async () => {
+        current = summary({ reported: 1, firstReportStatus: "confirmed", historyUpdatedAt: "saved" });
+        return snapshot(current);
+      }),
+    };
+    const dependencies = { reader, service };
+    function View({ controls }: { controls: boolean }) {
+      const scope = useWorkspaceReadScope(workspace, 1);
+      const controller = useReportHold(1, () => undefined, dependencies, 0, scope);
+      const row = controller.summaries.get(1);
+      return controls ? <>
+        <DiscoveryStateControl id={1} name="合成地図" mapId={10} controller={controller} />
+        <ReportHoldDialogs controller={controller} />
+      </> : <output aria-label="共有した報告履歴">{row && `${row.reported},${row.firstReportStatus}`}</output>;
+    }
+    const user = userEvent.setup();
+    render(<><View controls /><View controls={false} /></>);
+    const select = await screen.findByRole("combobox", { name: "合成地図の発見・報告状態" });
+    expect(screen.getByLabelText("共有した報告履歴")).toHaveTextContent("0,unknown");
+    expect(reader.list).toHaveBeenCalledTimes(1);
+    await user.selectOptions(select, "reported");
+    await user.click(await screen.findByRole("button", { name: "記録を保存" }));
+    await waitFor(() => expect(screen.getByLabelText("共有した報告履歴")).toHaveTextContent("1,confirmed"));
+    expect(reader.list).toHaveBeenCalledTimes(2);
+    expect(service.get).toHaveBeenCalledTimes(1);
+    expect(service.update).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ profileId: 1, discoveryId: 1 }), { kind: "report" }, 10);
+  });
+
   it.each([
     [summary({discovered:0,progressUpdatedAt:null}),"undiscovered"],
     [summary(),"unreported"],

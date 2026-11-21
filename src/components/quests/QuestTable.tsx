@@ -26,7 +26,7 @@ import type { QuestRowViewModel } from "../../quests/types";
 import type { SearchConditionApplication, SearchConditionApplicationProps } from "../../searchConditions/application";
 import { useBookmarkCapture } from "../../searchConditions/useBookmarkCapture";
 import { DISCOVERY_CATEGORY_PREFIX, questSearchOptions, RANK_COLUMN_ID, type QuestSearchOptions } from "../../searchConditions/tableState";
-import { useSearchTableState } from "../../searchConditions/useSearchTableState";
+import { useSearchTableControls, type SearchTableController } from "../../searchConditions/useSearchTableState";
 import { MasterInfoButton, MasterInfoProvider } from "../MasterInfoPopover";
 import { getRequiredSkillRank } from "../../quests/requiredSkillRank";
 import { getMapOfferCities } from "../../quests/mapOfferCities";
@@ -54,6 +54,7 @@ const columnHelper = createColumnHelper<
 const collator = new Intl.Collator("ja", { numeric: true });
 
 interface QuestTableProps {
+  tableState?: SearchTableController;
   onBookmarkCapture?: SearchConditionApplicationProps["onBookmarkCapture"];
   searchCondition?: SearchConditionApplication;
   searchOptions?: QuestSearchOptions;
@@ -73,12 +74,13 @@ interface QuestTableProps {
   onToggleCompletion(questId: number, completed: boolean): Promise<void>;
 }
 
-export function QuestTable({ rows, successorFilterReady = false, paginationResetKey, onToggleCompletion, reportHold, progressReview, onReloadReview, reviewCompletion, prerequisiteDetails, searchCondition, searchOptions, onBookmarkCapture }: QuestTableProps) {
+export function QuestTable({ rows, successorFilterReady = false, paginationResetKey, onToggleCompletion, reportHold, progressReview, onReloadReview, reviewCompletion, prerequisiteDetails, searchCondition, searchOptions, onBookmarkCapture, tableState }: QuestTableProps) {
   const controlsVisible = useWorkspaceView()?.controlsVisible ?? true;
   const reportHoldRef = useRef(reportHold);
   reportHoldRef.current = reportHold;
-  const { columnFilters, sorting, pagination, setColumnFilters, setSorting, setPagination } = useSearchTableState(() => [], searchCondition?.applied);
-  const protectedSearch = Boolean(searchCondition?.applied || searchCondition?.suspended);
+  const { columnFilters, sorting, pagination, appliedDefinition, setColumnFilters, setSorting, setPagination } =
+    useSearchTableControls(paginationResetKey, tableState);
+  const protectedSearch = appliedDefinition !== undefined;
   const successorFilterSuspended = !successorFilterReady && columnFilters.some(filter => filter.id === "successorStatus");
   const [reviewExpanded, setReviewExpanded] = useState(false);
   const reviewId = useId();
@@ -394,12 +396,8 @@ export function QuestTable({ rows, successorFilterReady = false, paginationReset
         progressReview: false,
         [RANK_COLUMN_ID]: false,
       } },
-      onColumnFiltersChange: (updater) => {
-        searchCondition?.forgetApplied();
-        setColumnFilters(updater);
-      },
+      onColumnFiltersChange: setColumnFilters,
       onSortingChange: (updater) => {
-        searchCondition?.forgetApplied();
         setSorting((current) => {
           const next = typeof updater === "function" ? updater(current) : updater;
           return next.some((item) => item.id !== RANK_COLUMN_ID)
@@ -449,24 +447,19 @@ export function QuestTable({ rows, successorFilterReady = false, paginationReset
     (row) => row.original.completed,
   ).length;
   const pageCount = table.getPageCount();
+  const pendingMapFilter = reportHold !== undefined && reportHold.summaryReadState !== "ready"
+    && columnFilters.some(filter => filter.id === "mapState");
+  const pendingCandidateFilter = onlyCandidates && progressReview?.status !== "ready";
 
   useEffect(() => {
-    setPagination((current) =>
-      current.pageIndex === 0
-        ? current
-        : { ...current, pageIndex: 0 },
-    );
-  }, [paginationResetKey]);
-
-  useEffect(() => {
-    if (successorFilterSuspended || searchCondition?.suspended) return;
+    if (successorFilterSuspended || searchCondition?.suspended || pendingMapFilter || pendingCandidateFilter) return;
     const lastValidPage = pageCount === 0 ? 0 : pageCount - 1;
     setPagination((current) =>
       current.pageIndex > lastValidPage
         ? { ...current, pageIndex: lastValidPage }
         : current,
     );
-  }, [pageCount, successorFilterSuspended, searchCondition?.suspended]);
+  }, [pageCount, successorFilterSuspended, searchCondition?.suspended, pendingMapFilter, pendingCandidateFilter, setPagination]);
 
   function setFilter(columnId: string, value: unknown) {
     table.getColumn(columnId)?.setFilterValue(value);

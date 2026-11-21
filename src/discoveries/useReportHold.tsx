@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DiscoveryStateService, type DiscoveryState, type DiscoveryStateOperation, type FirstReportStatus, type MapCurrentState } from "./stateService";
 import { discoveryStateReader, matchesSummary, matchesSnapshot, currentState, type DiscoveryStateSummary } from "./stateReader";
 import { matchesOfferMethod } from "../quests/offerMethods";
+import type { ProgressReadKind, WorkspaceReadScope } from "../workspaceReads/WorkspaceReads";
 
 const defaultService = new DiscoveryStateService();
 const EMPTY_SUMMARIES = new Map<number,DiscoveryStateSummary>();
@@ -20,9 +21,11 @@ export type HoldDialog = {
   initialHistoryStatus?: FirstReportStatus;
 };
 
-export function useReportHold(profileId: number | null, onChanged: () => void, dependencies = defaults, masterRevision = 0) {
-  const [summaries, setSummaries] = useState(new Map<number, DiscoveryStateSummary>());
-  const [summariesProfileId,setSummariesProfileId] = useState<number|null>(null);
+export function useReportHold(profileId: number | null, onChanged: (reason?: "progress") => void, dependencies = defaults,
+  masterRevision = 0, scope?: WorkspaceReadScope) {
+  const [loadedSummaries, setLoadedSummaries] = useState<{ profileId: number; masterRevision: number; values: Map<number, DiscoveryStateSummary> }>();
+  const summaries = loadedSummaries?.profileId === profileId && loadedSummaries.masterRevision === masterRevision
+    ? loadedSummaries.values : EMPTY_SUMMARIES;
   const [summaryRead, setSummaryRead] = useState<{profileId: number; masterRevision: number; state: "loading" | "ready" | "error"} | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -43,44 +46,54 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
   profile.current = profileId;
   currentMasterRevision.current = masterRevision;
 
-  const reload = useCallback(async () => {
-    if (profileId === null) return;
+  const reload = useCallback(async function loadSummaries(fresh = true) {
+    if (profileId === null || scope?.owner.active === false) return;
     const token = epoch.current;
     const generation = ++readGeneration.current;
     const revision = currentMasterRevision.current;
     loadedMasterRevision.current = revision;
-    const isCurrent = () => epoch.current === token && profile.current === profileId && readGeneration.current === generation
+    const isCurrent = () => scope?.owner.active !== false && epoch.current === token && profile.current === profileId && readGeneration.current === generation
       && currentMasterRevision.current === revision;
+    const load = async () => new Map((await dependencies.reader.list(profileId)).map(summary => [summary.id, summary]));
+    const read = scope?.reads.read("report", dependencies.reader, profileId, load, { fresh, active: isCurrent, masterRevision: revision });
+    const canAdopt = () => isCurrent() && (read?.isCurrent() ?? true);
     setSummaryRead({profileId, masterRevision: revision, state: "loading"});
     try {
-      const rows = await dependencies.reader.list(profileId);
-      if (isCurrent()) {
-        setSummaries(new Map(rows.map(s => [s.id, s])));setSummariesProfileId(profileId);
+      const rows = await (read?.promise ?? load());
+      if (isCurrent() && read && !read.isCurrent()) return loadSummaries(false);
+      if (canAdopt()) {
+        setLoadedSummaries({ profileId, masterRevision: revision, values: rows });
         setSummaryRead({profileId, masterRevision: revision, state: "ready"});
       }
     } catch (error: unknown) {
-      if (isCurrent()) {
-        setSummaryRead({profileId, masterRevision: revision, state: "error"});
-        setError("地図・報告履歴を読み込めませんでした。再読み込みしてください。");
-      }
+      if (isCurrent() && read && !read.isCurrent()) return loadSummaries(false);
+      if (!canAdopt()) return;
+      setSummaryRead({profileId, masterRevision: revision, state: "error"});
+      setError("地図・報告履歴を読み込めませんでした。再読み込みしてください。");
       throw error;
     }
-  }, [profileId, dependencies]);
+  }, [profileId, dependencies, scope]);
 
   useEffect(() => {
     const token = ++epoch.current;
     focusPending.current = false;
-    setDialog(null); setSelection(null); setSummaries(new Map()); setSummariesProfileId(null); setError(null); setNotice(null); setLoading(true);
+    setDialog(null); setSelection(null); setLoadedSummaries(undefined); setError(null); setNotice(null); setLoading(true);
     locked.current = false; setBusy(false);
     if (profileId === null) { setLoading(false); return; }
-    void reload().catch(() => { if (epoch.current === token) setError("地図・報告履歴を読み込めませんでした。再読み込みしてください。"); })
+    void reload(false).catch(() => { if (epoch.current === token) setError("地図・報告履歴を読み込めませんでした。再読み込みしてください。"); })
       .finally(() => { if (epoch.current === token) setLoading(false); });
     return () => { ++epoch.current; };
   }, [profileId, reload]);
 
   useEffect(() => {
-    if (profileId !== null && loadedMasterRevision.current !== masterRevision) void reload().catch(() => undefined);
+    if (profileId !== null && loadedMasterRevision.current !== masterRevision) void reload(false).catch(() => undefined);
   }, [masterRevision, profileId, reload]);
+
+  useEffect(() => scope?.reads.subscribe(change => {
+    if (change.profileId === profileId && change.owner !== scope.owner && change.kinds.includes("report")) {
+      void reload(false).catch(() => undefined);
+    }
+  }), [scope, profileId, reload]);
 
   useEffect(() => {
     if (!focusPending.current || dialog || selection || busy || loading) return;
@@ -96,32 +109,43 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
   }
 
   async function save(d: HoldDialog) {
-    if (!d.operation || locked.current || profileId === null || d.snapshot.profileId !== profile.current) return;
+    const operation = d.operation;
+    if (!operation || locked.current || profileId === null || d.snapshot.profileId !== profile.current) return;
     const token = epoch.current;
+    const isCurrent = () => scope?.owner.active !== false && epoch.current === token && profile.current === profileId;
+    let attempted = false;
     locked.current = true; setBusy(true); setError(null); setNotice(null);
     try {
       if (d.kind === "history") {
         const latest = await dependencies.service.get(profileId, d.snapshot.discoveryId);
-        if (epoch.current !== token || profile.current !== profileId) return;
+        if (!isCurrent()) return;
         if (!matchesSnapshot(d.snapshot, latest) || !latest.active || latest.automaticReporting || latest.categoryName === "レリック" ||
-          d.operation.kind === "correctHistory" && d.operation.status === "unknown" &&
-            (latest.progress?.reported || d.operation.removeLegacyCredit || d.operation.currentState !== null)) {
+          operation.kind === "correctHistory" && operation.status === "unknown" &&
+            (latest.progress?.reported || operation.removeLegacyCredit || operation.currentState !== null)) {
           throw {kind:"DiscoveryStateConflict"};
         }
       }
-      await dependencies.service.update(d.snapshot, d.operation, d.mapId);
-      if (epoch.current !== token || profile.current !== profileId) return;
+      const write = () => dependencies.service.update(d.snapshot, operation, d.mapId);
+      const affected: ProgressReadKind[] = ["discoveryProgress", "report"];
+      if (operation.kind === "register") affected.push("questProgress");
+      attempted = true;
+      await (scope ? scope.reads.write(scope.owner, profileId, affected, write) : write());
+      if (!isCurrent()) return;
       close();
-      await reload();
-      if (epoch.current === token) { changed.current(); setNotice("状態を保存しました。"); }
+      await reload(false);
+      if (isCurrent()) { changed.current("progress"); setNotice("状態を保存しました。"); }
     } catch (e: unknown) {
-      if (epoch.current !== token || profile.current !== profileId) return;
+      if (!isCurrent()) return;
       close();
       const conflict = typeof e === "object" && e !== null && "kind" in e && e.kind === "DiscoveryStateConflict";
       setError(conflict ? "状態が変更されています。最新の状態を再取得しました。内容を確認して操作し直してください。" : "保存を確認できませんでした。最新の状態を再取得します。");
-      try { await reload(); if (epoch.current === token) changed.current(); }
-      catch { if (epoch.current === token) { setSummaries(new Map()); setError("状態の再取得に失敗しました。再読み込みするまで操作できません。"); } }
-    } finally { if (epoch.current === token) { locked.current = false; setBusy(false); } }
+      try { await reload(!attempted); if (isCurrent()) changed.current(attempted && !conflict ? "progress" : undefined); }
+      catch { if (isCurrent()) {
+        setLoadedSummaries(undefined);
+        if (attempted && scope) changed.current("progress");
+        setError("状態の再取得に失敗しました。再読み込みするまで操作できません。");
+      } }
+    } finally { if (isCurrent()) { locked.current = false; setBusy(false); } }
   }
 
   async function open(id: number, name: string, target: MapCurrentState | "history", mapId: number | null, element: HTMLElement, requireMapRelation = false, initialHistoryStatus?: FirstReportStatus) {
@@ -129,7 +153,7 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
     const displayed = summaries.get(id);
     if (!displayed) return;
     if (target === "history" && (summaryRead?.profileId !== profileId || summaryRead.state !== "ready" ||
-      summariesProfileId !== profileId || !displayed.active || displayed.automaticReporting || displayed.categoryName === "レリック")) return;
+      !displayed.active || displayed.automaticReporting || displayed.categoryName === "レリック")) return;
     if (target !== "history" && target === currentState(displayed)) return;
     if (!selection) focus.current = element;
     setSelection(null);
@@ -178,7 +202,7 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
     const token = epoch.current;
     setLoading(true); setError(null);
     try { await reload(); }
-    catch { if (epoch.current === token) { setSummaries(new Map()); setError("地図・報告履歴の再取得に失敗しました。"); } }
+    catch { if (epoch.current === token) { setLoadedSummaries(undefined); setError("地図・報告履歴の再取得に失敗しました。"); } }
     finally { if (epoch.current === token) setLoading(false); }
   }
 
@@ -189,6 +213,6 @@ export function useReportHold(profileId: number | null, onChanged: () => void, d
   }
 
   const summaryReadState = summaryRead?.profileId === profileId && summaryRead.masterRevision === masterRevision ? summaryRead.state : "loading";
-  return { summaries:summariesProfileId===profileId?summaries:EMPTY_SUMMARIES, summaryReadState, loading:loading || profileId!==null&&summaryReadState === "loading", busy, error, notice, dialog, selection, openSelection, setDialog, close, save, open, reload, retry };
+  return { summaries, summaryReadState, loading:loading || profileId!==null&&summaryReadState === "loading", busy, error, notice, dialog, selection, openSelection, setDialog, close, save, open, reload, retry };
 }
 export type ReportHoldController = ReturnType<typeof useReportHold>;

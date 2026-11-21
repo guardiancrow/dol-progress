@@ -1,0 +1,196 @@
+import { describe, expect, it, vi } from "vitest";
+import { SupersededWorkspaceRead, WorkspaceReads } from "./WorkspaceReads";
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(done => { resolve = done; });
+  return { promise, resolve };
+}
+
+describe("workspace shared reads", () => {
+  it.each(["overview", "report"] as const)("shares %s reads for the same source, profile and generation", async kind => {
+    const reads = new WorkspaceReads();
+    const source = {}, other = {};
+    const pending = deferred<number[]>();
+    const load = vi.fn(() => pending.promise);
+    const first = reads.read(kind, source, 1, load, { masterRevision: 1 });
+    const joined = reads.read(kind, source, 1, load, { masterRevision: 1 });
+    expect(joined.promise).toBe(first.promise);
+    expect(load).toHaveBeenCalledTimes(1);
+    const otherScope = vi.fn(async () => [2]);
+    for (const [reader, profileId, masterRevision] of [[source, 2, 1], [other, 1, 1], [source, 1, 2]] as const) {
+      expect(await reads.read(kind, reader, profileId, otherScope, { masterRevision }).promise).toEqual([2]);
+    }
+    expect(otherScope).toHaveBeenCalledTimes(3);
+    pending.resolve([1]);
+    expect(await joined.promise).toEqual([1]);
+    expect(reads.read(kind, source, 1, load, { masterRevision: 1 }).promise).toBe(first.promise);
+  });
+
+  it.each(["saved", "uncertain"] as const)("discards an earlier result and reloads after a %s write", async outcome => {
+    const reads = new WorkspaceReads();
+    const source = {}, owner = {};
+    const delayed = deferred<number[]>(), finish = deferred<void>();
+    let persisted: number[] = [];
+    const old = reads.read("discoveryProgress", source, 1, () => delayed.promise);
+    const otherProfile = reads.read("discoveryProgress", source, 2, async () => [2]);
+    const master = reads.read("discoveryMaster", source, null, async () => [5]);
+    const changes = vi.fn();
+    reads.subscribe(changes);
+    const failedOrSaved = reads.write(owner, 1, ["discoveryProgress", "report"], async () => {
+      await finish.promise;
+      persisted = [9];
+      if (outcome === "uncertain") throw new Error("synthetic uncertain response");
+    }).catch(() => undefined);
+    expect(old.isCurrent()).toBe(false);
+    const reopen = vi.fn(async () => persisted);
+    const waiting = reads.read("discoveryProgress", source, 1, reopen);
+    const second = reads.read("discoveryProgress", source, 1, reopen);
+    expect(reopen).not.toHaveBeenCalled();
+    finish.resolve();
+    await failedOrSaved;
+    expect(await waiting.promise).toEqual([9]);
+    expect(await second.promise).toEqual([9]);
+    expect(reopen).toHaveBeenCalledTimes(1);
+    delayed.resolve([]);
+    expect(await old.promise).toEqual([]);
+    expect(old.isCurrent()).toBe(false);
+    expect(waiting.isCurrent()).toBe(true);
+    expect(await otherProfile.promise).toEqual([2]);
+    expect(otherProfile.isCurrent()).toBe(true);
+    expect(master.isCurrent()).toBe(true);
+    expect(changes).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ owner, profileId: 1, kinds: ["discoveryProgress", "report"] }));
+  });
+
+  it("does not start a queued read once its owner has left the view", async () => {
+    const reads = new WorkspaceReads();
+    const pending = deferred<void>();
+    const saving = reads.write({}, 3, ["questProgress"], () => pending.promise);
+    const load = vi.fn(async () => [3]);
+    let active = true;
+    const read = reads.read("questProgress", {}, 3, load, { active: () => active });
+    const result = expect(read.promise).rejects.toBeInstanceOf(SupersededWorkspaceRead);
+    active = false;
+    pending.resolve();
+    await saving;
+    await result;
+    expect(load).not.toHaveBeenCalled();
+    expect(read.isCurrent()).toBe(false);
+  });
+
+  it("invalidates masters and report summaries together without refreshing raw progress", async () => {
+    const reads = new WorkspaceReads();
+    const source = {};
+    const pending = deferred<number[]>();
+    const old = reads.read("questMaster", source, null, () => pending.promise);
+    const report = reads.read("report", source, 1, async () => [1]);
+    const overview = reads.read("overview", source, 1, async () => [1]);
+    const progress = reads.read("questProgress", source, 1, async () => [2]);
+    reads.invalidateMaster();
+    const current = reads.read("questMaster", source, null, async () => [3], { masterRevision: 1 });
+    expect(await current.promise).toEqual([3]);
+    pending.resolve([0]);
+    await old.promise;
+    expect(old.isCurrent()).toBe(false);
+    expect(report.isCurrent()).toBe(false);
+    expect(overview.isCurrent()).toBe(false);
+    expect(progress.isCurrent()).toBe(true);
+  });
+
+  it.each(["questProgress", "discoveryProgress", "report"] as const)("waits to refresh overview for only the profile with a %s write", async kind => {
+    const reads = new WorkspaceReads();
+    const source = {};
+    const old = reads.read("overview", source, 1, async () => 0);
+    const other = reads.read("overview", source, 2, async () => 5);
+    const finish = deferred<void>();
+    const saving = reads.write({}, 1, [kind], () => finish.promise);
+    const reload = vi.fn(async () => 1);
+    const waiting = reads.read("overview", source, 1, reload);
+    expect(old.isCurrent()).toBe(false);
+    expect(other.isCurrent()).toBe(true);
+    expect(reload).not.toHaveBeenCalled();
+    finish.resolve();
+    await saving;
+    expect(await waiting.promise).toBe(1);
+    expect(waiting.isCurrent()).toBe(true);
+  });
+
+  it("gives an explicit retry a new read generation even if the old request has not completed", async () => {
+    const reads = new WorkspaceReads();
+    const source = {};
+    const pending = deferred<number[]>();
+    const old = reads.read("questMaster", source, null, () => pending.promise);
+    const replacement = reads.read("questMaster", source, null, async () => [2], { fresh: true });
+    expect(replacement.promise).not.toBe(old.promise);
+    expect(await replacement.promise).toEqual([2]);
+    pending.resolve([1]);
+    await old.promise;
+    expect(old.isCurrent()).toBe(false);
+    expect(replacement.isCurrent()).toBe(true);
+  });
+
+  it("notifies matching staged readers of invalidation and the exact replacement, including a failed read", async () => {
+    const reads = new WorkspaceReads();
+    const source = {}, otherSource = {};
+    const previous = deferred<number[]>();
+    const load = vi.fn(() => previous.promise);
+    const old = reads.read("questMaster", source, null, load, { masterRevision: 1 });
+    const follow = vi.fn(), unrelated = vi.fn();
+    const unsubscribe = reads.subscribeRetry("questMaster", source, null, follow, 1);
+    reads.subscribeRetry("questMaster", source, null, unrelated, 2);
+    reads.subscribeRetry("questMaster", otherSource, null, unrelated, 1);
+
+    reads.invalidateRead("questMaster", source, null);
+    expect(old.isCurrent()).toBe(false);
+    expect(follow).toHaveBeenCalledExactlyOnceWith(undefined);
+    const failure = new Error("synthetic replacement failure");
+    const reload = vi.fn(async () => { throw failure; });
+    const replacement = reads.read("questMaster", source, null, reload, { masterRevision: 1 });
+    expect(follow).toHaveBeenLastCalledWith(replacement);
+    await expect(replacement.promise).rejects.toBe(failure);
+    expect(replacement.isCurrent()).toBe(true);
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(unrelated).not.toHaveBeenCalled();
+    unsubscribe();
+    reads.invalidateRead("questMaster", source, null);
+    expect(follow).toHaveBeenCalledTimes(2);
+    previous.resolve([0]);
+    expect(await old.promise).toEqual([0]);
+    expect(old.isCurrent()).toBe(false);
+  });
+
+  it("publishes only the newest valid handle through successive explicit retries within one profile", async () => {
+    const reads = new WorkspaceReads();
+    const source = {};
+    const oldest = deferred<number>(), middle = deferred<number>();
+    const a = reads.read("discoveryProgress", source, 1, () => oldest.promise);
+    const other = reads.read("discoveryProgress", source, 2, async () => 4);
+    const follow = vi.fn(), otherFollow = vi.fn();
+    reads.subscribeRetry("discoveryProgress", source, 1, follow);
+    reads.subscribeRetry("discoveryProgress", source, 2, otherFollow);
+    reads.invalidateRead("discoveryProgress", source, 1);
+    const b = reads.read("discoveryProgress", source, 1, () => middle.promise);
+    const c = reads.read("discoveryProgress", source, 1, async () => 3, { fresh: true });
+    expect(follow.mock.calls).toEqual([[undefined], [b], [c]]);
+    expect(await c.promise).toBe(3);
+    middle.resolve(2);
+    oldest.resolve(1);
+    await Promise.all([a.promise, b.promise]);
+    expect([a, b, c, other].map(read => read.isCurrent())).toEqual([false, false, true, true]);
+    expect(otherFollow).not.toHaveBeenCalled();
+  });
+
+  it("allows retries after failure and bounds retained profile results to four for each kind", async () => {
+    const reads = new WorkspaceReads();
+    const source = {};
+    const broken = reads.read("questProgress", source, 1, async () => { throw new Error("synthetic read failure"); });
+    await expect(broken.promise).rejects.toThrow("synthetic read failure");
+    const load = vi.fn(async () => []);
+    expect(await reads.read("questProgress", source, 1, load).promise).toEqual([]);
+    for (const id of [2, 3, 4, 5]) await reads.read("questProgress", source, id, load).promise;
+    await reads.read("questProgress", source, 2, load).promise;
+    expect(load).toHaveBeenCalledTimes(5);
+    await reads.read("questProgress", source, 1, load).promise;
+    expect(load).toHaveBeenCalledTimes(6);
+  });
+});

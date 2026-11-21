@@ -345,9 +345,11 @@ describe("prerequisite progress review UI and snapshot safety", () => {
     expect(numericEntry()).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "進捗の確認候補（未確認）" })).toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: "候補のある後続だけを表示" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "候補フィルターを解除" })).toBeInTheDocument();
     hold.state = "ready";
     await view.user.selectOptions(screen.getByLabelText("現在のプロフィール"), "1"); await waitFor(() => expect(entry(1)).toBeInTheDocument());
-    await view.user.click(entry(1)); await view.user.click(screen.getByRole("checkbox", { name: "候補のある後続だけを表示" }));
+    await view.user.click(entry(1));
+    expect(screen.getByRole("checkbox", { name: "候補のある後続だけを表示" })).toBeChecked();
     const pending = deferred<Fixture["dependencies"]>(); f.quests.listDependencies.mockImplementationOnce(() => pending.promise);
     act(() => hold.changed()); expect(numericEntry()).not.toBeInTheDocument(); expect(panel()).not.toHaveTextContent("後続「");
     fireEvent.click(screen.getByRole("button", { name: "候補フィルターを解除" }));

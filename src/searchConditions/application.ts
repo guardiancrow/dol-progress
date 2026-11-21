@@ -1,18 +1,43 @@
-import { useLayoutEffect, useMemo, useState } from "react";
-import { blocked, type ConditionResult, type SearchConditionDefinition, type SearchConditionIssue } from "./definition";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { blocked, type ConditionResult, type SearchConditionDefinition } from "./definition";
 import type { SearchTableState } from "./tableState";
+import type { SearchTableController } from "./useSearchTableState";
+import { createSearchTableView, firstPage, type SearchTableView, type WorkspaceTabBinding, type WorkspaceTabId } from "../workspaceTabs/state";
 
 export interface SearchConditionRequest {
   definition: SearchConditionDefinition;
   profileId: number;
+  tabId: WorkspaceTabId;
+  // An overview link refers to a category in this master, independently of saved names.
+  discoveryDrilldown?: { categoryId?: number };
 }
 
 export interface SearchConditionApplicationProps {
+  workspaceTab?: WorkspaceTabBinding;
+  staged?: boolean;
   searchConditionRequest?: SearchConditionRequest;
-  onSearchConditionSettled?: (request: SearchConditionRequest, issue?: SearchConditionIssue) => void;
+  onSearchConditionSettled?: (request: SearchConditionRequest, result: ConditionResult<SearchTableState>) => void;
   masterRevision?: number;
   masterImporting?: boolean;
   onBookmarkCapture?: (condition: ConditionResult<SearchConditionDefinition> | undefined) => void;
+}
+
+export function useCanFollowSearchRetry(profileId: number | null, {
+  staged, searchConditionRequest: request, workspaceTab, masterRevision,
+}: SearchConditionApplicationProps) {
+  const tabs = workspaceTab?.tabs;
+  const id = workspaceTab?.id;
+  const current = useRef<{ revision: number; isOpen(): boolean } | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (staged && request && request.profileId === profileId && request.tabId === id && tabs) {
+      current.current = { revision: masterRevision ?? 0, isOpen: () => tabs.get(request.tabId) !== undefined };
+    }
+    return () => { current.current = undefined; };
+  }, [staged, request, profileId, id, tabs, masterRevision]);
+  return useCallback((revision?: number) => {
+    const scope = current.current;
+    return scope !== undefined && (revision === undefined || revision === scope.revision) && scope.isOpen();
+  }, []);
 }
 
 export type ReadState = "loading" | "ready" | "error";
@@ -28,44 +53,47 @@ export function whenSearchDataReady(
   return resolve();
 }
 
-export interface AppliedSearchCondition {
-  request: SearchConditionRequest;
-  state: SearchTableState;
+export function applySearchCondition(view: SearchTableView, definition: SearchConditionDefinition, state: SearchTableState): SearchTableView {
+  return firstPage({ ...view, ...state, appliedDefinition: definition });
+}
+
+function sameTableState(left: SearchTableState, right: SearchTableState): boolean {
+  return left.columnFilters.length === right.columnFilters.length && left.sorting.length === right.sorting.length
+    && left.columnFilters.every((filter, index) => filter.id === right.columnFilters[index]?.id && filter.value === right.columnFilters[index]?.value)
+    && left.sorting.every((sort, index) => sort.id === right.sorting[index]?.id && sort.desc === right.sorting[index]?.desc);
 }
 
 export function useSearchConditionApplication(
   profileId: number | null,
-  { searchConditionRequest, onSearchConditionSettled }: SearchConditionApplicationProps,
-  resolve: (condition: SearchConditionDefinition) => Resolution,
+  { workspaceTab, staged, searchConditionRequest, onSearchConditionSettled }: SearchConditionApplicationProps,
+  resolve: (condition: SearchConditionDefinition, drilldown?: SearchConditionRequest["discoveryDrilldown"]) => Resolution,
+  { view, updateView }: SearchTableController,
 ) {
-  const [active, setActive] = useState<SearchConditionRequest>();
   const [resetKey, setResetKey] = useState(0);
-  const current = active?.profileId === profileId ? active : undefined;
-  const pending = searchConditionRequest?.profileId === profileId ? searchConditionRequest : undefined;
-  const ready = useMemo(() => current ? resolve(current.definition) : undefined, [current, resolve]);
-  const attempted = useMemo(() => pending ? resolve(pending.definition) : undefined, [pending, resolve]);
-  const applied = useMemo<AppliedSearchCondition | undefined>(() => current && ready?.status === "ready"
-    ? { request: current, state: ready.value } : undefined, [current, ready]);
+  const current = staged ? undefined : view.appliedDefinition;
+  const pending = searchConditionRequest?.profileId === profileId && searchConditionRequest.tabId === workspaceTab?.id
+    ? searchConditionRequest : undefined;
+  const ready = useMemo(() => current ? resolve(current) : undefined, [current, resolve]);
+  const attempted = useMemo(() => pending ? resolve(pending.definition, pending.discoveryDrilldown) : undefined, [pending, resolve]);
 
   useLayoutEffect(() => {
-    if (active && active.profileId !== profileId) setActive(undefined);
-  }, [active, profileId]);
+    if (!current || ready?.status !== "ready") return;
+    updateView(view => view.appliedDefinition !== current || sameTableState(view, ready.value)
+      ? view : applySearchCondition(view, current, ready.value));
+  }, [current, ready, updateView]);
 
   useLayoutEffect(() => {
     if (!pending || !attempted || attempted.status === "waiting") return;
-    if (attempted.status === "ready") setActive(pending);
-    onSearchConditionSettled?.(pending, attempted.status === "blocked" ? attempted.issue : undefined);
+    onSearchConditionSettled?.(pending, attempted);
   }, [pending, attempted, onSearchConditionSettled]);
 
   return {
-    applied,
     suspended: current !== undefined && ready?.status !== "ready",
     waiting: attempted?.status === "waiting" || ready?.status === "waiting",
     issue: ready?.status === "blocked" ? ready.issue : undefined,
     resetKey,
-    forgetApplied: () => setActive(undefined),
     clearUnavailable: () => {
-      setActive(undefined);
+      updateView(() => createSearchTableView());
       setResetKey(key => key + 1);
     },
   };

@@ -1,47 +1,57 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ColumnFiltersState, PaginationState, SortingState, Updater } from "@tanstack/react-table";
-import type { AppliedSearchCondition } from "./application";
-import type { SearchTableState } from "./tableState";
+import {
+  createSearchTableView, firstPage, type SearchTableView, type UpdateSearchTableView, type WorkspaceTabBinding,
+} from "../workspaceTabs/state";
 
-function update<T>(updater: Updater<T>, current: T): T {
+export interface SearchTableController {
+  view: SearchTableView;
+  updateView: UpdateSearchTableView;
+}
+
+const subscribeLocally = () => () => {};
+
+export function useSearchTableState(binding?: WorkspaceTabBinding): SearchTableController {
+  const { tabs, id } = binding ?? {};
+  const [local, setLocal] = useState(createSearchTableView);
+  const getView = useCallback(() => id === undefined ? undefined : tabs?.getSearchView(id), [tabs, id]);
+  const tabView = useSyncExternalStore(tabs?.subscribe ?? subscribeLocally, getView);
+  const updateView = useCallback<UpdateSearchTableView>(update => {
+    if (tabs && id !== undefined) tabs.updateView(id, update);
+    else setLocal(update);
+  }, [tabs, id]);
+  return { view: tabView ?? local, updateView };
+}
+
+function applyUpdater<T>(updater: Updater<T>, current: T): T {
   return typeof updater === "function" ? (updater as (value: T) => T)(current) : updater;
 }
 
-function sameTableState(left: SearchTableState, right: SearchTableState): boolean {
-  return left.columnFilters.length === right.columnFilters.length && left.sorting.length === right.sorting.length
-    && left.columnFilters.every((filter, index) => filter.id === right.columnFilters[index]?.id && filter.value === right.columnFilters[index]?.value)
-    && left.sorting.every((sort, index) => sort.id === right.sorting[index]?.id && sort.desc === right.sorting[index]?.desc);
-}
+export function useSearchTableControls(paginationResetKey: number, controlled?: SearchTableController) {
+  const [localView, updateLocalView] = useState(createSearchTableView);
+  const { view, updateView } = controlled ?? { view: localView, updateView: updateLocalView };
+  const previousResetKey = useRef(paginationResetKey);
 
-export function useSearchTableState(initialFilters: () => ColumnFiltersState, applied?: AppliedSearchCondition) {
-  const [view, setView] = useState(() => ({
-    columnFilters: applied?.state.columnFilters ?? initialFilters(),
-    sorting: applied?.state.sorting ?? [],
-    pagination: { pageIndex: 0, pageSize: 50 },
-  }));
-  const previous = useRef(applied);
+  useEffect(() => {
+    if (previousResetKey.current === paginationResetKey) return;
+    previousResetKey.current = paginationResetKey;
+    updateView(firstPage);
+  }, [paginationResetKey, updateView]);
 
-  useLayoutEffect(() => {
-    if (!applied || applied === previous.current) return;
-    const sameRequest = previous.current?.request === applied.request;
-    previous.current = applied;
-    setView(current => sameRequest && sameTableState(current, applied.state) ? current : {
-      ...applied.state,
-      pagination: { ...current.pagination, pageIndex: 0 },
-    });
-  }, [applied]);
+  const setColumnFilters = useCallback((updater: Updater<ColumnFiltersState>) => updateView(current => {
+    const columnFilters = applyUpdater(updater, current.columnFilters);
+    return columnFilters === current.columnFilters ? current : { ...current, columnFilters, appliedDefinition: undefined };
+  }), [updateView]);
 
-  const setColumnFilters = useCallback((updater: Updater<ColumnFiltersState>) => setView(current => {
-    const columnFilters = update(updater, current.columnFilters);
-    return columnFilters === current.columnFilters ? current : { ...current, columnFilters };
-  }), []);
-  const setSorting = useCallback((updater: Updater<SortingState>) => setView(current => {
-    const sorting = update(updater, current.sorting);
-    return sorting === current.sorting ? current : { ...current, sorting };
-  }), []);
-  const setPagination = useCallback((updater: Updater<PaginationState>) => setView(current => {
-    const pagination = update(updater, current.pagination);
+  const setSorting = useCallback((updater: Updater<SortingState>) => updateView(current => {
+    const sorting = applyUpdater(updater, current.sorting);
+    return sorting === current.sorting ? current : { ...current, sorting, appliedDefinition: undefined };
+  }), [updateView]);
+
+  const setPagination = useCallback((updater: Updater<PaginationState>) => updateView(current => {
+    const pagination = applyUpdater(updater, current.pagination);
     return pagination === current.pagination ? current : { ...current, pagination };
-  }), []);
+  }), [updateView]);
+
   return { ...view, setColumnFilters, setSorting, setPagination };
 }
