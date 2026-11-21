@@ -17,7 +17,7 @@ import type {
   QuestRepositoryPort,
   QuestRowViewModel,
 } from "../quests/types";
-import { useSearchConditionApplication, whenSearchDataReady, type SearchConditionApplicationProps } from "../searchConditions/application";
+import { useCanFollowSearchRetry, useSearchConditionApplication, whenSearchDataReady, type SearchConditionApplicationProps } from "../searchConditions/application";
 import { blocked, type SearchConditionDefinition } from "../searchConditions/definition";
 import { SearchConditionFeedback } from "../searchConditions/SearchConditionFeedback";
 import { questSearchOptions, resolveQuestSearch } from "../searchConditions/tableState";
@@ -77,6 +77,7 @@ export function QuestsPage({
   const { selectedProfileId, selectedProfile, isLoading: isProfileLoading } = useProfiles();
   const readScope = useWorkspaceReadScope(workspaceReads, selectedProfileId);
   const { reads, owner } = readScope;
+  const canFollowRetry = useCanFollowSearchRetry(selectedProfileId, { staged, searchConditionRequest, workspaceTab, masterRevision });
   const [masterSnapshot, setMasterSnapshot] = useState<MasterSnapshot | null>(null);
   const [completionSnapshot, setCompletionSnapshot] = useState<CompletionSnapshot | null>(null);
   const quests = masterSnapshot?.quests ?? EMPTY_QUESTS;
@@ -178,39 +179,46 @@ export function QuestsPage({
 
   useEffect(() => {
     let active = true;
-    const generation = ++masterGeneration.current;
-    const source = { generation, reload: masterReload, revision: masterRevision, repository: questRepository };
-    setMasterRead({ ...source, state: "loading" });
-    setIsMasterLoading(true);
-    setMasterError(null);
-    const read = loadMasterPair();
-    void read.promise
-      .then(([loaded, loadedDependencies]) => {
-        if (active && read.isCurrent() && masterGeneration.current === generation) {
+    let latest: ReturnType<typeof loadMasterPair> | undefined;
+    const load = (read: typeof latest, retry = false) => {
+      latest = read;
+      const generation = ++masterGeneration.current;
+      const source = { generation, reload: masterReload, revision: masterRevision, repository: questRepository };
+      setMasterRead({ ...source, state: "loading" });
+      setIsMasterLoading(true);
+      setMasterError(null);
+      if (!read) return;
+      const isCurrent = () => active && read.isCurrent() && masterGeneration.current === generation && (!retry || canFollowRetry(masterRevision));
+      void read.promise
+        .then(([loaded, loadedDependencies]) => {
+          if (!isCurrent()) return;
           setMasterSnapshot({ ...source, quests: loaded, dependencies: loadedDependencies });
           setMasterRead({ ...source, state: "ready" });
-        }
-      })
-      .catch((error: unknown) => {
-        console.error("Quest master load failed", error);
-        if (active && read.isCurrent() && masterGeneration.current === generation) {
+        })
+        .catch((error: unknown) => {
+          if (!isCurrent()) return;
+          console.error("Quest master load failed", error);
           setMasterError("クエストを読み込めませんでした。");
           setMasterRead({ ...source, state: "error" });
-        }
-      })
-      .finally(() => {
-        if (active) setIsMasterLoading(false);
-      });
+        })
+        .finally(() => {
+          if (active && latest === read) setIsMasterLoading(false);
+        });
+    };
+    load(loadMasterPair());
+    const unsubscribe = reads.subscribeRetry("questMaster", questRepository, null, (read: typeof latest) => {
+      if (canFollowRetry(masterRevision)) load(read, true);
+    }, masterRevision);
     return () => {
       active = false;
+      unsubscribe();
     };
-  }, [masterReload, masterRevision, questRepository, loadMasterPair]);
+  }, [masterReload, masterRevision, questRepository, loadMasterPair, reads, canFollowRetry]);
 
   useEffect(() => {
     let active = true;
     const generation = ++progressGeneration.current;
-    const ticket = ++progressReadGeneration.current;
-    const revision = writeRevision.current;
+    const initialTicket = ++progressReadGeneration.current;
     setCompletionSnapshot(null);
     setProgressNeedsRefresh(false);
     setProgressError(null);
@@ -223,32 +231,44 @@ export function QuestsPage({
       return;
     }
 
-    setIsProgressLoading(true);
-    const isCurrent = () => active && owner.active && progressGeneration.current === generation && selectedProfileRef.current === selectedProfileId && progressReadGeneration.current === ticket;
-    const read = loadCompletion(selectedProfileId, false, isCurrent);
-    void read.promise
-      .then((ids) => {
-        if (isCurrent()) {
-          if (!read.isCurrent() || writeRevision.current !== revision || [...pendingUpdatesRef.current].some(key => key.startsWith(`${selectedProfileId}:`))) {
+    const profileId = selectedProfileId;
+    const isActive = () => active && owner.active && progressGeneration.current === generation && selectedProfileRef.current === profileId;
+    let latest: ReturnType<typeof loadCompletion> | undefined;
+    const load = (read: typeof latest, retry = false) => {
+      latest = read;
+      const ticket = retry ? ++progressReadGeneration.current : initialTicket;
+      const revision = writeRevision.current;
+      const isCurrent = () => isActive() && progressReadGeneration.current === ticket && (!retry || canFollowRetry());
+      setIsProgressLoading(true);
+      if (retry) {
+        setCompletionSnapshot(null);
+        setProgressError(null);
+      }
+      if (!read) return;
+      void read.promise
+        .then((ids) => {
+          if (!isCurrent()) return;
+          if (!read.isCurrent() || writeRevision.current !== revision || [...pendingUpdatesRef.current].some(key => key.startsWith(`${profileId}:`))) {
             setProgressNeedsRefresh(true);
           } else {
-            setCompletionSnapshot({ ids, profileId: selectedProfileId, epoch: generation, reload: progressReload, repository: questProgressRepository });
+            setCompletionSnapshot({ ids, profileId, epoch: generation, reload: progressReload, repository: questProgressRepository });
           }
-        }
-      })
-      .catch((error: unknown) => {
-        console.error("Quest progress load failed", error);
-        if (isCurrent() && read.isCurrent()) {
+        })
+        .catch((error: unknown) => {
+          if (!isCurrent() || !read.isCurrent()) return;
+          console.error("Quest progress load failed", error);
           setProgressError("クエスト進捗を読み込めませんでした。");
-        }
-      })
-      .finally(() => {
-        if (active && progressGeneration.current === generation) {
-          setIsProgressLoading(false);
-        }
-      });
-    return () => { active = false; };
-  }, [loadCompletion, progressReload, questProgressRepository, selectedProfileId, owner]);
+        })
+        .finally(() => {
+          if (isActive() && latest === read) setIsProgressLoading(false);
+        });
+    };
+    load(loadCompletion(profileId, false, () => isActive() && progressReadGeneration.current === initialTicket));
+    const unsubscribe = reads.subscribeRetry("questProgress", questProgressRepository, profileId, (read: typeof latest) => {
+      if (isActive() && canFollowRetry()) load(read, true);
+    });
+    return () => { active = false; unsubscribe(); };
+  }, [loadCompletion, progressReload, questProgressRepository, selectedProfileId, owner, reads, canFollowRetry]);
 
   const updateCompletion = useCallback(
     async (questId: number, completed: boolean, fromReview = false): Promise<CompletionOutcome> => {

@@ -129,6 +129,57 @@ describe("workspace shared reads", () => {
     expect(replacement.isCurrent()).toBe(true);
   });
 
+  it("notifies matching staged readers of invalidation and the exact replacement, including a failed read", async () => {
+    const reads = new WorkspaceReads();
+    const source = {}, otherSource = {};
+    const previous = deferred<number[]>();
+    const load = vi.fn(() => previous.promise);
+    const old = reads.read("questMaster", source, null, load, { masterRevision: 1 });
+    const follow = vi.fn(), unrelated = vi.fn();
+    const unsubscribe = reads.subscribeRetry("questMaster", source, null, follow, 1);
+    reads.subscribeRetry("questMaster", source, null, unrelated, 2);
+    reads.subscribeRetry("questMaster", otherSource, null, unrelated, 1);
+
+    reads.invalidateRead("questMaster", source, null);
+    expect(old.isCurrent()).toBe(false);
+    expect(follow).toHaveBeenCalledExactlyOnceWith(undefined);
+    const failure = new Error("synthetic replacement failure");
+    const reload = vi.fn(async () => { throw failure; });
+    const replacement = reads.read("questMaster", source, null, reload, { masterRevision: 1 });
+    expect(follow).toHaveBeenLastCalledWith(replacement);
+    await expect(replacement.promise).rejects.toBe(failure);
+    expect(replacement.isCurrent()).toBe(true);
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(unrelated).not.toHaveBeenCalled();
+    unsubscribe();
+    reads.invalidateRead("questMaster", source, null);
+    expect(follow).toHaveBeenCalledTimes(2);
+    previous.resolve([0]);
+    expect(await old.promise).toEqual([0]);
+    expect(old.isCurrent()).toBe(false);
+  });
+
+  it("publishes only the newest valid handle through successive explicit retries within one profile", async () => {
+    const reads = new WorkspaceReads();
+    const source = {};
+    const oldest = deferred<number>(), middle = deferred<number>();
+    const a = reads.read("discoveryProgress", source, 1, () => oldest.promise);
+    const other = reads.read("discoveryProgress", source, 2, async () => 4);
+    const follow = vi.fn(), otherFollow = vi.fn();
+    reads.subscribeRetry("discoveryProgress", source, 1, follow);
+    reads.subscribeRetry("discoveryProgress", source, 2, otherFollow);
+    reads.invalidateRead("discoveryProgress", source, 1);
+    const b = reads.read("discoveryProgress", source, 1, () => middle.promise);
+    const c = reads.read("discoveryProgress", source, 1, async () => 3, { fresh: true });
+    expect(follow.mock.calls).toEqual([[undefined], [b], [c]]);
+    expect(await c.promise).toBe(3);
+    middle.resolve(2);
+    oldest.resolve(1);
+    await Promise.all([a.promise, b.promise]);
+    expect([a, b, c, other].map(read => read.isCurrent())).toEqual([false, false, true, true]);
+    expect(otherFollow).not.toHaveBeenCalled();
+  });
+
   it("allows retries after failure and bounds retained profile results to four for each kind", async () => {
     const reads = new WorkspaceReads();
     const source = {};

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { blocked, type ConditionResult, type SearchConditionDefinition } from "./definition";
 import type { SearchTableState } from "./tableState";
 import type { SearchTableController } from "./useSearchTableState";
@@ -20,6 +20,24 @@ export interface SearchConditionApplicationProps {
   masterRevision?: number;
   masterImporting?: boolean;
   onBookmarkCapture?: (condition: ConditionResult<SearchConditionDefinition> | undefined) => void;
+}
+
+export function useCanFollowSearchRetry(profileId: number | null, {
+  staged, searchConditionRequest: request, workspaceTab, masterRevision,
+}: SearchConditionApplicationProps) {
+  const tabs = workspaceTab?.tabs;
+  const id = workspaceTab?.id;
+  const current = useRef<{ revision: number; isOpen(): boolean } | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (staged && request && request.profileId === profileId && request.tabId === id && tabs) {
+      current.current = { revision: masterRevision ?? 0, isOpen: () => tabs.get(request.tabId) !== undefined };
+    }
+    return () => { current.current = undefined; };
+  }, [staged, request, profileId, id, tabs, masterRevision]);
+  return useCallback((revision?: number) => {
+    const scope = current.current;
+    return scope !== undefined && (revision === undefined || revision === scope.revision) && scope.isOpen();
+  }, []);
 }
 
 export type ReadState = "loading" | "ready" | "error";

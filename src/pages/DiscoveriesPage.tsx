@@ -17,7 +17,7 @@ import type {
   ProgressLinkServicePort,
 } from "../progressLink";
 
-import { useSearchConditionApplication, whenSearchDataReady, type ReadState, type SearchConditionApplicationProps, type SearchConditionRequest } from "../searchConditions/application";
+import { useCanFollowSearchRetry, useSearchConditionApplication, whenSearchDataReady, type ReadState, type SearchConditionApplicationProps, type SearchConditionRequest } from "../searchConditions/application";
 import { blocked, type SearchConditionDefinition } from "../searchConditions/definition";
 import { SearchConditionFeedback } from "../searchConditions/SearchConditionFeedback";
 import { discoverySearchOptions, resolveDiscoverySearch } from "../searchConditions/tableState";
@@ -50,6 +50,7 @@ export function DiscoveriesPage({
   const { selectedProfileId, isLoading: isProfileLoading } = useProfiles();
   const readScope = useWorkspaceReadScope(workspaceReads, selectedProfileId);
   const { reads, owner } = readScope;
+  const canFollowRetry = useCanFollowSearchRetry(selectedProfileId, { staged, searchConditionRequest, workspaceTab, masterRevision });
   const [discoveries, setDiscoveries] = useState<DiscoveryWithRelations[]>([]);
   const [progressById, setProgressById] = useState<Map<number, DiscoveryProgress>>(new Map());
   const [pendingUpdates, setPendingUpdates] = useState<Set<string>>(new Set());
@@ -122,34 +123,41 @@ export function DiscoveriesPage({
 
   useEffect(() => {
     let active = true;
-    const ticket = ++masterGeneration.current;
     const source = { repository: discoveryRepository, reload: masterReload, revision: masterRevision };
-    const read = loadMaster();
-    const isCurrent = () => active && owner.active && read.isCurrent() && masterGeneration.current === ticket;
-    setMasterRead({ ...source, state: "loading" });
-    setIsMasterLoading(true);
-    setMasterError(null);
-    void read.promise
-      .then((loaded) => {
-        if (isCurrent()) {
+    let latest: ReturnType<typeof loadMaster> | undefined;
+    const load = (read: typeof latest, retry = false) => {
+      latest = read;
+      const ticket = ++masterGeneration.current;
+      setMasterRead({ ...source, state: "loading" });
+      setIsMasterLoading(true);
+      setMasterError(null);
+      if (!read) return;
+      const isCurrent = () => active && owner.active && read.isCurrent() && masterGeneration.current === ticket && (!retry || canFollowRetry(masterRevision));
+      void read.promise
+        .then((loaded) => {
+          if (!isCurrent()) return;
           setDiscoveries(loaded);
           setMasterRead({ ...source, state: "ready" });
-        }
-      })
-      .catch((error: unknown) => {
-        console.error("Discovery master load failed", error);
-        if (isCurrent()) {
+        })
+        .catch((error: unknown) => {
+          if (!isCurrent()) return;
+          console.error("Discovery master load failed", error);
           setMasterError("発見物を読み込めませんでした。");
           setMasterRead({ ...source, state: "error" });
-        }
-      })
-      .finally(() => {
-        if (active) setIsMasterLoading(false);
-      });
+        })
+        .finally(() => {
+          if (active && latest === read) setIsMasterLoading(false);
+        });
+    };
+    load(loadMaster());
+    const unsubscribe = reads.subscribeRetry("discoveryMaster", discoveryRepository, null, (read: typeof latest) => {
+      if (canFollowRetry(masterRevision)) load(read, true);
+    }, masterRevision);
     return () => {
       active = false;
+      unsubscribe();
     };
-  }, [discoveryRepository, loadMaster, masterReload, masterRevision, owner]);
+  }, [discoveryRepository, loadMaster, masterReload, masterRevision, owner, reads, canFollowRetry]);
 
   useEffect(() => {
     let active = true;
@@ -163,29 +171,39 @@ export function DiscoveriesPage({
       setIsProgressLoading(false);
       return;
     }
-    setIsProgressLoading(true);
-    const source = { repository: discoveryProgressRepository, reload: progressReload, profileId: selectedProfileId };
-    const isCurrent = () => active && owner.active && progressGeneration.current === generation && selectedProfileRef.current === selectedProfileId;
-    const read = loadProgress(selectedProfileId, false, isCurrent);
-    void read.promise
-      .then((progress) => {
-        if (isCurrent() && read.isCurrent()) {
+    const profileId = selectedProfileId;
+    const source = { repository: discoveryProgressRepository, reload: progressReload, profileId };
+    const isActive = () => active && owner.active && progressGeneration.current === generation && selectedProfileRef.current === profileId;
+    let latest: ReturnType<typeof loadProgress> | undefined;
+    const load = (read: typeof latest, retry = false) => {
+      latest = read;
+      setIsProgressLoading(true);
+      setProgressRead({ ...source, state: "loading" });
+      if (retry) setProgressError(null);
+      if (!read) return;
+      const isCurrent = () => isActive() && latest === read && read.isCurrent() && (!retry || canFollowRetry());
+      void read.promise
+        .then((progress) => {
+          if (!isCurrent()) return;
           setProgressById(progress);
           setProgressRead({ ...source, state: "ready" });
-        }
-      })
-      .catch((error: unknown) => {
-        console.error("Discovery progress load failed", error);
-        if (isCurrent() && read.isCurrent()) {
+        })
+        .catch((error: unknown) => {
+          if (!isCurrent()) return;
+          console.error("Discovery progress load failed", error);
           setProgressError("発見物進捗を読み込めませんでした。");
           setProgressRead({ ...source, state: "error" });
-        }
-      })
-      .finally(() => {
-        if (isCurrent()) setIsProgressLoading(false);
-      });
-    return () => { active = false; };
-  }, [discoveryProgressRepository, loadProgress, progressReload, selectedProfileId, owner]);
+        })
+        .finally(() => {
+          if (isActive() && latest === read) setIsProgressLoading(false);
+        });
+    };
+    load(loadProgress(profileId, false, isActive));
+    const unsubscribe = reads.subscribeRetry("discoveryProgress", discoveryProgressRepository, profileId, (read: typeof latest) => {
+      if (isActive() && canFollowRetry()) load(read, true);
+    });
+    return () => { active = false; unsubscribe(); };
+  }, [discoveryProgressRepository, loadProgress, progressReload, selectedProfileId, owner, reads, canFollowRetry]);
 
   const runUpdate = useCallback(
     async <T,>(

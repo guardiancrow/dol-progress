@@ -13,6 +13,7 @@ import { discoveryStateReader } from "./discoveries/stateReader";
 import { SearchBookmarkRepository } from "./repositories/searchBookmarkRepository";
 import type { QuestSearchCondition, DiscoverySearchCondition } from "./searchConditions/definition";
 import type { QuestDependency } from "./quests/prerequisites";
+import type { ImportResult } from "./importer";
 
 vi.mock("./discoveries/stateReader", async (original) => ({
   ...await original<typeof import("./discoveries/stateReader")>(),
@@ -612,6 +613,204 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     expect(tabList().getAllByRole("tab")).toEqual([second, first, activeTab()]);
     expect(props.discoveryRepository.listWithRelations).toHaveBeenCalledTimes(1);
     await waitFor(async () => expect((await repository.getById(bookmark.id))?.lastUsedAt).not.toBeNull());
+  });
+
+  async function startMasterRetry(page: "クエスト" | "発見物") {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const isQuest = page === "クエスト";
+    const searchText = isQuest ? "対象B" : "合成遺跡";
+    const bookmark = await repository.create("再取得する条件", { ...(isQuest ? questCondition : discoveryCondition), search: searchText });
+    const { props, mutateProgress, mutateProfile } = fixtures(repository);
+    let finishOldRead!: () => void;
+    let finishRetry!: (error?: Error) => void;
+    const prepare = <T,>(read: ReturnType<typeof vi.fn<() => Promise<T[]>>>, old: T[], latest: T[]) => {
+      read.mockRejectedValueOnce(new Error("synthetic initial master failure"))
+        .mockImplementationOnce(() => new Promise(resolve => { finishOldRead = () => resolve(old); }))
+        .mockImplementationOnce(() => new Promise((resolve, reject) => {
+          finishRetry = error => error ? reject(error) : resolve(latest);
+        }));
+      return read;
+    };
+    const master = isQuest
+      ? prepare(props.questRepository.listWithDiscoveries, [quest(1, "旧クエスト")], [quest(2, searchText)])
+      : prepare(props.discoveryRepository.listWithRelations, [discovery(1, "旧発見物")], [discovery(2, searchText)]);
+
+    const { user } = await show({ ...props, progressStatsRepository: overviewStats }, page);
+    const original = activeTab();
+    const error = await screen.findByText(`${page}を読み込めませんでした。`);
+    await open(user);
+    await panel().findByRole("button", { name: bookmark.name });
+    await user.click((await actions(user, bookmark.name)).getByRole("button", { name: "新しいタブで開く" }));
+    expect(master).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("適用先の一覧を読み込んでいます…")).toBeInTheDocument();
+
+    await user.click(within(error.closest(".error-banner")!).getByRole("button", { name: "再読み込み" }));
+    expect(master).toHaveBeenCalledTimes(3);
+    return { user, original, bookmark, master, finishOldRead, finishRetry, searchText, mutateProgress, mutateProfile };
+  }
+
+  it.each([
+    ["クエスト", "success"], ["発見物", "success"],
+    ["クエスト", "failure"], ["発見物", "failure"],
+  ] as const)("settles the staged %s bookmark after a shared master retry (%s)", async (page, outcome) => {
+    const { user, original, bookmark, master, finishOldRead, finishRetry, searchText, mutateProgress, mutateProfile } = await startMasterRetry(page);
+    const searchLabel = page === "クエスト" ? undefined : "発見物名を検索";
+    await act(async () => finishOldRead());
+    expect(activeTab()).toBe(original);
+    expect(screen.getByText("適用先の一覧を読み込んでいます…")).toBeInTheDocument();
+    expect((await repository.getById(bookmark.id))?.lastUsedAt).toBeNull();
+    await act(async () => finishRetry(outcome === "failure" ? new Error("synthetic retry failure") : undefined));
+
+    if (outcome === "success") {
+      expect(activeTab()).toHaveAccessibleName(bookmark.name);
+      expect(tabList().getAllByRole("tab")).toHaveLength(2);
+      expect(search(searchLabel)).toHaveValue(searchText);
+      expect(screen.getByRole("table")).toHaveTextContent(searchText);
+      await waitFor(async () => expect((await repository.getById(bookmark.id))?.lastUsedAt).not.toBeNull());
+      await user.click(original);
+      expect(search(searchLabel)).toHaveValue("");
+    } else {
+      expect(await screen.findByText("検索条件の適用に必要なマスターデータを取得できませんでした。")).toBeInTheDocument();
+      expect(activeTab()).toBe(original);
+      expect(tabList().getAllByRole("tab")).toHaveLength(1);
+      expect((await repository.getById(bookmark.id))?.lastUsedAt).toBeNull();
+    }
+    expect(screen.queryByText("適用先の一覧を読み込んでいます…")).not.toBeInTheDocument();
+    expect(master).toHaveBeenCalledTimes(3);
+    expect(mutateProgress).not.toHaveBeenCalled();
+    expect(mutateProfile).not.toHaveBeenCalled();
+  });
+
+  it.each(["クエスト", "発見物"] as const)("opens the staged %s tab even while its invalidated read is still pending", async page => {
+    const { bookmark, master, finishOldRead, finishRetry, searchText } = await startMasterRetry(page);
+    await act(async () => finishRetry());
+    expect(activeTab()).toHaveAccessibleName(bookmark.name);
+    expect(screen.queryByText("適用先の一覧を読み込んでいます…")).not.toBeInTheDocument();
+    await act(async () => finishOldRead());
+    expect(screen.getByRole("table")).toHaveTextContent(searchText);
+    expect(master).toHaveBeenCalledTimes(3);
+    await waitFor(async () => expect((await repository.getById(bookmark.id))?.lastUsedAt).not.toBeNull());
+  });
+
+  it.each([
+    ["クエスト", "profile"], ["発見物", "profile"],
+    ["クエスト", "replacement"], ["発見物", "replacement"],
+    ["クエスト", "close"], ["発見物", "close"],
+  ] as const)("does not resume a cancelled %s bookmark during a shared retry (%s)", async (page, reason) => {
+    const isQuest = page === "クエスト";
+    const next = await repository.create("別の条件", { ...(isQuest ? questCondition : discoveryCondition), search: "別の" });
+    const { user, original, bookmark, master, finishOldRead, finishRetry } = await startMasterRetry(page);
+    if (reason === "profile") await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    if (reason === "replacement") await user.click(panel().getByRole("button", { name: next.name }));
+    if (reason === "close") await user.click(tabList().getByRole("button", { name: `${page}を閉じる` }));
+
+    await act(async () => finishRetry());
+    await act(async () => finishOldRead());
+    expect(tabList().getAllByRole("tab")).toHaveLength(1);
+    expect(tabList().queryByRole("tab", { name: bookmark.name })).not.toBeInTheDocument();
+    expect(screen.queryByText("適用先の一覧を読み込んでいます…")).not.toBeInTheDocument();
+    expect((await repository.getById(bookmark.id))?.lastUsedAt).toBeNull();
+    expect(master).toHaveBeenCalledTimes(3);
+    if (reason === "close") {
+      expect(activeTab()).toHaveAccessibleName("概要");
+    } else {
+      expect(activeTab()).toBe(original);
+      expect(search(isQuest ? undefined : "発見物名を検索")).toHaveValue(reason === "replacement" ? "別の" : "");
+    }
+    if (reason === "profile") expect(screen.getByLabelText("現在のプロフィール")).toHaveValue("2");
+    if (reason === "replacement") await waitFor(async () => expect((await repository.getById(next.id))?.lastUsedAt).not.toBeNull());
+  });
+
+  it.each(["クエスト", "発見物"] as const)("ends a staged %s application if the shared progress retry fails", async (page) => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const isQuest = page === "クエスト";
+    const bookmark = await repository.create("進捗を再取得する条件", isQuest ? questCondition : discoveryCondition);
+    const { props } = fixtures(repository);
+    let rejectStaged!: () => void;
+    const prepare = <T,>(read: (profileId: number) => Promise<T[]>) => vi.fn(read)
+      .mockImplementationOnce(read)
+      .mockRejectedValueOnce(new Error("synthetic initial progress failure"))
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => {
+        rejectStaged = () => reject(new Error("synthetic superseded progress failure"));
+      }))
+      .mockRejectedValueOnce(new Error("synthetic current progress failure"));
+    const questProgress = prepare(props.questProgressRepository.listCompletedQuestIds);
+    const discoveryProgress = prepare(props.discoveryProgressRepository.listByProfile);
+    const { user } = await show({ ...props,
+      questProgressRepository: { ...props.questProgressRepository, listCompletedQuestIds: questProgress },
+      discoveryProgressRepository: { ...props.discoveryProgressRepository, listByProfile: discoveryProgress },
+    }, page);
+    const original = activeTab(), progress = isQuest ? questProgress : discoveryProgress;
+    const searchLabel = isQuest ? "クエスト名／地図名を検索" : "発見物名を検索";
+    const draft = isQuest ? "対象" : "合成";
+    await user.type(await screen.findByRole("searchbox", { name: searchLabel }), draft);
+    await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
+    const error = await screen.findByText(`${page}進捗を読み込めませんでした。`);
+    await open(user);
+    await panel().findByRole("button", { name: bookmark.name });
+    await user.click((await actions(user, bookmark.name)).getByRole("button", { name: "新しいタブで開く" }));
+    expect(progress).toHaveBeenCalledTimes(3);
+    await user.click(within(error.closest(".error-banner")!).getByRole("button", { name: "再読み込み" }));
+    expect(await screen.findByText("検索条件の適用に必要なプロフィールの進捗を取得できませんでした。")).toBeInTheDocument();
+    await act(async () => rejectStaged());
+    expect(activeTab()).toBe(original);
+    expect(tabList().getAllByRole("tab")).toHaveLength(1);
+    expect(screen.queryByText("適用先の一覧を読み込んでいます…")).not.toBeInTheDocument();
+    expect((await repository.getById(bookmark.id))?.lastUsedAt).toBeNull();
+    expect(progress.mock.calls.map(([id]) => id)).toEqual([1, 2, 2, 2]);
+    const currentError = screen.getByText(`${page}進捗を読み込めませんでした。`);
+    await user.click(within(currentError.closest(".error-banner")!).getByRole("button", { name: "再読み込み" }));
+    expect(await screen.findByRole("searchbox", { name: searchLabel })).toHaveValue(draft);
+    expect(progress.mock.calls.map(([id]) => id)).toEqual([1, 2, 2, 2, 2]);
+  });
+
+  it("waits for the committed master revision when a retry overlaps a master import", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const bookmark = await repository.create("取込後の都市", { ...questCondition, filters: { offerCity: { kind: "named", name: "新都市" } } });
+    const { props } = fixtures(repository);
+    const old = [quest(1, "旧世代")];
+    const latest = { ...quest(2, "新世代"), offerCities: [{ position: 0, cityName: "新都市" }] };
+    let finishStaged!: (value: QuestWithDiscoveries[]) => void;
+    let finishRetry!: (value: QuestWithDiscoveries[]) => void;
+    let finishNewRevision!: (value: QuestWithDiscoveries[]) => void;
+    props.questRepository.listWithDiscoveries
+      .mockRejectedValueOnce(new Error("synthetic master failure"))
+      .mockImplementationOnce(() => new Promise(resolve => { finishStaged = resolve; }))
+      .mockImplementationOnce(() => new Promise(resolve => { finishRetry = resolve; }))
+      .mockImplementationOnce(() => new Promise(resolve => { finishNewRevision = resolve; }));
+    const dataset = "quests" as const;
+    const fileName = "synthetic-quests.csv", sha256 = "a".repeat(64);
+    const selection = { dataset, fileName, sha256, rowCount: 0, warningCount: 0,
+      request: { dataset, fileName, sha256, quests: [], discoveries: [], warnings: [] } };
+    let finishImport!: (value: ImportResult) => void;
+    const importPrepared = vi.fn(() => new Promise<ImportResult>(resolve => { finishImport = resolve; }));
+    const { user, navigate } = await show({ ...props, masterImportService: { selectFile: async () => selection, importPrepared },
+      masterDataStatusRepository: { getStatus: async () => ({ datasets: {
+        quests: { dataset: "quests", activeCount: 1, latestImport: null },
+        discoveries: { dataset: "discoveries", activeCount: 0, latestImport: null },
+      }, recentHistory: [] }) },
+    }, "マスターデータ");
+    await user.click(await screen.findByRole("button", { name: "quests.csv を選択" }));
+    await user.click(await screen.findByRole("button", { name: "クエスト情報を更新" }));
+    expect(importPrepared).toHaveBeenCalledOnce();
+    await navigate("クエスト");
+    const error = await screen.findByText("クエストを読み込めませんでした。");
+    await open(user);
+    await panel().findByRole("button", { name: bookmark.name });
+    await user.click((await actions(user, bookmark.name)).getByRole("button", { name: "新しいタブで開く" }));
+    await user.click(within(error.closest(".error-banner")!).getByRole("button", { name: "再読み込み" }));
+    expect(props.questRepository.listWithDiscoveries).toHaveBeenCalledTimes(3);
+    await act(async () => finishImport({ dataset, fileName, sha256, importedRowCount: 1, insertedCount: 1,
+      updatedCount: 0, inactiveCount: 0, relationCount: 0, warningCount: 0, warnings: [] }));
+    expect(props.questRepository.listWithDiscoveries).toHaveBeenCalledTimes(4);
+    await act(async () => { finishStaged(old); finishRetry(old); });
+    expect(screen.getByText("適用先の一覧を読み込んでいます…")).toBeInTheDocument();
+    expect((await repository.getById(bookmark.id))?.lastUsedAt).toBeNull();
+    await act(async () => finishNewRevision([latest]));
+    expect(activeTab()).toHaveAccessibleName(bookmark.name);
+    expect(screen.getByRole("table")).toHaveTextContent("新世代");
+    expect(screen.getByRole("table")).not.toHaveTextContent("旧世代");
+    expect(props.questRepository.listWithDiscoveries).toHaveBeenCalledTimes(4);
   });
 
   it.each(["newer", "profile", "navigation", "close"] as const)("discards a delayed cross-page application after %s", async reason => {

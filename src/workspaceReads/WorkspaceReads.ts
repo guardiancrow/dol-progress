@@ -40,10 +40,27 @@ export class WorkspaceReads {
   private readonly entries = new Map<string, CacheEntry>();
   private readonly writes = new Set<PendingWrite>();
   private readonly listeners = new Set<(change: ProgressChange) => void>();
+  private readonly retryListeners = new Map<string, Set<(read: WorkspaceRead<unknown> | undefined) => void>>();
 
   subscribe(listener: (change: ProgressChange) => void) {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };
+  }
+
+  // An undefined handle clears readiness immediately. The replacement handle is published when the next read starts.
+  subscribeRetry<T>(kind: WorkspaceReadKind, source: object, profileId: number | null,
+    listener: (read: WorkspaceRead<T> | undefined) => void, masterRevision = 0,
+  ) {
+    const key = this.readKey(kind, this.sourceId(source), profileId, masterRevision);
+    const listeners = this.retryListeners.get(key) ?? new Set();
+    const receive = (read: WorkspaceRead<unknown> | undefined) => listener(read as WorkspaceRead<T> | undefined);
+    listeners.add(receive);
+    this.retryListeners.set(key, listeners);
+    return () => {
+      if (!listeners.delete(receive) || listeners.size) return;
+      this.retryListeners.delete(key);
+      if (this.entries.get(key)?.current === false) this.entries.delete(key);
+    };
   }
 
   read<T>(kind: WorkspaceReadKind, source: object, profileId: number | null, load: () => Promise<T>,
@@ -60,15 +77,15 @@ export class WorkspaceReads {
       return { promise, isCurrent: () => next?.isCurrent() === true };
     }
 
-    const sourceId = this.sources.get(source) ?? ++this.nextSource;
-    this.sources.set(source, sourceId);
-    const key = `${kind}:${sourceId}:${profileId ?? "master"}:${masterRevision}`;
+    const sourceId = this.sourceId(source);
+    const key = this.readKey(kind, sourceId, profileId, masterRevision);
     const cached = this.entries.get(key);
-    if (!fresh && cached && cached.status !== "error") {
+    if (!fresh && cached?.current && cached.status !== "error") {
       this.entries.delete(key);
       this.entries.set(key, cached);
       return { promise: cached.promise as Promise<T>, isCurrent: () => cached.current };
     }
+    const replacesRetry = fresh || cached?.current === false;
     if (cached) cached.current = false;
 
     let promise: Promise<T>;
@@ -80,16 +97,18 @@ export class WorkspaceReads {
     const entry: CacheEntry = { kind, sourceId, profileId, promise, current: true, status: "pending" };
     this.entries.set(key, entry);
     const settle = (status: "ready" | "error") => {
-      if (this.entries.get(key) !== entry) return;
+      if (!entry.current || this.entries.get(key) !== entry) return;
       entry.status = status;
-      const settled = [...this.entries].filter(([, value]) => value.kind === kind && value.status !== "pending");
+      const settled = [...this.entries].filter(([, value]) => value.kind === kind && value.current && value.status !== "pending");
       for (const [oldKey, old] of settled.slice(0, Math.max(0, settled.length - MAX_READY_PER_KIND))) {
         old.current = false;
         this.entries.delete(oldKey);
       }
     };
     void promise.then(() => settle("ready"), () => settle("error"));
-    return { promise, isCurrent: () => entry.current };
+    const read = { promise, isCurrent: () => entry.current };
+    if (replacesRetry) for (const listener of this.retryListeners.get(key) ?? []) listener(read);
+    return read;
   }
 
   invalidateMaster() {
@@ -102,7 +121,14 @@ export class WorkspaceReads {
 
   invalidateRead(kind: WorkspaceReadKind, source: object, profileId: number | null) {
     const sourceId = this.sources.get(source);
-    this.invalidate(entry => entry.kind === kind && entry.sourceId === sourceId && entry.profileId === profileId);
+    for (const [key, entry] of this.entries) {
+      if (entry.kind !== kind || entry.sourceId !== sourceId || entry.profileId !== profileId) continue;
+      entry.current = false;
+      // A retry listener needs the replacement handle, including its failure. The old result is already invalid.
+      const listeners = this.retryListeners.get(key);
+      if (listeners) listeners.forEach(receive => receive(undefined));
+      else this.entries.delete(key);
+    }
   }
 
   async write<T>(owner: object, profileId: number, kinds: readonly ProgressReadKind[], operation: () => Promise<T>): Promise<T> {
@@ -128,6 +154,18 @@ export class WorkspaceReads {
       entry.current = false;
       this.entries.delete(key);
     }
+  }
+
+  private sourceId(source: object) {
+    const existing = this.sources.get(source);
+    if (existing !== undefined) return existing;
+    const id = ++this.nextSource;
+    this.sources.set(source, id);
+    return id;
+  }
+
+  private readKey(kind: WorkspaceReadKind, sourceId: number, profileId: number | null, masterRevision: number) {
+    return `${kind}:${sourceId}:${profileId ?? "master"}:${masterRevision}`;
   }
 }
 
