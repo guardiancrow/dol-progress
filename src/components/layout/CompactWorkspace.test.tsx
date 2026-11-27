@@ -41,7 +41,7 @@ function Harness({ initialPage = "quests", initialFilter = false, repository = p
   const [page, setPage] = useState(initialPage);
   const [discoveryView, updateDiscoveryView] = useState(() => createSearchTableView(initialFilter ? [{ id: "category", value: 1 }] : []));
   return <ProfileProvider repository={repository}><AppShell currentPage={page} onNavigate={setPage}>
-    <section className="workspace-page"><div className="page-heading"><h2>{page}</h2></div>
+    <section className="workspace-page"><h2 className="workspace-page-title">{page}</h2>
       {page === "quests" ? <QuestTable rows={quests} paginationResetKey={1} onToggleCompletion={write} />
         : page === "discoveries" ? <DiscoveryTable rows={discoveries} paginationResetKey={1}
           tableState={{ view: discoveryView, updateView: updateDiscoveryView }}

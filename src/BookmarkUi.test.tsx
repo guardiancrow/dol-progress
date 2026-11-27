@@ -87,6 +87,12 @@ const allPages = async (user: ReturnType<typeof userEvent.setup>) => { await use
 const item = (name: string) => rows().find(row => within(row).queryByRole("button", { name }))!;
 const tabList = () => within(screen.getByRole("tablist", { name: "一覧タブ" }));
 const activeTab = () => tabList().getByRole("tab", { selected: true });
+
+function expectPageKind(kind: "クエスト" | "発見物") {
+  const label = within(screen.getByRole("banner")).getByText(kind, { selector: ".header-page-name" });
+  expect(label).toBeVisible();
+  expect(label).toHaveAttribute("aria-hidden", "true");
+}
 const addTab = async (user: ReturnType<typeof userEvent.setup>, page: string) => {
   await user.click(screen.getByRole("button", { name: "新しいタブ" }));
   await user.click(screen.getByRole("button", { name: `${page}を開く` }));
@@ -190,6 +196,7 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     await user.click(await panel().findByRole("button", { name: "発見物の条件" }));
     expect(await screen.findByRole("searchbox", { name: "発見物名を検索" })).toHaveValue("合成遺跡");
     expect(activeTab()).toHaveAccessibleName("発見物の条件");
+    expectPageKind("発見物");
     expect(tabList().getAllByRole("tab")).toHaveLength(2);
     expect(screen.getByRole("table")).not.toHaveTextContent("別の史跡");
     expect(bookmarkButton()).toHaveFocus();
@@ -202,6 +209,7 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     expect(screen.getByRole("table")).not.toHaveTextContent("対象B");
     expect(screen.getByLabelText("現在のプロフィール")).toHaveValue("2");
     expect(activeTab()).toHaveAccessibleName("クエストの条件");
+    expectPageKind("クエスト");
     expect(tabList().getAllByRole("tab")).toHaveLength(3);
     expect(discoveryStateReader.list).toHaveBeenCalledTimes(2);
   });
@@ -303,6 +311,7 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     await navigate("概要");
     await user.click(await screen.findByRole("button", { name: "史跡の発見物一覧を開く" }));
     expect(await screen.findByLabelText("分類")).toHaveValue("3");
+    expectPageKind("発見物");
     expect(search("発見物名を検索")).toHaveValue("");
     expect(activeTab().id).not.toBe(firstId);
     expect(tabList().getAllByRole("tab")).toHaveLength(3);
@@ -370,10 +379,65 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     await screen.findByRole("heading", { name: "概要" });
     await user.click(restore);
     expect(activeTab()).toHaveAccessibleName(title);
+    expectPageKind("クエスト");
     expect(activeTab()).toHaveFocus();
     expect(activeTab().id).not.toBe(questTab.id);
     expect(await screen.findByRole("searchbox")).toHaveValue("対象");
     expect(tabList().getAllByRole("tab")).toHaveLength(2);
+  });
+
+  it("identifies same-name quest and discovery tabs in both display modes", async () => {
+    const resize = mockWorkspaceMedia(1280, 800);
+    const { user } = await show(fixtures(repository).props);
+    await screen.findByRole("table");
+    act(() => resize(600, 480));
+
+    const name = "合成の長いタブ名".repeat(8);
+    const rename = async () => {
+      await user.click(screen.getByRole("button", { name: "タブ名を変更" }));
+      fireEvent.change(screen.getByLabelText("タブ名"), { target: { value: name } });
+      await user.keyboard("{Enter}");
+      expect(activeTab()).toHaveAccessibleName(name);
+    };
+    const expectNamedPanel = (kind: "クエスト" | "発見物", titleId: string) => {
+      const tab = activeTab();
+      const tabpanel = screen.getByRole("tabpanel", { name });
+      expect(tabpanel.id).toBe(tab.getAttribute("aria-controls"));
+      expect(tabpanel).toHaveAttribute("aria-labelledby", tab.id);
+      const region = within(tabpanel).getByRole("region", { name: kind });
+      const title = within(region).getByRole("heading", { level: 2, name: kind });
+      expect(region).toHaveAttribute("aria-labelledby", titleId);
+      expect(title.id).toBe(titleId);
+      expect(title).toHaveClass("workspace-page-title");
+      expect(region.querySelector(".page-heading")).not.toBeInTheDocument();
+    };
+
+    expectPageKind("クエスト");
+    await rename();
+    const questTab = activeTab();
+    expectPageKind("クエスト");
+    expectNamedPanel("クエスト", "quests-title");
+    await user.click(screen.getByRole("button", { name: "検索・フィルターを隠す" }));
+    expectPageKind("クエスト");
+    expectNamedPanel("クエスト", "quests-title");
+
+    await addTab(user, "発見物");
+    await screen.findByRole("table");
+    expectPageKind("発見物");
+    await rename();
+    const discoveryTab = activeTab();
+    expectPageKind("発見物");
+    expectNamedPanel("発見物", "discoveries-title");
+    await user.click(screen.getByRole("button", { name: "検索・フィルターを隠す" }));
+    expectPageKind("発見物");
+    expectNamedPanel("発見物", "discoveries-title");
+
+    await user.click(questTab);
+    expectPageKind("クエスト");
+    expectNamedPanel("クエスト", "quests-title");
+    await user.click(discoveryTab);
+    expectPageKind("発見物");
+    expectNamedPanel("発見物", "discoveries-title");
   });
 
   it.each([[800, 600], [600, 480]])("restores an overview from zero tabs and avoids duplicates at %dx%d", async (width, height) => {
@@ -579,6 +643,7 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     await allPages(user);
     await user.click(await panel().findByRole("button", { name: "欠落都市" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("存在しない都市");
+    expectPageKind("発見物");
     expect(search("発見物名を検索")).toHaveValue("別の");
     expect(screen.queryByRole("heading", { name: "クエスト" })).not.toBeInTheDocument();
     await user.click(panel().getByRole("button", { name: "将来形式" }));
@@ -601,6 +666,7 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     await allPages(user);
     await user.click(await panel().findByRole("button", { name: bookmark.name }));
     expect(screen.getByText("適用先の一覧を読み込んでいます…")).toBeInTheDocument();
+    expectPageKind("クエスト");
     await user.click(screen.getByRole("button", { name: "タブを並べ替え" }));
     await user.click(screen.getByRole("button", { name: "左へ移動" }));
     expect(tabList().getAllByRole("tab")).toEqual([second, first]);
@@ -610,6 +676,7 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     await act(async () => finishMaster([discovery(1, "合成遺跡")]));
     expect(await screen.findByRole("searchbox", { name: "発見物名を検索" })).toHaveValue("合成遺跡");
     expect(activeTab()).toHaveAccessibleName(bookmark.name);
+    expectPageKind("発見物");
     expect(tabList().getAllByRole("tab")).toEqual([second, first, activeTab()]);
     expect(props.discoveryRepository.listWithRelations).toHaveBeenCalledTimes(1);
     await waitFor(async () => expect((await repository.getById(bookmark.id))?.lastUsedAt).not.toBeNull());
@@ -824,6 +891,7 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     await allPages(user);
     await user.click(await panel().findByRole("button", { name: "待機中の条件" }));
     expect(screen.getByText("適用先の一覧を読み込んでいます…")).toBeInTheDocument();
+    expectPageKind("発見物");
     if (reason === "newer") await user.click(panel().getByRole("button", { name: "別の条件" }));
     if (reason === "profile") await user.selectOptions(screen.getByLabelText("現在のプロフィール"), "2");
     if (reason === "navigation") await navigate("プロフィール");
@@ -834,6 +902,11 @@ describe.skipIf(sqlite === null)("bookmark management through App and synthetic 
     await act(async () => resolve([]));
     expect(screen.queryByRole("heading", { name: "クエスト" })).not.toBeInTheDocument();
     expect((await repository.getById(waiting.id))?.lastUsedAt).toBeNull();
+    if (reason === "navigation") {
+      expect(screen.getByRole("banner").querySelector(".header-page-name")).not.toBeInTheDocument();
+    } else {
+      expectPageKind("発見物");
+    }
     if (reason === "newer") expect(search("発見物名を検索")).toHaveValue("合成遺跡");
     if (reason === "close") expect(tabList().getAllByRole("tab")).toHaveLength(2);
   });
