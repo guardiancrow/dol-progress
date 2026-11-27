@@ -661,13 +661,7 @@ export function QuestsPage({
 
   return (
     <section className="workspace-page" aria-labelledby="quests-title" ref={pageRef}>
-      <div className="page-heading">
-        <div>
-          <p className="page-eyebrow">進捗管理</p>
-          <h2 id="quests-title">クエスト</h2>
-          <p>選択中プロフィールのクエスト達成状態を管理します。</p>
-        </div>
-      </div>
+      <h2 className="workspace-page-title" id="quests-title">クエスト</h2>
 
       <ReportHoldFeedback controller={reportHold} />
       <ReportHoldDialogs controller={reportHold} />

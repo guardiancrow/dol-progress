@@ -57,6 +57,29 @@ it.each(["0.3.0", "7.8.9-beta.1"])("displays the runtime version %s and preserve
   expect(getVersion).toHaveBeenCalledTimes(1);
 });
 
+it("shows a kind label only on quest and discovery pages", async () => {
+  vi.mocked(appApi.getVersion).mockResolvedValue("0.6.0");
+  const user = userEvent.setup();
+  render(<Harness />);
+  const banner = screen.getByRole("banner");
+  const navigation = within(screen.getByRole("navigation"));
+  const pageName = () => banner.querySelector(".header-page-name");
+
+  for (const name of ["クエスト", "発見物"]) {
+    await user.click(navigation.getByRole("button", { name }));
+    expect(pageName()).toHaveTextContent(name);
+    expect(pageName()).toHaveAttribute("aria-hidden", "true");
+  }
+  for (const name of ["概要", "プロフィール", "マスターデータ", "保存場所"]) {
+    await user.click(navigation.getByRole("button", { name }));
+    expect(pageName()).not.toBeInTheDocument();
+    expect(within(banner).queryByRole("button", { name: /検索・フィルター/ })).not.toBeInTheDocument();
+  }
+
+  expect(within(banner).getByRole("heading", { name: "DOL Progress Manager" })).toBeInTheDocument();
+  expect(within(banner).getByRole("combobox", { name: "現在のプロフィール" })).toBeInTheDocument();
+});
+
 it("keeps the footer and screens usable while the version promise is pending", async () => {
   const request = deferredVersion();
   const getVersion = vi.mocked(appApi.getVersion).mockReturnValue(request.promise);

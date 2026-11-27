@@ -412,7 +412,7 @@ export function DiscoveriesPage({
 
   return (
     <section className="workspace-page" aria-labelledby="discoveries-title">
-      <div className="page-heading"><div><p className="page-eyebrow">進捗管理</p><h2 id="discoveries-title">発見物</h2><p>発見・報告・カード所有の状態を個別に管理します。</p></div></div>
+      <h2 className="workspace-page-title" id="discoveries-title">発見物</h2>
       <ReportHoldFeedback controller={reportHold} />
       <ReportHoldDialogs controller={reportHold} />
       {masterError && <ErrorBanner message={masterError} onRetry={() => {

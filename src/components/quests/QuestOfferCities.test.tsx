@@ -143,7 +143,7 @@ describe("offer city display and unset filter", () => {
     const update = vi.fn();
     const repository = { list: async () => [{ id: 1, name: "合成プロフィール", memo: null, createdAt: "synthetic", updatedAt: "synthetic" }], create: vi.fn(), update: vi.fn(), delete: vi.fn() };
     render(<ProfileProvider repository={repository}><AppShell currentPage="quests" onNavigate={() => undefined}>
-      <section className="workspace-page"><div className="page-heading"><h2>クエスト</h2></div>
+      <section className="workspace-page"><h2 className="workspace-page-title">クエスト</h2>
         <QuestTable rows={[map(), map({ id: 2, title: "都市あり", offerCity: "ロンドン", offerCities: ["ロンドン"] })]} paginationResetKey={1} onToggleCompletion={update} />
       </section>
     </AppShell></ProfileProvider>);

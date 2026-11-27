@@ -78,7 +78,7 @@ export function AppShell({
             data-workspace-controls-toggle={controlsId} disabled={!hasControls} onClick={toggleControls}>
             <DisclosureIcon kind="top-panel" expanded={controlsVisible} />
           </button>}
-          {isWorkspace && !controlsVisible && <span className="header-page-name" aria-hidden="true">{currentPage === "quests" ? "クエスト" : "発見物"}</span>}
+          {isWorkspace && <span className="header-page-name" aria-hidden="true">{currentPage === "quests" ? "クエスト" : "発見物"}</span>}
         </div>
         <ProfileSelector profiles={profiles} selectedProfileId={selectedProfileId} disabled={isLoading} onSelect={selectProfile} />
       </header>
